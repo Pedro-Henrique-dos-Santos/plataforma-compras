@@ -2,22 +2,24 @@
 
 ## Fase 0: base versionada
 
-- Preservar o Apps Script em `legacy/`.
-- Criar monorepositorio, documentacao, verificacoes e GitHub privado.
-- Entregar modo demonstracao executavel.
+- [Concluido] Preservar o Apps Script em `legacy/`.
+- [Concluido] Criar monorepositorio, documentacao, verificacoes e GitHub privado.
+- [Concluido] Entregar modo demonstracao executavel.
 
 ## Fase 1: identidade e empresas
 
-- Configurar Supabase Free.
-- Implementar login e recuperacao de acesso.
-- Criar organizacoes, convites, vinculos e troca de empresa ativa.
-- Aplicar papeis e auditoria sem fluxo de aprovacao.
+- [Preparado] Configurar Supabase Free. O codigo e as migracoes estao prontos; falta criar e vincular a instancia remota.
+- [Concluido] Implementar login, recuperacao e redefinicao de acesso.
+- [Concluido] Criar organizacoes, convites, vinculos e troca de empresa ativa.
+- [Concluido] Aplicar papeis e auditoria sem fluxo de aprovacao.
+- [Concluido] Criar identidade E-Gestao, tres temas e barra lateral recolhivel.
+- [Concluido] Bloquear acesso direto do navegador as tabelas operacionais.
 
 ## Fase 2: cadastros mestres
 
-- Migrar fornecedores e centros de custo.
-- Migrar tabela de precos e importacao em lote.
-- Criar conciliacao entre planilha e PostgreSQL.
+- [Proximo] Migrar fornecedores e centros de custo.
+- [Proximo] Migrar tabela de precos e importacao em lote.
+- [Proximo] Criar conciliacao entre planilha e PostgreSQL.
 
 ## Fase 3: operacao de compras
 
@@ -36,4 +38,3 @@
 - Testes de carga, seguranca e recuperacao.
 - Backups, observabilidade e alertas.
 - Implantacao controlada e desligamento gradual do Apps Script.
-

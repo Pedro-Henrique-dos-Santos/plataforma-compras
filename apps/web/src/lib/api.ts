@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3333/api';
+const API_URL = import.meta.env.VITE_API_URL ?? '/api';
 
 type ApiRequestOptions = {
   token?: string | null;
@@ -6,9 +6,37 @@ type ApiRequestOptions = {
   signal?: AbortSignal;
 };
 
+type ApiWriteOptions = ApiRequestOptions & {
+  method: 'POST' | 'PATCH';
+  body: unknown;
+};
+
 export async function apiGet<T>(
   path: string,
   options: ApiRequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: 'GET' });
+}
+
+export async function apiPost<T>(
+  path: string,
+  body: unknown,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(path, { ...options, body, method: 'POST' });
+}
+
+export async function apiPatch<T>(
+  path: string,
+  body: unknown,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(path, { ...options, body, method: 'PATCH' });
+}
+
+async function apiRequest<T>(
+  path: string,
+  options: (ApiRequestOptions & { method: 'GET' }) | ApiWriteOptions,
 ): Promise<T> {
   const headers = new Headers({ Accept: 'application/json' });
   if (options.token) {
@@ -17,10 +45,15 @@ export async function apiGet<T>(
   if (options.organizationId) {
     headers.set('x-organization-id', options.organizationId);
   }
+  if (options.method !== 'GET') {
+    headers.set('Content-Type', 'application/json');
+  }
 
   const response = await fetch(`${API_URL}${path}`, {
     headers,
+    method: options.method,
     signal: options.signal,
+    body: options.method === 'GET' ? undefined : JSON.stringify(options.body),
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as
@@ -34,4 +67,3 @@ export async function apiGet<T>(
 
   return (await response.json()) as T;
 }
-

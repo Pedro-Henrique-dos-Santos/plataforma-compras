@@ -6,11 +6,16 @@ import {
   ChevronDown,
   LogOut,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
   ShieldCheck,
   X,
 } from 'lucide-react';
 
-export type ViewId = 'dashboard' | 'organizations' | 'access';
+import logoMark from '../assets/egestao-mark.svg';
+
+export type ViewId = 'dashboard' | 'organizations' | 'access' | 'settings';
 
 type AppShellProps = {
   activeOrganization: OrganizationSummary;
@@ -18,9 +23,11 @@ type AppShellProps = {
   mobileMenuOpen: boolean;
   onMobileMenuChange: (open: boolean) => void;
   onOrganizationChange: (organizationId: string) => void;
+  onSidebarCollapsedChange: (collapsed: boolean) => void;
   onSignOut: () => void;
   onViewChange: (view: ViewId) => void;
   organizations: OrganizationSummary[];
+  sidebarCollapsed: boolean;
   user: UserContext;
   view: ViewId;
 };
@@ -29,11 +36,11 @@ const navigation: Array<{
   id: ViewId;
   label: string;
   icon: typeof BarChart3;
-  platformOnly?: boolean;
+  visibility?: 'platform-owner' | 'organization-admin';
 }> = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-  { id: 'organizations', label: 'Empresas', icon: Building2, platformOnly: true },
-  { id: 'access', label: 'Acessos', icon: ShieldCheck, platformOnly: true },
+  { id: 'organizations', label: 'Empresas', icon: Building2, visibility: 'platform-owner' },
+  { id: 'access', label: 'Acessos', icon: ShieldCheck, visibility: 'organization-admin' },
 ];
 
 const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
@@ -47,7 +54,11 @@ const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
   },
   access: {
     title: 'Acessos',
-    subtitle: 'Papeis globais e empresariais',
+    subtitle: 'Papeis e usuarios da empresa ativa',
+  },
+  settings: {
+    title: 'Configuracoes',
+    subtitle: 'Preferencias deste navegador',
   },
 };
 
@@ -57,25 +68,50 @@ export function AppShell({
   mobileMenuOpen,
   onMobileMenuChange,
   onOrganizationChange,
+  onSidebarCollapsedChange,
   onSignOut,
   onViewChange,
   organizations,
+  sidebarCollapsed,
   user,
   view,
 }: AppShellProps) {
   const isPlatformOwner = user.platformRoles.includes('PLATFORM_OWNER');
-  const visibleNavigation = navigation.filter((item) => !item.platformOnly || isPlatformOwner);
+  const isOrganizationAdmin = activeOrganization.role === 'ORGANIZATION_ADMIN';
+  const visibleNavigation = navigation.filter((item) => {
+    if (item.visibility === 'platform-owner') {
+      return isPlatformOwner;
+    }
+    if (item.visibility === 'organization-admin') {
+      return isPlatformOwner || isOrganizationAdmin;
+    }
+    return true;
+  });
   const title = viewTitles[view];
 
+  function selectView(nextView: ViewId) {
+    onViewChange(nextView);
+    onMobileMenuChange(false);
+  }
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-        <div className="brand-lockup">
-          <span className="brand-mark">PC</span>
-          <span>
-            <strong>Compras</strong>
+        <div className="brand-lockup sidebar-brand">
+          <img alt="" className="brand-logo" src={logoMark} />
+          <span className="brand-lockup-copy">
+            <strong>E-Gestão Compras</strong>
             <small>Gestao multiempresa</small>
           </span>
+          <button
+            aria-label={sidebarCollapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'}
+            className="sidebar-collapse-button"
+            onClick={() => onSidebarCollapsedChange(!sidebarCollapsed)}
+            title={sidebarCollapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'}
+            type="button"
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
           <button
             aria-label="Fechar menu"
             className="sidebar-close"
@@ -93,12 +129,11 @@ export function AppShell({
             const Icon = item.icon;
             return (
               <button
+                aria-current={view === item.id ? 'page' : undefined}
                 className={`nav-item ${view === item.id ? 'active' : ''}`}
                 key={item.id}
-                onClick={() => {
-                  onViewChange(item.id);
-                  onMobileMenuChange(false);
-                }}
+                onClick={() => selectView(item.id)}
+                title={sidebarCollapsed ? item.label : undefined}
                 type="button"
               >
                 <Icon size={18} />
@@ -108,11 +143,24 @@ export function AppShell({
           })}
         </nav>
 
+        <nav className="navigation utility-navigation" aria-label="Preferencias">
+          <button
+            aria-current={view === 'settings' ? 'page' : undefined}
+            className={`nav-item ${view === 'settings' ? 'active' : ''}`}
+            onClick={() => selectView('settings')}
+            title={sidebarCollapsed ? 'Configuracoes' : undefined}
+            type="button"
+          >
+            <Settings size={18} />
+            <span>Configuracoes</span>
+          </button>
+        </nav>
+
         <div className="sidebar-account">
           <span className="avatar">{initials(user.name)}</span>
           <span className="account-copy">
             <strong>{user.name}</strong>
-            <small>Proprietario global</small>
+            <small>{accountRole(isPlatformOwner, activeOrganization.role)}</small>
           </span>
           <button
             aria-label="Sair"
@@ -149,7 +197,7 @@ export function AppShell({
             </button>
             <span>
               <h1>{title.title}</h1>
-              <p>{title.subtitle}</p>
+              <p>{activeOrganization.name} | {title.subtitle}</p>
             </span>
           </div>
 
@@ -176,6 +224,17 @@ export function AppShell({
   );
 }
 
+function accountRole(isPlatformOwner: boolean, role: OrganizationSummary['role']): string {
+  if (isPlatformOwner) {
+    return 'Proprietario global';
+  }
+  return {
+    ORGANIZATION_ADMIN: 'Administrador',
+    BUYER: 'Comprador',
+    REPORT_VIEWER: 'Relatorios',
+  }[role];
+}
+
 function initials(name: string) {
   return name
     .split(' ')
@@ -184,4 +243,3 @@ function initials(name: string) {
     .map((part) => part[0]?.toUpperCase())
     .join('');
 }
-

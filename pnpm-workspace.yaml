@@ -2,6 +2,9 @@ packages:
   - apps/*
   - packages/*
 
+overrides:
+  effect: 3.20.0
+
 onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'

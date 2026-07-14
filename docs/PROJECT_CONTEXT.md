@@ -19,6 +19,8 @@ A primeira versao foi criada em Google Sheets e Google Apps Script. Ela possui p
 - Sem alçada de aprovacao no escopo inicial.
 - O proprietario global e independente das contas das empresas atendidas.
 - `compras@humanclinic.com.br` pertence somente ao contexto Human Clinic e nao sera proprietario global.
+- O nome do produto e E-Gestao Compras; o nome da empresa ativa continua variavel.
+- A interface possui os temas Normal, Escuro e Branco e barra lateral recolhivel.
 
 ## Ambientes conhecidos
 
@@ -27,4 +29,3 @@ A primeira versao foi criada em Google Sheets e Google Apps Script. Ela possui p
 - Portal Apps Script: implantacao `AKfycbwO4q2X_LmQVhAsBC7du4ZRhf1XqpyCzB2nLGN9ezyuvyKwCxl7IF1X8pRNb7iuBRZJIA`
 
 Os identificadores acima sao referencias operacionais, nao credenciais.
-

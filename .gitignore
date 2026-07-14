@@ -4,6 +4,7 @@ dist/
 coverage/
 .vite/
 .turbo/
+*.tsbuildinfo
 __pycache__/
 *.py[cod]
 .tools/

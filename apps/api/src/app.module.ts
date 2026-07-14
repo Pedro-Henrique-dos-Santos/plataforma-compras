@@ -8,16 +8,19 @@ import { AuthModule } from './auth/auth.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { HealthController } from './health/health.controller.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
+import { validateEnvironment } from './config/environment.js';
+import { PersistenceModule } from './persistence/persistence.module.js';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     ThrottlerModule.forRoot([
       {
         ttl: 60_000,
         limit: 120,
       },
     ]),
+    PersistenceModule,
     OrganizationsModule,
     AuthModule,
     AccessModule,

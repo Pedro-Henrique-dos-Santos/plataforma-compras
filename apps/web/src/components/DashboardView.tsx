@@ -123,7 +123,7 @@ export function DashboardView({ loading, summary }: DashboardViewProps) {
           <div className="chart-frame" aria-label="Grafico de compras mensais">
             <ResponsiveContainer height="100%" width="100%">
               <BarChart data={summary.monthlySpend} margin={{ left: 0, right: 10, top: 12 }}>
-                <CartesianGrid stroke="#e8ebed" strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid stroke="var(--table-line)" strokeDasharray="3 3" vertical={false} />
                 <XAxis axisLine={false} dataKey="month" tickLine={false} />
                 <YAxis
                   axisLine={false}
@@ -132,10 +132,10 @@ export function DashboardView({ loading, summary }: DashboardViewProps) {
                   width={78}
                 />
                 <Tooltip
-                  cursor={{ fill: '#f3f4f5' }}
+                  cursor={{ fill: 'var(--surface-alt)' }}
                   formatter={(value) => [currency.format(Number(value)), 'Compras']}
                 />
-                <Bar dataKey="value" fill="#963743" maxBarSize={44} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="var(--brand)" maxBarSize={44} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -148,7 +148,7 @@ export function DashboardView({ loading, summary }: DashboardViewProps) {
               <p>Participacao no valor comprado</p>
             </span>
           </header>
-          <div className="pie-layout">
+          {summary.spendByCategory.length ? <div className="pie-layout">
             <div className="pie-frame" aria-label="Grafico de compras por categoria">
               <ResponsiveContainer height="100%" width="100%">
                 <PieChart>
@@ -180,7 +180,7 @@ export function DashboardView({ loading, summary }: DashboardViewProps) {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> : <div className="empty-data-state">Nenhuma compra registrada por categoria</div>}
         </article>
       </section>
 
@@ -203,7 +203,7 @@ export function DashboardView({ loading, summary }: DashboardViewProps) {
               </tr>
             </thead>
             <tbody>
-              {summary.recentPurchases.map((purchase) => (
+              {summary.recentPurchases.length ? summary.recentPurchases.map((purchase) => (
                 <tr key={purchase.id}>
                   <td className="order-id">{purchase.id}</td>
                   <td>{purchase.supplier}</td>
@@ -211,7 +211,11 @@ export function DashboardView({ loading, summary }: DashboardViewProps) {
                   <td>{formatDate(purchase.date)}</td>
                   <td className="align-right amount-cell">{currency.format(purchase.total)}</td>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td className="empty-table-cell" colSpan={5}>Nenhuma compra registrada</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -240,4 +244,3 @@ function DashboardSkeleton() {
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(value));
 }
-
