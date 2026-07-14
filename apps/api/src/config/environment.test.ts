@@ -60,4 +60,21 @@ describe('validateEnvironment', () => {
       }),
     ).toThrow(/explicit HTTP or HTTPS origins/);
   });
+
+  it('rejects ambiguous or malformed Google service account configuration', () => {
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'development',
+        GOOGLE_SERVICE_ACCOUNT_JSON: '{}',
+        GOOGLE_SERVICE_ACCOUNT_JSON_BASE64: 'e30=',
+      }),
+    ).toThrow(/only one Google service account variable/);
+
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'development',
+        GOOGLE_SERVICE_ACCOUNT_JSON: '{"client_email":"invalid"}',
+      }),
+    ).toThrow(/credentials are invalid/);
+  });
 });

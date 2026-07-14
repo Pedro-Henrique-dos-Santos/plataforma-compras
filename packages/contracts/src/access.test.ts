@@ -12,6 +12,8 @@ describe('organization access', () => {
     expect(hasOrganizationPermission('REPORT_VIEWER', 'purchase:write')).toBe(false);
     expect(hasOrganizationPermission('REPORT_VIEWER', 'cost-center:read')).toBe(true);
     expect(hasOrganizationPermission('REPORT_VIEWER', 'cost-center:write')).toBe(false);
+    expect(hasOrganizationPermission('REPORT_VIEWER', 'integration:read')).toBe(true);
+    expect(hasOrganizationPermission('REPORT_VIEWER', 'integration:write')).toBe(false);
   });
 
   it('does not grant platform management to company roles', () => {

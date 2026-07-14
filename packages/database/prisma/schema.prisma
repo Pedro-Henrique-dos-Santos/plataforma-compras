@@ -51,6 +51,19 @@ enum AuditAction {
   SWITCH_ORGANIZATION
 }
 
+enum IntegrationHealth {
+  NEVER_SYNCED
+  HEALTHY
+  ERROR
+}
+
+enum SheetSyncRunStatus {
+  PREVIEWED
+  APPLYING
+  APPLIED
+  FAILED
+}
+
 model User {
   id                   String                   @id @default(uuid()) @db.Uuid
   authUserId           String                   @unique @map("auth_user_id") @db.Uuid
@@ -63,6 +76,7 @@ model User {
   memberships          OrganizationMembership[]
   auditEvents          AuditLog[]               @relation("AuditActor")
   createdOrganizations Organization[]           @relation("OrganizationCreator")
+  sheetSyncRuns        SheetSyncRun[]           @relation("SheetSyncRunCreator")
 
   @@map("users")
 }
@@ -79,22 +93,24 @@ model PlatformRoleAssignment {
 }
 
 model Organization {
-  id               String                   @id @default(uuid()) @db.Uuid
-  name             String                   @db.VarChar(120)
-  slug             String                   @unique @db.VarChar(80)
-  document         String?                  @unique @db.VarChar(18)
-  active           Boolean                  @default(true)
-  createdById      String?                  @map("created_by_id") @db.Uuid
-  createdAt        DateTime                 @default(now()) @map("created_at")
-  updatedAt        DateTime                 @updatedAt @map("updated_at")
-  createdBy        User?                    @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  memberships      OrganizationMembership[]
-  costCenters      CostCenter[]
-  suppliers        Supplier[]
-  supplierPrices   SupplierPrice[]
-  purchases        Purchase[]
-  invoiceDocuments InvoiceDocument[]
-  auditLogs        AuditLog[]
+  id                      String                   @id @default(uuid()) @db.Uuid
+  name                    String                   @db.VarChar(120)
+  slug                    String                   @unique @db.VarChar(80)
+  document                String?                  @unique @db.VarChar(18)
+  active                  Boolean                  @default(true)
+  createdById             String?                  @map("created_by_id") @db.Uuid
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+  createdBy               User?                    @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  memberships             OrganizationMembership[]
+  costCenters             CostCenter[]
+  suppliers               Supplier[]
+  supplierPrices          SupplierPrice[]
+  purchases               Purchase[]
+  invoiceDocuments        InvoiceDocument[]
+  auditLogs               AuditLog[]
+  googleSheetsIntegration GoogleSheetsIntegration?
+  sheetSyncRuns           SheetSyncRun[]
 
   @@map("organizations")
 }
@@ -190,6 +206,7 @@ model Purchase {
   organizationId    String            @map("organization_id") @db.Uuid
   supplierId        String            @map("supplier_id") @db.Uuid
   number            String            @db.VarChar(40)
+  invoiceNumber     String?           @map("invoice_number") @db.VarChar(60)
   issuedAt          DateTime          @map("issued_at") @db.Date
   status            PurchaseStatus    @default(REGISTERED)
   category          String?           @db.VarChar(100)
@@ -209,10 +226,56 @@ model Purchase {
   invoiceDocuments  InvoiceDocument[]
 
   @@unique([organizationId, number])
+  @@unique([organizationId, supplierId, invoiceNumber])
   @@unique([organizationId, source, sourceReference])
   @@index([organizationId, issuedAt])
   @@index([organizationId, supplierId])
   @@map("purchases")
+}
+
+model GoogleSheetsIntegration {
+  id                    String            @id @default(uuid()) @db.Uuid
+  organizationId        String            @unique @map("organization_id") @db.Uuid
+  spreadsheetId         String            @map("spreadsheet_id") @db.VarChar(160)
+  spreadsheetTitle      String?           @map("spreadsheet_title") @db.VarChar(160)
+  itemsSheetName        String            @default("Itens do Pedido") @map("items_sheet_name") @db.VarChar(120)
+  installmentsSheetName String            @default("Parcelas do Pedido") @map("installments_sheet_name") @db.VarChar(120)
+  suppliersSheetName    String            @default("Cadastro de Fornecedores") @map("suppliers_sheet_name") @db.VarChar(120)
+  pricesSheetName       String            @default("Tabela de Precos Negociados") @map("prices_sheet_name") @db.VarChar(120)
+  headerRow             Int               @default(1) @map("header_row")
+  enabled               Boolean           @default(true)
+  lastStatus            IntegrationHealth @default(NEVER_SYNCED) @map("last_status")
+  lastSyncedAt          DateTime?         @map("last_synced_at")
+  lastError             String?           @map("last_error")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  organization          Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  syncRuns              SheetSyncRun[]
+
+  @@map("google_sheets_integrations")
+}
+
+model SheetSyncRun {
+  id             String                  @id @default(uuid()) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  integrationId  String                  @map("integration_id") @db.Uuid
+  createdById    String?                 @map("created_by_id") @db.Uuid
+  status         SheetSyncRunStatus      @default(PREVIEWED)
+  snapshotHash   String                  @map("snapshot_hash") @db.Char(64)
+  sourceRowCount Int                     @map("source_row_count")
+  preview        Json
+  payload        Json
+  result         Json?
+  error          String?
+  createdAt      DateTime                @default(now()) @map("created_at")
+  appliedAt      DateTime?               @map("applied_at")
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration    GoogleSheetsIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  createdBy      User?                   @relation("SheetSyncRunCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([integrationId, status])
+  @@map("sheet_sync_runs")
 }
 
 model PurchaseItem {

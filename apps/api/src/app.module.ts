@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AccessModule } from './access/access.module.js';
+import { AutomationModule } from './automation/automation.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { HealthController } from './health/health.controller.js';
@@ -26,6 +27,7 @@ import { PurchasesModule } from './purchases/purchases.module.js';
     OrganizationsModule,
     AuthModule,
     AccessModule,
+    AutomationModule,
     DashboardModule,
     MasterDataModule,
     PurchasesModule,

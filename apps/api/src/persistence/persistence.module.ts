@@ -1,5 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 
+import { AutomationRepository } from '../automation/automation.repository.js';
+import { automationRepositoryProvider } from '../automation/automation.repository.provider.js';
 import { DatabaseModule } from '../database/database.module.js';
 import { OrganizationsRepository } from '../organizations/organizations.repository.js';
 import { organizationsRepositoryProvider } from '../organizations/organizations.repository.provider.js';
@@ -9,7 +11,11 @@ import { procurementRepositoryProvider } from '../procurement/procurement.reposi
 @Global()
 @Module({
   imports: [DatabaseModule],
-  providers: [organizationsRepositoryProvider, procurementRepositoryProvider],
-  exports: [OrganizationsRepository, ProcurementRepository],
+  providers: [
+    organizationsRepositoryProvider,
+    procurementRepositoryProvider,
+    automationRepositoryProvider,
+  ],
+  exports: [OrganizationsRepository, ProcurementRepository, AutomationRepository],
 })
 export class PersistenceModule {}

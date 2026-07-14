@@ -67,6 +67,7 @@ export type InstallmentInput = z.infer<typeof installmentInputSchema>;
 export const createPurchaseInputSchema = z
   .object({
     number: z.string().trim().min(1).max(40),
+    invoiceNumber: nullableText(60).optional(),
     supplierId: z.string().uuid(),
     issuedAt: isoDateSchema,
     category: nullableText(100),
@@ -103,6 +104,7 @@ export type CreatePurchaseInput = z.infer<typeof createPurchaseInputSchema>;
 export const purchaseSummarySchema = z.object({
   id: z.string().uuid(),
   number: z.string(),
+  invoiceNumber: z.string().nullable(),
   supplierId: z.string().uuid(),
   supplierName: z.string(),
   issuedAt: isoDateSchema,
@@ -114,9 +116,15 @@ export const purchaseSummarySchema = z.object({
   departments: z.array(z.string()),
   itemCount: z.number().int().nonnegative(),
   source: purchaseSourceSchema,
+  sourceReference: z.string().nullable(),
   createdAt: z.string().datetime(),
 });
 export type PurchaseSummary = z.infer<typeof purchaseSummarySchema>;
+
+export const attachPurchaseInvoiceInputSchema = z.object({
+  invoiceNumber: z.string().trim().min(1).max(60),
+});
+export type AttachPurchaseInvoiceInput = z.infer<typeof attachPurchaseInvoiceInputSchema>;
 
 export const purchaseImportInputSchema = z.object({
   purchases: z.array(createPurchaseInputSchema).min(1).max(250),

@@ -65,6 +65,11 @@ const CostCentersView = lazy(() =>
     default: module.CostCentersView,
   })),
 );
+const IntegrationsView = lazy(() =>
+  import('./components/IntegrationsView').then((module) => ({
+    default: module.IntegrationsView,
+  })),
+);
 
 export default function App() {
   const [sessionState, setSessionState] = useState<SessionState>('checking');
@@ -328,6 +333,9 @@ export default function App() {
   const canWriteOperationalData =
     user.platformRoles.includes('PLATFORM_OWNER') ||
     activeOrganization.role !== 'REPORT_VIEWER';
+  const canConfigureOrganization =
+    user.platformRoles.includes('PLATFORM_OWNER') ||
+    activeOrganization.role === 'ORGANIZATION_ADMIN';
 
   return (
     <AppShell
@@ -378,6 +386,15 @@ export default function App() {
         {view === 'cost-centers' && (
           <CostCentersView
             accessToken={accessToken}
+            canWrite={canWriteOperationalData}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'integrations' && (
+          <IntegrationsView
+            accessToken={accessToken}
+            canConfigure={canConfigureOrganization}
             canWrite={canWriteOperationalData}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}

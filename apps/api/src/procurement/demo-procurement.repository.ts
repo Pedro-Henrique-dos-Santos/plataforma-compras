@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import type {
+  AttachPurchaseInvoiceInput,
   CostCenter,
   CreateCostCenterInput,
   CreatePurchaseInput,
@@ -61,6 +62,7 @@ type StoredPurchase = {
   items: StoredPurchaseItem[];
   negotiatedSavings: number;
   number: string;
+  invoiceNumber: string | null;
   operationNature: string | null;
   organizationId: string;
   paymentMethod: string | null;
@@ -339,7 +341,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
       .filter((purchase) => !filters.dateFrom || purchase.issuedAt >= filters.dateFrom)
       .filter((purchase) => !filters.dateTo || purchase.issuedAt <= filters.dateTo)
       .filter((purchase) => {
-        const searchable = `${purchase.number} ${this.supplierName(purchase.supplierId)} ${purchase.category ?? ''}`;
+        const searchable = `${purchase.number} ${purchase.invoiceNumber ?? ''} ${this.supplierName(purchase.supplierId)} ${purchase.category ?? ''}`;
         return !search || normalizeSearch(searchable).includes(search);
       })
       .sort((left, right) => right.issuedAt.localeCompare(left.issuedAt))
@@ -372,6 +374,32 @@ export class DemoProcurementRepository extends ProcurementRepository {
       created += 1;
     }
     return { total: input.purchases.length, created, duplicated };
+  }
+
+  async attachPurchaseInvoice(
+    _actor: AuthenticatedIdentity,
+    organizationId: string,
+    purchaseId: string,
+    input: AttachPurchaseInvoiceInput,
+  ): Promise<PurchaseSummary> {
+    const purchase = this.purchases.find(
+      (candidate) => candidate.organizationId === organizationId && candidate.id === purchaseId,
+    );
+    if (!purchase) {
+      throw new NotFoundException('Compra nao encontrada.');
+    }
+    const duplicate = this.purchases.some(
+      (candidate) =>
+        candidate.organizationId === organizationId &&
+        candidate.id !== purchaseId &&
+        candidate.supplierId === purchase.supplierId &&
+        candidate.invoiceNumber === input.invoiceNumber,
+    );
+    if (duplicate) {
+      throw new ConflictException('Esta nota fiscal ja esta vinculada a outra compra.');
+    }
+    purchase.invoiceNumber = input.invoiceNumber;
+    return this.toPurchaseSummary(purchase);
   }
 
   async getDashboardSummary(organizationId: string): Promise<DashboardSummary> {
@@ -450,6 +478,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
       id: randomUUID(),
       organizationId,
       number: input.number,
+      invoiceNumber: input.invoiceNumber ?? null,
       supplierId: input.supplierId,
       issuedAt: input.issuedAt,
       status: 'REGISTERED',
@@ -470,6 +499,9 @@ export class DemoProcurementRepository extends ProcurementRepository {
       (purchase) =>
         purchase.organizationId === organizationId &&
         (purchase.number === input.number ||
+          (input.invoiceNumber &&
+            purchase.supplierId === input.supplierId &&
+            purchase.invoiceNumber === input.invoiceNumber) ||
           (input.sourceReference &&
             purchase.source === input.source &&
             purchase.sourceReference === input.sourceReference)),
@@ -552,6 +584,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
     return {
       id: purchase.id,
       number: purchase.number,
+      invoiceNumber: purchase.invoiceNumber,
       supplierId: purchase.supplierId,
       supplierName: this.supplierName(purchase.supplierId),
       issuedAt: purchase.issuedAt,
@@ -573,6 +606,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
       ],
       itemCount: purchase.items.length,
       source: purchase.source,
+      sourceReference: purchase.sourceReference,
       createdAt: purchase.createdAt,
     };
   }
@@ -815,6 +849,7 @@ function seededPurchase(
     id,
     organizationId,
     number,
+    invoiceNumber: null,
     supplierId,
     issuedAt,
     status: 'REGISTERED',

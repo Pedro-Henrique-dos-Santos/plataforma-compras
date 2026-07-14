@@ -7,7 +7,7 @@ type ApiRequestOptions = {
 };
 
 type ApiWriteOptions = ApiRequestOptions & {
-  method: 'POST' | 'PATCH';
+  method: 'POST' | 'PATCH' | 'PUT';
   body: unknown;
 };
 
@@ -32,6 +32,14 @@ export async function apiPatch<T>(
   options: ApiRequestOptions = {},
 ): Promise<T> {
   return apiRequest<T>(path, { ...options, body, method: 'PATCH' });
+}
+
+export async function apiPut<T>(
+  path: string,
+  body: unknown,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(path, { ...options, body, method: 'PUT' });
 }
 
 async function apiRequest<T>(

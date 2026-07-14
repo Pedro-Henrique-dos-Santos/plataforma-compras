@@ -7,6 +7,7 @@ Navegador
   -> React/Vite (Supabase Auth)
   -> API NestJS (identidade, tenant e permissoes)
   -> PostgreSQL/Supabase (dados operacionais)
+  -> Google Sheets API (conciliacao durante a transicao)
   -> Google Drive para documentos durante a transicao
 ```
 
@@ -41,6 +42,14 @@ O modo `demo` usa repositorios em memoria com os mesmos contratos das implementa
 
 As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor.
 
+## Sincronizacao com Google Sheets
+
+Cada empresa possui no maximo uma configuracao ativa de Google Sheets. A credencial da conta de servico fica somente no ambiente do servidor; o banco guarda apenas o ID da planilha, os nomes das abas e o estado da ultima sincronizacao.
+
+A leitura usa as abas normalizadas de fornecedores, precos, itens e parcelas. O servidor converte formatos `pt_BR`, valida cabecalhos e cria uma previa imutavel com hash do conteudo. A aplicacao reivindica essa previa de forma atomica para impedir execucao dupla.
+
+A conciliacao resolve primeiro centros de custo e fornecedores, depois precos e compras. Uma compra existente com o mesmo fornecedor e valor recebe somente a nota fiscal ausente. Ambiguidades permanecem para revisao; parcelas ausentes ou divergentes nao bloqueiam o registro principal.
+
 ## Indicadores
 
 O dashboard nao armazena totais derivados. A API agrega compras registradas por mes, categoria e departamento. Quando um item possui rateio, somente os valores das alocacoes entram no grafico por departamento; o total direto do item nao e somado novamente.
@@ -51,4 +60,4 @@ O produto usa a marca E-Gestao Compras e exibe o nome da empresa ativa no cabeca
 
 ## Transicao do legado
 
-O Apps Script atual permanece em producao. A nova API recebera adaptadores para ler a planilha durante a migracao. Cada modulo sera validado e reconciliado antes de passar a gravar exclusivamente no PostgreSQL.
+O Apps Script atual permanece em producao. O adaptador de leitura da planilha ja esta disponivel com previa e conciliacao; a mudanca de fonte primaria para PostgreSQL sera feita somente apos homologacao e comparacao dos totais.

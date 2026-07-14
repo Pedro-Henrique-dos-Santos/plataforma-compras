@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Store,
   Tags,
+  Workflow,
   X,
 } from 'lucide-react';
 
@@ -25,6 +26,7 @@ export type ViewId =
   | 'suppliers'
   | 'prices'
   | 'cost-centers'
+  | 'integrations'
   | 'organizations'
   | 'access'
   | 'settings';
@@ -55,6 +57,7 @@ const navigation: Array<{
   { id: 'suppliers', label: 'Fornecedores', icon: Store },
   { id: 'prices', label: 'Tabela de precos', icon: Tags },
   { id: 'cost-centers', label: 'Centros de custo', icon: Landmark },
+  { id: 'integrations', label: 'Automacoes', icon: Workflow },
   { id: 'organizations', label: 'Empresas', icon: Building2, visibility: 'platform-owner' },
   { id: 'access', label: 'Acessos', icon: ShieldCheck, visibility: 'organization-admin' },
 ];
@@ -79,6 +82,10 @@ const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
   'cost-centers': {
     title: 'Centros de custo',
     subtitle: 'Departamentos usados na classificacao das compras',
+  },
+  integrations: {
+    title: 'Automacoes',
+    subtitle: 'Sincronizacao e conciliacao com fontes externas',
   },
   organizations: {
     title: 'Empresas',

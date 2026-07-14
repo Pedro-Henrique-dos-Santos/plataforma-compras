@@ -19,12 +19,12 @@
 
 - [Concluido] Migrar fornecedores e centros de custo.
 - [Concluido] Migrar tabela de precos e importacao em lote.
-- [Em andamento] Criar conciliacao entre planilha e PostgreSQL.
+- [Concluido] Criar conciliacao entre planilha e PostgreSQL.
 
 ## Fase 3: operacao de compras
 
 - [Concluido] Migrar cadastro de compras, itens, rateios e parcelas.
-- [Proximo] Incorporar notas fiscais e documentos no fluxo externo.
+- [Em andamento] Incorporar notas fiscais e documentos no fluxo externo.
 - [Concluido] Garantir idempotencia, isolamento por empresa e auditoria das gravacoes.
 
 ## Fase 4: inteligencia

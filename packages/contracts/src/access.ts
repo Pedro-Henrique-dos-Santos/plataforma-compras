@@ -25,6 +25,8 @@ export const permissionSchema = z.enum([
   'purchase:write',
   'invoice:read',
   'invoice:write',
+  'integration:read',
+  'integration:write',
   'report:export',
 ]);
 export type Permission = z.infer<typeof permissionSchema>;
@@ -44,6 +46,8 @@ export const organizationRolePermissions: Record<OrganizationRole, readonly Perm
     'purchase:write',
     'invoice:read',
     'invoice:write',
+    'integration:read',
+    'integration:write',
     'report:export',
   ],
   BUYER: [
@@ -58,6 +62,7 @@ export const organizationRolePermissions: Record<OrganizationRole, readonly Perm
     'purchase:write',
     'invoice:read',
     'invoice:write',
+    'integration:read',
     'report:export',
   ],
   REPORT_VIEWER: [
@@ -67,6 +72,7 @@ export const organizationRolePermissions: Record<OrganizationRole, readonly Perm
     'price:read',
     'purchase:read',
     'invoice:read',
+    'integration:read',
     'report:export',
   ],
 };

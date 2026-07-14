@@ -1,4 +1,5 @@
 import type {
+  AttachPurchaseInvoiceInput,
   CostCenter,
   CreateCostCenterInput,
   CreatePurchaseInput,
@@ -123,6 +124,13 @@ export abstract class ProcurementRepository {
     organizationId: string,
     input: PurchaseImportInput,
   ): Promise<PurchaseImportResult>;
+
+  abstract attachPurchaseInvoice(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    purchaseId: string,
+    input: AttachPurchaseInvoiceInput,
+  ): Promise<PurchaseSummary>;
 
   abstract getDashboardSummary(organizationId: string): Promise<DashboardSummary>;
 }

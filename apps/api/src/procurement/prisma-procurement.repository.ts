@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  AttachPurchaseInvoiceInput,
   CostCenter,
   CreateCostCenterInput,
   CreatePurchaseInput,
@@ -475,6 +476,7 @@ export class PrismaProcurementRepository extends ProcurementRepository {
             organizationId,
             supplierId: input.supplierId,
             number: input.number,
+            invoiceNumber: input.invoiceNumber ?? null,
             issuedAt: toDate(input.issuedAt) as Date,
             status: 'REGISTERED',
             category: input.category ?? supplier.category,
@@ -570,6 +572,45 @@ export class PrismaProcurementRepository extends ProcurementRepository {
       },
     });
     return { total: input.purchases.length, created, duplicated };
+  }
+
+  async attachPurchaseInvoice(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    purchaseId: string,
+    input: AttachPurchaseInvoiceInput,
+  ): Promise<PurchaseSummary> {
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { id: purchaseId, organizationId },
+      select: { id: true, supplierId: true },
+    });
+    if (!purchase) {
+      throw new NotFoundException('Compra nao encontrada.');
+    }
+    try {
+      await this.prisma.$transaction(async (transaction) => {
+        await transaction.purchase.update({
+          where: { id: purchaseId },
+          data: { invoiceNumber: input.invoiceNumber },
+        });
+        await transaction.auditLog.create({
+          data: {
+            actorUserId: actor.id,
+            organizationId,
+            action: 'UPDATE',
+            resource: 'purchase_invoice',
+            resourceId: purchaseId,
+            metadata: { invoiceNumber: input.invoiceNumber, supplierId: purchase.supplierId },
+          },
+        });
+      });
+      return await this.requirePurchase(organizationId, purchaseId);
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('Esta nota fiscal ja esta vinculada a outra compra.');
+      }
+      throw error;
+    }
   }
 
   async getDashboardSummary(organizationId: string): Promise<DashboardSummary> {
@@ -794,6 +835,7 @@ function toPurchaseSummary(purchase: PurchaseRecord): PurchaseSummary {
   return {
     id: purchase.id,
     number: purchase.number,
+    invoiceNumber: purchase.invoiceNumber,
     supplierId: purchase.supplierId,
     supplierName: purchase.supplier.tradeName ?? purchase.supplier.legalName,
     issuedAt: toIsoDate(purchase.issuedAt) as string,
@@ -815,6 +857,7 @@ function toPurchaseSummary(purchase: PurchaseRecord): PurchaseSummary {
     ],
     itemCount: purchase.items.length,
     source: parsePurchaseSource(purchase.source),
+    sourceReference: purchase.sourceReference,
     createdAt: purchase.createdAt.toISOString(),
   };
 }

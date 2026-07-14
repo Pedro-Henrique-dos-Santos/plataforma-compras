@@ -32,6 +32,22 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
   }
   environment['CORS_ORIGIN'] = normalizedCorsOrigins.join(',');
 
+  const googleCredentials = textValue(raw['GOOGLE_SERVICE_ACCOUNT_JSON']);
+  const encodedGoogleCredentials = textValue(raw['GOOGLE_SERVICE_ACCOUNT_JSON_BASE64']);
+  if (googleCredentials && encodedGoogleCredentials) {
+    throw new Error(
+      'Configure only one Google service account variable: JSON or JSON_BASE64.',
+    );
+  }
+  if (googleCredentials || encodedGoogleCredentials) {
+    const credentials = parseGoogleCredentials(
+      googleCredentials || Buffer.from(encodedGoogleCredentials, 'base64').toString('utf8'),
+    );
+    if (!credentials) {
+      throw new Error('Google service account credentials are invalid.');
+    }
+  }
+
   if (!demoMode) {
     const missing = requiredProductionKeys.filter((key) => !textValue(raw[key]));
     if (missing.length) {
@@ -90,5 +106,21 @@ function normalizeHttpOrigin(value: string): string {
     return isHttp && isOriginOnly && !url.username && !url.password ? url.origin : '';
   } catch {
     return '';
+  }
+}
+
+function parseGoogleCredentials(value: string): {
+  client_email: string;
+  private_key: string;
+} | null {
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    const clientEmail = textValue(parsed['client_email']);
+    const privateKey = textValue(parsed['private_key']);
+    return isEmail(clientEmail) && privateKey.includes('PRIVATE KEY')
+      ? { client_email: clientEmail, private_key: privateKey }
+      : null;
+  } catch {
+    return null;
   }
 }
