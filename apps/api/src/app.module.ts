@@ -7,9 +7,11 @@ import { AccessModule } from './access/access.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { HealthController } from './health/health.controller.js';
+import { MasterDataModule } from './master-data/master-data.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { validateEnvironment } from './config/environment.js';
 import { PersistenceModule } from './persistence/persistence.module.js';
+import { PurchasesModule } from './purchases/purchases.module.js';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { PersistenceModule } from './persistence/persistence.module.js';
     AuthModule,
     AccessModule,
     DashboardModule,
+    MasterDataModule,
+    PurchasesModule,
   ],
   controllers: [HealthController],
   providers: [

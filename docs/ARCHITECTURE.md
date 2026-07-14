@@ -37,7 +37,13 @@ Nao existe papel de aprovador nesta fase.
 
 O schema PostgreSQL usa chaves UUID, valores monetarios em `Decimal`, datas de auditoria e relacionamentos explicitos. PDFs permanecem fora do banco; o banco armazena metadados e links controlados.
 
-O modo `demo` usa um repositorio em memoria com o mesmo contrato da implementacao Prisma. Em homologacao e producao, o repositorio Prisma e selecionado automaticamente e persiste usuarios, empresas, vinculos e auditoria no PostgreSQL.
+O modo `demo` usa repositorios em memoria com os mesmos contratos das implementacoes Prisma. Em homologacao e producao, os repositorios Prisma sao selecionados automaticamente e persistem usuarios, empresas, vinculos, centros de custo, fornecedores, precos, compras, itens, rateios, parcelas e auditoria no PostgreSQL.
+
+As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor.
+
+## Indicadores
+
+O dashboard nao armazena totais derivados. A API agrega compras registradas por mes, categoria e departamento. Quando um item possui rateio, somente os valores das alocacoes entram no grafico por departamento; o total direto do item nao e somado novamente.
 
 ## Interface
 
