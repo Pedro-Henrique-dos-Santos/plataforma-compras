@@ -22,6 +22,13 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
     booleanValue(raw['REQUIRE_VERIFIED_EMAIL'], !demoMode),
   );
 
+  const invoiceStorageBucket =
+    textValue(raw['INVOICE_STORAGE_BUCKET']) || 'invoice-documents';
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(invoiceStorageBucket)) {
+    throw new Error('INVOICE_STORAGE_BUCKET must be a valid private bucket name.');
+  }
+  environment['INVOICE_STORAGE_BUCKET'] = invoiceStorageBucket;
+
   const corsOrigins = (textValue(raw['CORS_ORIGIN']) || 'http://localhost:5173')
     .split(',')
     .map((origin) => origin.trim())

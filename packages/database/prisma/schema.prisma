@@ -64,19 +64,37 @@ enum SheetSyncRunStatus {
   FAILED
 }
 
+enum InvoiceDocumentStatus {
+  PROCESSING
+  REVIEW_REQUIRED
+  READY
+  OUT_OF_SCOPE
+  IMPORTING
+  IMPORTED
+  FAILED
+}
+
+enum InvoiceDocumentKind {
+  PDF
+  XML
+}
+
 model User {
-  id                   String                   @id @default(uuid()) @db.Uuid
-  authUserId           String                   @unique @map("auth_user_id") @db.Uuid
-  email                String                   @unique @db.VarChar(255)
-  name                 String                   @db.VarChar(120)
-  active               Boolean                  @default(true)
-  createdAt            DateTime                 @default(now()) @map("created_at")
-  updatedAt            DateTime                 @updatedAt @map("updated_at")
-  platformRoles        PlatformRoleAssignment[]
-  memberships          OrganizationMembership[]
-  auditEvents          AuditLog[]               @relation("AuditActor")
-  createdOrganizations Organization[]           @relation("OrganizationCreator")
-  sheetSyncRuns        SheetSyncRun[]           @relation("SheetSyncRunCreator")
+  id                       String                   @id @default(uuid()) @db.Uuid
+  authUserId               String                   @unique @map("auth_user_id") @db.Uuid
+  email                    String                   @unique @db.VarChar(255)
+  name                     String                   @db.VarChar(120)
+  active                   Boolean                  @default(true)
+  createdAt                DateTime                 @default(now()) @map("created_at")
+  updatedAt                DateTime                 @updatedAt @map("updated_at")
+  platformRoles            PlatformRoleAssignment[]
+  memberships              OrganizationMembership[]
+  auditEvents              AuditLog[]               @relation("AuditActor")
+  createdOrganizations     Organization[]           @relation("OrganizationCreator")
+  sheetSyncRuns            SheetSyncRun[]           @relation("SheetSyncRunCreator")
+  createdInvoiceDocuments  InvoiceDocument[]        @relation("InvoiceDocumentCreator")
+  reviewedInvoiceDocuments InvoiceDocument[]        @relation("InvoiceDocumentReviewer")
+  importedInvoiceDocuments InvoiceDocument[]        @relation("InvoiceDocumentImporter")
 
   @@map("users")
 }
@@ -331,23 +349,42 @@ model Installment {
 }
 
 model InvoiceDocument {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  purchaseId     String?      @map("purchase_id") @db.Uuid
-  invoiceNumber  String?      @map("invoice_number") @db.VarChar(60)
-  accessKey      String?      @map("access_key") @db.VarChar(60)
-  fileName       String       @map("file_name") @db.VarChar(255)
-  mimeType       String       @map("mime_type") @db.VarChar(100)
-  storagePath    String       @map("storage_path") @db.VarChar(500)
-  parser         String?      @db.VarChar(80)
-  confidence     Decimal?     @db.Decimal(5, 4)
-  parsedData     Json?        @map("parsed_data")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  purchase       Purchase?    @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  purchaseId     String?               @map("purchase_id") @db.Uuid
+  createdById    String?               @map("created_by_id") @db.Uuid
+  reviewedById   String?               @map("reviewed_by_id") @db.Uuid
+  importedById   String?               @map("imported_by_id") @db.Uuid
+  invoiceNumber  String?               @map("invoice_number") @db.VarChar(60)
+  accessKey      String?               @map("access_key") @db.VarChar(60)
+  fileName       String                @map("file_name") @db.VarChar(255)
+  mimeType       String                @map("mime_type") @db.VarChar(100)
+  kind           InvoiceDocumentKind
+  size           Int                   @default(0)
+  sha256         String?               @db.Char(64)
+  storagePath    String                @map("storage_path") @db.VarChar(500)
+  status         InvoiceDocumentStatus @default(PROCESSING)
+  parser         String?               @db.VarChar(80)
+  confidence     Decimal?              @db.Decimal(5, 4)
+  parsedData     Json?                 @map("parsed_data")
+  reviewData     Json?                 @map("review_data")
+  warnings       Json                  @default("[]")
+  errors         Json                  @default("[]")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+  processedAt    DateTime?             @map("processed_at")
+  reviewedAt     DateTime?             @map("reviewed_at")
+  importedAt     DateTime?             @map("imported_at")
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase       Purchase?             @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  createdBy      User?                 @relation("InvoiceDocumentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedBy     User?                 @relation("InvoiceDocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  importedBy     User?                 @relation("InvoiceDocumentImporter", fields: [importedById], references: [id], onDelete: SetNull)
 
+  @@unique([organizationId, sha256])
   @@index([organizationId, invoiceNumber])
   @@index([organizationId, accessKey])
+  @@index([organizationId, status, createdAt])
   @@map("invoice_documents")
 }
 

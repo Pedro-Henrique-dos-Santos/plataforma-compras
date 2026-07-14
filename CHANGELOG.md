@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.0 - 2026-07-14
+
+- Adicionados recebimento e validacao de NF-e e NFS-e em XML e PDF.
+- Adicionada leitura gratuita de PDF pesquisavel e fallback OCR em portugues com Tesseract.
+- Criada conferencia humana de fornecedor, centro de custo, categoria, itens e parcelas.
+- Adicionada triagem conservadora para servicos pessoais ou profissionais fora de compras.
+- Implementadas conciliacao por referencia, nota e fornecedor ou fornecedor e valor.
+- Adicionadas criacao automatica de fornecedor e importacao idempotente da compra revisada.
+- Criado armazenamento privado por empresa com hash, limite de arquivo e estados atomicos.
+- Impedido o vazamento de hash, caminho privado e identificador interno da empresa pela API.
+- Corrigida a acessibilidade dos seletores e a composicao responsiva do modulo documental.
+
+## 0.4.0 - 2026-07-14
+
+- Adicionada integracao configuravel com Google Sheets por empresa.
+- Implementadas previa persistida, normalizacao de dados e conciliacao idempotente.
+- Adicionado bloqueio contra aplicacao repetida da mesma sincronizacao.
+
+## 0.3.0 - 2026-07-14
+
+- Implementados fornecedores e centros de custo por empresa.
+- Adicionada tabela de precos com multiplas linhas e importacao CSV.
+- Implementados compras, itens, rateios por centro de custo e parcelas opcionais.
+- Adicionados indicadores calculados a partir das compras.
+- Criado grafico de pizza de gastos por departamento.
+
 ## 0.2.0 - 2026-07-14
 
 - Adicionada a identidade visual E-Gestao Compras.

@@ -442,6 +442,8 @@ export class PrismaProcurementRepository extends ProcurementRepository {
         ...(filters.search && {
           OR: [
             { number: { contains: filters.search, mode: 'insensitive' } },
+            { invoiceNumber: { contains: filters.search, mode: 'insensitive' } },
+            { sourceReference: { contains: filters.search, mode: 'insensitive' } },
             { category: { contains: filters.search, mode: 'insensitive' } },
             { supplier: { legalName: { contains: filters.search, mode: 'insensitive' } } },
             { supplier: { tradeName: { contains: filters.search, mode: 'insensitive' } } },

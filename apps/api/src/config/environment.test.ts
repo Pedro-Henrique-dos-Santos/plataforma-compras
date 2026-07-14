@@ -8,6 +8,7 @@ describe('validateEnvironment', () => {
 
     expect(environment['DEMO_MODE']).toBe('true');
     expect(environment['REQUIRE_VERIFIED_EMAIL']).toBe('false');
+    expect(environment['INVOICE_STORAGE_BUCKET']).toBe('invoice-documents');
   });
 
   it('rejects an incomplete production environment', () => {
@@ -76,5 +77,14 @@ describe('validateEnvironment', () => {
         GOOGLE_SERVICE_ACCOUNT_JSON: '{"client_email":"invalid"}',
       }),
     ).toThrow(/credentials are invalid/);
+  });
+
+  it('rejects an unsafe invoice storage bucket name', () => {
+    expect(() =>
+      validateEnvironment({
+        INVOICE_STORAGE_BUCKET: '../public documents',
+        NODE_ENV: 'development',
+      }),
+    ).toThrow(/valid private bucket name/);
   });
 });

@@ -15,6 +15,7 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 - Compras suportam varios itens, economia negociada, centro automatico, rateios e parcelas opcionais.
 - O dashboard e calculado a partir das compras e inclui gastos por categoria e departamento.
 - A sincronizacao com Google Sheets possui configuracao por empresa, previa persistida, conciliacao e aplicacao idempotente.
+- Notas em XML ou PDF passam por validacao, leitura estruturada ou OCR gratuito, revisao humana e conciliacao antes de criar compras.
 
 ## Estrutura
 
@@ -53,8 +54,9 @@ pnpm check
 
 Esse comando executa lint, verificacao de tipos, testes e build de todos os pacotes.
 
-Na versao `0.4.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
-importacoes idempotentes, rateios, agregacoes do dashboard e conciliacao com Google Sheets.
+Na versao `0.5.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
+importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets e
+automacao documental com revisao obrigatoria.
 
 ## Seguranca
 
@@ -66,3 +68,4 @@ Nunca envie `.env`, chaves do Supabase, tokens do Google ou chaves da OpenAI ao 
 - [Roteiro de evolucao](docs/ROADMAP.md)
 - [Contexto e decisoes confirmadas](docs/PROJECT_CONTEXT.md)
 - [Integracao com Google Sheets](docs/GOOGLE_SHEETS_INTEGRATION.md)
+- [Automacao de documentos fiscais](docs/INVOICE_AUTOMATION.md)

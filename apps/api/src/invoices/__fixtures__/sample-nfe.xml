@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc>
+  <NFe>
+    <infNFe Id="NFe35260704252011000110550010000073511000007351">
+      <ide>
+        <natOp>Compra de materiais de limpeza</natOp>
+        <nNF>7351</nNF>
+        <dhEmi>2026-07-14T09:30:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>04252011000110</CNPJ>
+        <xNome>Fornecedor Fiscal Demonstrativo Ltda</xNome>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <xProd>Detergente hospitalar concentrado</xProd>
+          <qCom>2.0000</qCom>
+          <uCom>GL</uCom>
+          <vUnCom>37.5000</vUnCom>
+          <vProd>75.00</vProd>
+        </prod>
+      </det>
+      <total><ICMSTot><vNF>75.00</vNF></ICMSTot></total>
+      <pag><detPag><tPag>15</tPag><vPag>75.00</vPag></detPag></pag>
+    </infNFe>
+  </NFe>
+</nfeProc>

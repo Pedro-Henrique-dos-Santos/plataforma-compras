@@ -8,6 +8,7 @@ import { AutomationModule } from './automation/automation.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { HealthController } from './health/health.controller.js';
+import { InvoiceDocumentsModule } from './invoices/invoice-documents.module.js';
 import { MasterDataModule } from './master-data/master-data.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { validateEnvironment } from './config/environment.js';
@@ -28,6 +29,7 @@ import { PurchasesModule } from './purchases/purchases.module.js';
     AuthModule,
     AccessModule,
     AutomationModule,
+    InvoiceDocumentsModule,
     DashboardModule,
     MasterDataModule,
     PurchasesModule,

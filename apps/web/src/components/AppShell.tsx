@@ -4,6 +4,7 @@ import {
   BarChart3,
   Building2,
   ChevronDown,
+  FileScan,
   Landmark,
   LogOut,
   Menu,
@@ -26,6 +27,7 @@ export type ViewId =
   | 'suppliers'
   | 'prices'
   | 'cost-centers'
+  | 'invoice-documents'
   | 'integrations'
   | 'organizations'
   | 'access'
@@ -57,6 +59,7 @@ const navigation: Array<{
   { id: 'suppliers', label: 'Fornecedores', icon: Store },
   { id: 'prices', label: 'Tabela de precos', icon: Tags },
   { id: 'cost-centers', label: 'Centros de custo', icon: Landmark },
+  { id: 'invoice-documents', label: 'Notas fiscais', icon: FileScan },
   { id: 'integrations', label: 'Automacoes', icon: Workflow },
   { id: 'organizations', label: 'Empresas', icon: Building2, visibility: 'platform-owner' },
   { id: 'access', label: 'Acessos', icon: ShieldCheck, visibility: 'organization-admin' },
@@ -82,6 +85,10 @@ const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
   'cost-centers': {
     title: 'Centros de custo',
     subtitle: 'Departamentos usados na classificacao das compras',
+  },
+  'invoice-documents': {
+    title: 'Notas fiscais',
+    subtitle: 'Leitura, conferencia e importacao de documentos',
   },
   integrations: {
     title: 'Automacoes',

@@ -24,7 +24,7 @@
 ## Fase 3: operacao de compras
 
 - [Concluido] Migrar cadastro de compras, itens, rateios e parcelas.
-- [Em andamento] Incorporar notas fiscais e documentos no fluxo externo.
+- [Concluido] Incorporar notas fiscais XML e PDF, OCR gratuito, revisao e conciliacao no fluxo externo.
 - [Concluido] Garantir idempotencia, isolamento por empresa e auditoria das gravacoes.
 
 ## Fase 4: inteligencia

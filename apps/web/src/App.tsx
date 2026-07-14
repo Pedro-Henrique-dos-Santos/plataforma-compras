@@ -70,6 +70,11 @@ const IntegrationsView = lazy(() =>
     default: module.IntegrationsView,
   })),
 );
+const InvoiceDocumentsView = lazy(() =>
+  import('./components/InvoiceDocumentsView').then((module) => ({
+    default: module.InvoiceDocumentsView,
+  })),
+);
 
 export default function App() {
   const [sessionState, setSessionState] = useState<SessionState>('checking');
@@ -395,6 +400,14 @@ export default function App() {
           <IntegrationsView
             accessToken={accessToken}
             canConfigure={canConfigureOrganization}
+            canWrite={canWriteOperationalData}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'invoice-documents' && (
+          <InvoiceDocumentsView
+            accessToken={accessToken}
             canWrite={canWriteOperationalData}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}

@@ -341,7 +341,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
       .filter((purchase) => !filters.dateFrom || purchase.issuedAt >= filters.dateFrom)
       .filter((purchase) => !filters.dateTo || purchase.issuedAt <= filters.dateTo)
       .filter((purchase) => {
-        const searchable = `${purchase.number} ${purchase.invoiceNumber ?? ''} ${this.supplierName(purchase.supplierId)} ${purchase.category ?? ''}`;
+        const searchable = `${purchase.number} ${purchase.invoiceNumber ?? ''} ${purchase.sourceReference ?? ''} ${this.supplierName(purchase.supplierId)} ${purchase.category ?? ''}`;
         return !search || normalizeSearch(searchable).includes(search);
       })
       .sort((left, right) => right.issuedAt.localeCompare(left.issuedAt))
