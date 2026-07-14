@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Novo pedido de compra</title>
+
+  <style>
+    :root {
+      --principal: #9b3642;
+      --principal-escuro: #742730;
+      --fundo: #f5f5f5;
+      --branco: #ffffff;
+      --borda: #d7d7d7;
+      --texto: #242424;
+      --sucesso: #287a45;
+      --erro: #b42318;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background: var(--fundo);
+      color: var(--texto);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 13px;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      color: var(--principal);
+      font-size: 21px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .card {
+      margin-bottom: 16px;
+      padding: 16px;
+      background: var(--branco);
+      border: 1px solid var(--borda);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--principal);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .campo {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .campo-largo {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-height: 36px;
+      padding: 8px 10px;
+      background: #fff;
+      border: 1px solid var(--borda);
+      border-radius: 5px;
+      color: var(--texto);
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--principal);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(155, 54, 66, 0.12);
+    }
+
+    button {
+      min-height: 36px;
+      padding: 8px 13px;
+      border: 0;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .botao-principal {
+      background: var(--principal);
+      color: #fff;
+    }
+
+    .botao-principal:hover:not(:disabled) {
+      background: var(--principal-escuro);
+    }
+
+    .botao-secundario {
+      background: #ececec;
+      color: #222;
+    }
+
+    .botao-remover {
+      min-height: 30px;
+      padding: 6px 9px;
+      background: #fbe9e7;
+      color: var(--erro);
+    }
+
+    .lista-registros {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .registro {
+      padding: 12px;
+      border: 1px solid var(--borda);
+      border-radius: 6px;
+      background: #fafafa;
+    }
+
+    .registro-topo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .registro-titulo {
+      font-weight: 700;
+      color: var(--principal);
+    }
+
+    .resumo {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .resumo-caixa {
+      padding: 10px;
+      border-radius: 5px;
+      background: #f3e7e9;
+    }
+
+    .resumo-rotulo {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .resumo-valor {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .acoes-finais {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+
+    .mensagem {
+      display: none;
+      margin-bottom: 16px;
+      padding: 12px;
+      border-radius: 6px;
+      white-space: pre-line;
+    }
+
+    .mensagem.sucesso {
+      display: block;
+      background: #eaf6ee;
+      color: var(--sucesso);
+      border: 1px solid #b7dfc4;
+    }
+
+    .mensagem.erro {
+      display: block;
+      background: #fdecea;
+      color: var(--erro);
+      border: 1px solid #f1b8b2;
+    }
+
+    .carregando {
+      display: none;
+      margin-left: 8px;
+      font-weight: 700;
+      color: var(--principal);
+    }
+
+    .ajuda {
+      color: #666;
+      font-size: 11px;
+    }
+
+    .linha-acoes {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .aviso-sugestao {
+      display: none;
+      grid-column: 1 / -1;
+      padding: 8px 10px;
+      border: 1px solid #d7d7d7;
+      border-radius: 5px;
+      background: #fff8e1;
+      color: #5f4700;
+      font-size: 12px;
+    }
+
+    .aviso-sugestao.visivel {
+      display: block;
+    }
+
+    @media (max-width: 720px) {
+      .grid,
+      .resumo {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Novo pedido de compra</h1>
+  <div id="mensagem" class="mensagem"></div>
+
+  <form id="formPedido" novalidate>
+    <section class="card">
+      <div class="card-header">
+        <h2>Dados gerais do pedido</h2>
+      </div>
+
+      <div class="grid">
+        <div class="campo">
+          <label for="dataEmissao">Data de emissão da nota fiscal *</label>
+          <input id="dataEmissao" type="date" required>
+        </div>
+
+        <div class="campo">
+          <label for="unidade">Unidade *</label>
+          <select id="unidade" required>
+            <option value="">Selecione</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="comprador">Comprador *</label>
+          <input id="comprador" type="text" value="Pedro Henrique" required>
+        </div>
+
+        <div class="campo">
+          <label for="fornecedor">Fornecedor *</label>
+          <input id="fornecedor" type="text" required>
+        </div>
+
+        <div class="campo">
+          <label for="cnpjFornecedor">CNPJ do fornecedor</label>
+          <input id="cnpjFornecedor" type="text" placeholder="00.000.000/0000-00">
+        </div>
+
+        <div class="campo">
+          <label for="categoria">Categoria *</label>
+          <select id="categoria" required><option value="">Selecione</option></select>
+        </div>
+
+        <div class="campo">
+          <label for="naturezaOperacao">Natureza da operação *</label>
+          <select id="naturezaOperacao" required><option value="">Selecione</option></select>
+        </div>
+
+        <div class="campo campo-largo">
+          <label for="descricaoCompra">Descrição geral da compra *</label>
+          <textarea id="descricaoCompra" required></textarea>
+        </div>
+
+        <div class="campo">
+          <label for="metodoPagamento">Método de pagamento *</label>
+          <select id="metodoPagamento" required>
+            <option value="">Selecione</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="status">Status</label>
+          <select id="status">
+            <option value="">Selecione</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="numeroNotaFiscal">Número da nota fiscal</label>
+          <input id="numeroNotaFiscal" type="text">
+        </div>
+
+        <div class="campo">
+          <label for="linkNotaFiscal">Link da nota fiscal</label>
+          <input id="linkNotaFiscal" type="url" placeholder="https://...">
+        </div>
+
+        <div class="campo campo-largo">
+          <label for="documentoSolicitacao">Documento da solicitação</label>
+          <input id="documentoSolicitacao" type="url" placeholder="https://...">
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Itens do pedido</h2>
+        <button type="button" class="botao-principal" onclick="adicionarItem()">Adicionar item</button>
+      </div>
+
+      <div id="listaItens" class="lista-registros"></div>
+
+      <div class="resumo">
+        <div class="resumo-caixa">
+          <span class="resumo-rotulo">Valor inicial</span>
+          <span id="resumoInicial" class="resumo-valor">R$ 0,00</span>
+        </div>
+        <div class="resumo-caixa">
+          <span class="resumo-rotulo">Valor negociado</span>
+          <span id="resumoNegociado" class="resumo-valor">R$ 0,00</span>
+        </div>
+        <div class="resumo-caixa">
+          <span class="resumo-rotulo">Economia</span>
+          <span id="resumoEconomia" class="resumo-valor">R$ 0,00</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="secaoParcelas" class="card">
+      <div class="card-header">
+        <div>
+          <h2>Parcelas</h2>
+          <div id="ajudaParcelas" class="ajuda">Obrigatório, exceto para pagamentos via PIX.</div>
+        </div>
+        <button id="botaoAdicionarParcela" type="button" class="botao-principal" onclick="adicionarParcela()">Adicionar parcela</button>
+      </div>
+
+      <div id="listaParcelas" class="lista-registros"></div>
+    </section>
+
+    <div class="acoes-finais">
+      <button type="button" class="botao-secundario" onclick="limparFormulario()">Limpar</button>
+      <button id="botaoSalvar" type="submit" class="botao-principal">Salvar pedido</button>
+      <span id="carregando" class="carregando">Salvando...</span>
+    </div>
+  </form>
+
+  <template id="modeloItem">
+    <div class="registro item-registro">
+      <div class="registro-topo">
+        <span class="registro-titulo">Item</span>
+        <div class="linha-acoes">
+          <button type="button" class="botao-secundario" onclick="buscarSugestaoItem(this)">Buscar sugestão</button>
+          <button type="button" class="botao-remover" onclick="removerRegistro(this)">Remover</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="campo campo-largo">
+          <label>Descrição do item *</label>
+          <input class="item-descricao" type="text" required>
+        </div>
+
+        <div class="campo">
+          <label>Centro de custo *</label>
+          <select class="item-centro" required></select>
+        </div>
+
+        <div class="campo">
+          <label>Unidade de medida *</label>
+          <select class="item-medida" required></select>
+        </div>
+
+        <div class="campo">
+          <label>Quantidade *</label>
+          <input class="item-quantidade" type="number" min="0.0001" step="0.0001" required oninput="atualizarResumo()">
+        </div>
+
+        <div class="campo">
+          <label>Valor unitário inicial *</label>
+          <input class="item-inicial" type="number" min="0" step="0.01" required oninput="atualizarResumo()">
+        </div>
+
+        <div class="campo">
+          <label>Valor unitário negociado *</label>
+          <input class="item-negociado" type="number" min="0" step="0.01" required oninput="atualizarResumo()">
+        </div>
+
+        <div class="aviso-sugestao item-sugestao"></div>
+      </div>
+    </div>
+  </template>
+
+  <template id="modeloParcela">
+    <div class="registro parcela-registro">
+      <div class="registro-topo">
+        <span class="registro-titulo">Parcela</span>
+        <button type="button" class="botao-remover" onclick="removerRegistro(this)">Remover</button>
+      </div>
+
+      <div class="grid">
+        <div class="campo">
+          <label>Número da parcela</label>
+          <input class="parcela-numero" type="number" min="1" step="1" value="1">
+        </div>
+
+        <div class="campo campo-vencimento">
+          <label>Data de vencimento *</label>
+          <input class="parcela-vencimento" type="date" required>
+        </div>
+
+        <div class="campo">
+          <label>Valor da parcela *</label>
+          <input class="parcela-valor" type="number" min="0" step="0.01" required>
+        </div>
+
+        <div class="campo">
+          <label>Status</label>
+          <select class="parcela-status"></select>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    const opcoesPadrao = Object.freeze({
+      unidades: ['Health', 'Matriz', 'Office'],
+      centrosCusto: [
+        'Recursos Humanos', 'Recepção', 'Financeiro', 'Limpeza', 'Farmácia',
+        'Agendamento', 'Comercial', 'Experiência do Cliente', 'Diretoria',
+        'Enfermagem', 'Escritório', 'Marketing', 'Tecnologia', 'Manutenção',
+        'Café (Clientes)', 'Copa (Funcionários)', 'Consultórios', 'Outros'
+      ],
+      unidadesMedida: ['Unidade', 'Caixa', 'Pacote', 'Frasco', 'Ampola', 'Kit', 'Rolo', 'Serviço'],
+      metodosPagamento: ['Boleto Bancário', 'PIX', 'Cartão de crédito', 'Transferência bancária', 'Débito automático'],
+      status: ['Pendente', 'Finalizado', 'Cancelado'],
+      categorias: [
+        'Consumíveis de Tecnologia',
+        'Medicamento/produto injetável',
+        'Serviços de reparo/manutenção',
+        'Serviços de transporte',
+        'Descartáveis',
+        'Consumo',
+        'Papelaria/Escritório',
+        'Materiais de reforma',
+        'Materiais de Escritório',
+        'Informática T.I'
+      ],
+      naturezasOperacao: [
+        'Venda de mercadoria',
+        'Remessa de bonificação',
+        'Serviços farmacêuticos',
+        'Venda de serviços'
+      ],
+      fornecedores: []
+    });
+
+    let opcoes = copiarOpcoes(opcoesPadrao);
+    let formularioInicializado = false;
+
+    const statusParcelas = ['Pendente', 'Pago', 'Vencido', 'Cancelado'];
+
+    document.addEventListener('DOMContentLoaded', function () {
+      // Mostra opções imediatamente; em seguida troca pelos dados atuais da planilha.
+      aplicarOpcoesFormulario(opcoesPadrao);
+
+      google.script.run
+        .withSuccessHandler(aplicarOpcoesFormulario)
+        .withFailureHandler(function (erro) {
+          console.error('Não foi possível atualizar as listas da planilha.', erro);
+        })
+        .obterOpcoesFormulario();
+    });
+
+    function aplicarOpcoesFormulario(dados) {
+      opcoes = mesclarOpcoes(dados);
+
+      preencherSelect(document.getElementById('unidade'), opcoes.unidades, true);
+      preencherSelect(document.getElementById('categoria'), opcoes.categorias, true);
+      preencherSelect(document.getElementById('naturezaOperacao'), opcoes.naturezasOperacao, true);
+      preencherSelect(document.getElementById('metodoPagamento'), opcoes.metodosPagamento, true);
+      preencherSelect(document.getElementById('status'), opcoes.status, true);
+
+      document.querySelectorAll('.item-registro').forEach(function (registro) {
+        preencherSelect(registro.querySelector('.item-centro'), opcoes.centrosCusto, false);
+        preencherSelect(registro.querySelector('.item-medida'), opcoes.unidadesMedida, false);
+      });
+
+      if (!formularioInicializado) {
+        adicionarItem();
+        document.getElementById('status').value = 'Finalizado';
+        document.getElementById('metodoPagamento').addEventListener('change', atualizarRegrasPagamento);
+        document.getElementById('fornecedor').addEventListener('blur', buscarFornecedorCadastro);
+        document.getElementById('cnpjFornecedor').addEventListener('blur', buscarFornecedorCadastro);
+        formularioInicializado = true;
+      }
+
+      atualizarRegrasPagamento();
+    }
+
+    function copiarOpcoes(origem) {
+      const copia = {};
+      Object.keys(origem).forEach(function (chave) {
+        copia[chave] = Array.isArray(origem[chave]) ? origem[chave].slice() : [];
+      });
+      return copia;
+    }
+
+    function mesclarOpcoes(dados) {
+      const resultado = copiarOpcoes(opcoesPadrao);
+      Object.keys(resultado).forEach(function (chave) {
+        if (dados && Array.isArray(dados[chave]) && dados[chave].length > 0) {
+          resultado[chave] = dados[chave].slice();
+        }
+      });
+      return resultado;
+    }
+
+    function preencherSelect(select, valores, manterPrimeiraOpcao) {
+      const valorAtual = select.value;
+      const primeira = manterPrimeiraOpcao ? select.querySelector('option') : null;
+      select.innerHTML = '';
+
+      if (primeira) {
+        select.appendChild(primeira.cloneNode(true));
+      } else {
+        const opcao = document.createElement('option');
+        opcao.value = '';
+        opcao.textContent = 'Selecione';
+        select.appendChild(opcao);
+      }
+
+      (valores || []).forEach(function (valor) {
+        const opcao = document.createElement('option');
+        opcao.value = valor;
+        opcao.textContent = valor;
+        select.appendChild(opcao);
+      });
+
+      if (valorAtual && Array.from(select.options).some(function (opcao) {
+        return opcao.value === valorAtual;
+      })) {
+        select.value = valorAtual;
+      }
+    }
+
+    function adicionarItem() {
+      const modelo = document.getElementById('modeloItem');
+      const fragmento = modelo.content.cloneNode(true);
+      const registro = fragmento.querySelector('.item-registro');
+
+      preencherSelect(registro.querySelector('.item-centro'), opcoes.centrosCusto, false);
+      preencherSelect(registro.querySelector('.item-medida'), opcoes.unidadesMedida, false);
+
+      document.getElementById('listaItens').appendChild(fragmento);
+      renumerarRegistros('.item-registro', 'Item');
+    }
+
+    function adicionarParcela() {
+      if (ehPixSelecionado()) {
+        exibirMensagem('Pagamentos via PIX não precisam de parcelas.', 'erro');
+        return;
+      }
+
+      const modelo = document.getElementById('modeloParcela');
+      const fragmento = modelo.content.cloneNode(true);
+      const registro = fragmento.querySelector('.parcela-registro');
+      const proximoNumero = document.querySelectorAll('.parcela-registro').length + 1;
+      registro.querySelector('.parcela-numero').value = proximoNumero;
+      preencherSelect(registro.querySelector('.parcela-status'), statusParcelas, false);
+      registro.querySelector('.parcela-status').value = 'Pendente';
+
+      document.getElementById('listaParcelas').appendChild(fragmento);
+      renumerarRegistros('.parcela-registro', 'Parcela');
+      aplicarRegraVencimentoParcela(registro);
+    }
+
+    function atualizarRegrasPagamento() {
+      const secao = document.getElementById('secaoParcelas');
+      const ajuda = document.getElementById('ajudaParcelas');
+      const botao = document.getElementById('botaoAdicionarParcela');
+
+      if (ehPixSelecionado()) {
+        document.getElementById('listaParcelas').innerHTML = '';
+        secao.style.opacity = '0.65';
+        botao.disabled = true;
+        ajuda.textContent = 'Pagamento via PIX: não é necessário cadastrar parcelas.';
+        return;
+      }
+
+      secao.style.opacity = '1';
+      botao.disabled = false;
+      ajuda.textContent = ehCartaoSelecionado()
+        ? 'Informe as parcelas do cartão. A data de vencimento não é obrigatória.'
+        : 'Obrigatório. A soma das parcelas deve ser igual ao valor negociado.';
+
+      if (document.querySelectorAll('.parcela-registro').length === 0 && document.getElementById('metodoPagamento').value) {
+        adicionarParcela();
+      }
+
+      document.querySelectorAll('.parcela-registro').forEach(aplicarRegraVencimentoParcela);
+    }
+
+    function aplicarRegraVencimentoParcela(registro) {
+      const campo = registro.querySelector('.campo-vencimento');
+      const input = registro.querySelector('.parcela-vencimento');
+      const cartao = ehCartaoSelecionado();
+
+      input.required = !cartao;
+      input.disabled = cartao;
+      if (cartao) input.value = '';
+      campo.style.display = cartao ? 'none' : 'flex';
+    }
+
+    function ehPixSelecionado() {
+      return normalizarTexto(document.getElementById('metodoPagamento').value) === 'pix';
+    }
+
+    function ehCartaoSelecionado() {
+      const metodo = normalizarTexto(document.getElementById('metodoPagamento').value);
+      return metodo === 'cartao de credito' || metodo === 'cartao';
+    }
+
+    function normalizarTexto(valor) {
+      return String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+    }
+
+    function removerRegistro(botao) {
+      const registro = botao.closest('.registro');
+      const ehItem = registro.classList.contains('item-registro');
+      const itens = document.querySelectorAll('.item-registro');
+
+      if (ehItem && itens.length === 1) {
+        exibirMensagem('O pedido precisa ter pelo menos um item.', 'erro');
+        return;
+      }
+
+      registro.remove();
+      renumerarRegistros('.item-registro', 'Item');
+      renumerarRegistros('.parcela-registro', 'Parcela');
+      atualizarResumo();
+    }
+
+    function renumerarRegistros(seletor, titulo) {
+      document.querySelectorAll(seletor).forEach(function (registro, indice) {
+        registro.querySelector('.registro-titulo').textContent = titulo + ' ' + (indice + 1);
+      });
+    }
+
+    function atualizarResumo() {
+      let inicial = 0;
+      let negociado = 0;
+
+      document.querySelectorAll('.item-registro').forEach(function (registro) {
+        const quantidade = numero(registro.querySelector('.item-quantidade').value);
+        const unitarioInicial = numero(registro.querySelector('.item-inicial').value);
+        const unitarioNegociado = numero(registro.querySelector('.item-negociado').value);
+
+        inicial += quantidade * unitarioInicial;
+        negociado += quantidade * unitarioNegociado;
+      });
+
+      document.getElementById('resumoInicial').textContent = moeda(inicial);
+      document.getElementById('resumoNegociado').textContent = moeda(negociado);
+      document.getElementById('resumoEconomia').textContent = moeda(inicial - negociado);
+    }
+
+    document.getElementById('formPedido').addEventListener('submit', function (evento) {
+      evento.preventDefault();
+      ocultarMensagem();
+
+      if (!this.checkValidity()) {
+        this.reportValidity();
+        return;
+      }
+
+      let payload;
+      try {
+        payload = montarPayload();
+        validarParcelasNoFormulario(payload);
+      } catch (erro) {
+        exibirErro(erro);
+        return;
+      }
+
+      alternarSalvamento(true);
+
+      google.script.run
+        .withSuccessHandler(function (resultado) {
+          alternarSalvamento(false);
+          exibirMensagem(
+            'Pedido salvo com sucesso!\n' +
+            'Número: ' + resultado.numeroPedido + '\n' +
+            'Itens: ' + resultado.quantidadeItens + '\n' +
+            'Valor negociado: ' + moeda(resultado.valorNegociado) + '\n' +
+            'Economia: ' + moeda(resultado.economia) + ' (' + percentual(resultado.economiaPercentual) + ')',
+            'sucesso'
+          );
+          limparFormulario(false);
+        })
+        .withFailureHandler(function (erro) {
+          alternarSalvamento(false);
+          exibirErro(erro);
+        })
+        .salvarPedido(payload);
+    });
+
+    function montarPayload() {
+      const itens = Array.from(document.querySelectorAll('.item-registro')).map(function (registro) {
+        return {
+          descricao: registro.querySelector('.item-descricao').value.trim(),
+          centroCusto: registro.querySelector('.item-centro').value,
+          quantidade: numero(registro.querySelector('.item-quantidade').value),
+          unidadeMedida: registro.querySelector('.item-medida').value,
+          valorUnitarioInicial: numero(registro.querySelector('.item-inicial').value),
+          valorUnitarioNegociado: numero(registro.querySelector('.item-negociado').value)
+        };
+      });
+
+      const parcelas = Array.from(document.querySelectorAll('.parcela-registro')).map(function (registro) {
+        return {
+          numero: registro.querySelector('.parcela-numero').value.trim(),
+          vencimento: registro.querySelector('.parcela-vencimento').value,
+          valor: numero(registro.querySelector('.parcela-valor').value),
+          status: registro.querySelector('.parcela-status').value || 'Pendente'
+        };
+      });
+
+      return {
+        dataEmissao: document.getElementById('dataEmissao').value,
+        unidade: document.getElementById('unidade').value,
+        comprador: document.getElementById('comprador').value.trim(),
+        fornecedor: document.getElementById('fornecedor').value.trim(),
+        cnpjFornecedor: document.getElementById('cnpjFornecedor').value.trim(),
+        categoria: document.getElementById('categoria').value.trim(),
+        descricaoCompra: document.getElementById('descricaoCompra').value.trim(),
+        naturezaOperacao: document.getElementById('naturezaOperacao').value.trim(),
+        metodoPagamento: document.getElementById('metodoPagamento').value,
+        numeroNotaFiscal: document.getElementById('numeroNotaFiscal').value.trim(),
+        linkNotaFiscal: document.getElementById('linkNotaFiscal').value.trim(),
+        documentoSolicitacao: document.getElementById('documentoSolicitacao').value.trim(),
+        status: document.getElementById('status').value || 'Finalizado',
+        itens: itens,
+        parcelas: parcelas
+      };
+    }
+
+    function validarParcelasNoFormulario(payload) {
+      const pix = normalizarTexto(payload.metodoPagamento) === 'pix';
+      const cartao = normalizarTexto(payload.metodoPagamento) === 'cartao de credito' ||
+        normalizarTexto(payload.metodoPagamento) === 'cartao';
+
+      if (pix) return;
+
+      if (!payload.parcelas.length) {
+        throw new Error('Inclua pelo menos uma parcela para este método de pagamento.');
+      }
+
+      payload.parcelas.forEach(function (parcela, indice) {
+        if (!cartao && !parcela.vencimento) {
+          throw new Error('Informe a data de vencimento da parcela ' + (indice + 1) + '.');
+        }
+      });
+
+      const totalNegociado = payload.itens.reduce(function (soma, item) {
+        return soma + item.quantidade * item.valorUnitarioNegociado;
+      }, 0);
+
+      const totalParcelas = payload.parcelas.reduce(function (soma, parcela) {
+        return soma + parcela.valor;
+      }, 0);
+
+      if (Math.abs(totalNegociado - totalParcelas) > 0.02) {
+        throw new Error(
+          'A soma das parcelas (' + moeda(totalParcelas) +
+          ') deve ser igual ao valor negociado (' + moeda(totalNegociado) + ').'
+        );
+      }
+    }
+
+    function limparFormulario(limparMensagem) {
+      document.getElementById('formPedido').reset();
+      document.getElementById('comprador').value = 'Pedro Henrique';
+      document.getElementById('cnpjFornecedor').value = '';
+      document.getElementById('listaItens').innerHTML = '';
+      document.getElementById('listaParcelas').innerHTML = '';
+
+      adicionarItem();
+      document.getElementById('status').value = 'Finalizado';
+      atualizarRegrasPagamento();
+      atualizarResumo();
+
+      if (limparMensagem !== false) ocultarMensagem();
+    }
+
+    function alternarSalvamento(salvando) {
+      document.getElementById('botaoSalvar').disabled = salvando;
+      document.getElementById('carregando').style.display = salvando ? 'inline' : 'none';
+    }
+
+    function buscarFornecedorCadastro() {
+      const termo = document.getElementById('cnpjFornecedor').value.trim() ||
+        document.getElementById('fornecedor').value.trim();
+
+      if (!termo) return;
+
+      google.script.run
+        .withSuccessHandler(function (fornecedor) {
+          if (!fornecedor) return;
+
+          if (!document.getElementById('fornecedor').value.trim()) {
+            document.getElementById('fornecedor').value = fornecedor.nomeComercial || fornecedor.razaoSocial || '';
+          }
+
+          if (!document.getElementById('cnpjFornecedor').value.trim() && fornecedor.cnpj) {
+            document.getElementById('cnpjFornecedor').value = fornecedor.cnpj;
+          }
+
+          selecionarValor(document.getElementById('categoria'), fornecedor.categoriaPadrao);
+          selecionarValor(document.getElementById('naturezaOperacao'), fornecedor.naturezaOperacaoPadrao);
+          selecionarValor(document.getElementById('metodoPagamento'), fornecedor.metodoPagamentoPadrao);
+          atualizarRegrasPagamento();
+
+          document.querySelectorAll('.item-registro').forEach(function (registro) {
+            selecionarValor(registro.querySelector('.item-centro'), fornecedor.centroCustoPadrao);
+          });
+        })
+        .withFailureHandler(exibirErro)
+        .buscarFornecedorFormulario(termo);
+    }
+
+    function buscarSugestaoItem(botao) {
+      const registro = botao.closest('.item-registro');
+      const descricao = registro.querySelector('.item-descricao').value.trim();
+      const fornecedor = document.getElementById('cnpjFornecedor').value.trim() ||
+        document.getElementById('fornecedor').value.trim();
+
+      if (!descricao) {
+        exibirMensagem('Informe a descrição do item antes de buscar sugestão.', 'erro');
+        return;
+      }
+
+      botao.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function (sugestao) {
+          botao.disabled = false;
+          aplicarSugestaoItem(registro, sugestao);
+        })
+        .withFailureHandler(function (erro) {
+          botao.disabled = false;
+          exibirErro(erro);
+        })
+        .sugerirItemFormulario(fornecedor, descricao, document.getElementById('dataEmissao').value);
+    }
+
+    function aplicarSugestaoItem(registro, sugestao) {
+      const aviso = registro.querySelector('.item-sugestao');
+      if (!sugestao || !sugestao.origem || sugestao.origem.length === 0) {
+        aviso.textContent = 'Nenhuma sugestão encontrada para este item.';
+        aviso.classList.add('visivel');
+        return;
+      }
+
+      selecionarValor(document.getElementById('categoria'), sugestao.categoria);
+      selecionarValor(registro.querySelector('.item-centro'), sugestao.centroCusto);
+      selecionarValor(registro.querySelector('.item-medida'), sugestao.unidadeMedida);
+
+      if (sugestao.valorUnitarioInicial !== '' && sugestao.valorUnitarioInicial != null) {
+        registro.querySelector('.item-inicial').value = Number(sugestao.valorUnitarioInicial || 0).toFixed(2);
+      }
+
+      if (sugestao.valorUnitarioNegociado !== '' && sugestao.valorUnitarioNegociado != null) {
+        registro.querySelector('.item-negociado').value = Number(sugestao.valorUnitarioNegociado || 0).toFixed(2);
+      }
+
+      aviso.textContent = 'Sugestão aplicada por: ' + sugestao.origem.join(', ') +
+        '. Confiança: ' + percentual(sugestao.confianca || 0) +
+        (sugestao.itemPadronizado ? '. Item padronizado: ' + sugestao.itemPadronizado : '');
+      aviso.classList.add('visivel');
+      atualizarResumo();
+    }
+
+    function selecionarValor(select, valor) {
+      if (!select || !valor) return;
+
+      const existente = Array.from(select.options).find(function (opcao) {
+        return normalizarTexto(opcao.value) === normalizarTexto(valor);
+      });
+
+      if (existente) {
+        select.value = existente.value;
+        return;
+      }
+
+      const opcao = document.createElement('option');
+      opcao.value = valor;
+      opcao.textContent = valor;
+      select.appendChild(opcao);
+      select.value = valor;
+    }
+
+    function exibirMensagem(texto, tipo) {
+      const elemento = document.getElementById('mensagem');
+      elemento.textContent = texto;
+      elemento.className = 'mensagem ' + tipo;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function ocultarMensagem() {
+      const elemento = document.getElementById('mensagem');
+      elemento.textContent = '';
+      elemento.className = 'mensagem';
+    }
+
+    function exibirErro(erro) {
+      const mensagem = erro && erro.message ? erro.message : String(erro || 'Erro desconhecido.');
+      exibirMensagem(mensagem, 'erro');
+    }
+
+    function numero(valor) {
+      const convertido = Number(String(valor || '').replace(',', '.'));
+      return Number.isFinite(convertido) ? convertido : 0;
+    }
+
+    function percentual(valor) {
+      return (Number(valor || 0) * 100).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }) + '%';
+    }
+
+    function moeda(valor) {
+      return Number(valor || 0).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+    }
+  </script>
+</body>
+</html>

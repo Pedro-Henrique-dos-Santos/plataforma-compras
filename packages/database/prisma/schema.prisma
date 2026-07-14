@@ -1,0 +1,305 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlatformRole {
+  PLATFORM_OWNER
+}
+
+enum OrganizationRole {
+  ORGANIZATION_ADMIN
+  BUYER
+  REPORT_VIEWER
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PriceStatus {
+  ACTIVE
+  EXPIRED
+  INACTIVE
+}
+
+enum PurchaseStatus {
+  DRAFT
+  REGISTERED
+  CANCELLED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  IMPORT
+  EXPORT
+  SWITCH_ORGANIZATION
+}
+
+model User {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  authUserId            String                   @unique @map("auth_user_id") @db.Uuid
+  email                 String                   @unique @db.VarChar(255)
+  name                  String                   @db.VarChar(120)
+  active                Boolean                  @default(true)
+  createdAt             DateTime                 @default(now()) @map("created_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
+  platformRoles         PlatformRoleAssignment[]
+  memberships           OrganizationMembership[]
+  auditEvents           AuditLog[]                @relation("AuditActor")
+  createdOrganizations  Organization[]            @relation("OrganizationCreator")
+
+  @@map("users")
+}
+
+model PlatformRoleAssignment {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  role      PlatformRole
+  createdAt DateTime     @default(now()) @map("created_at")
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@map("platform_role_assignments")
+}
+
+model Organization {
+  id               String                   @id @default(uuid()) @db.Uuid
+  name             String                   @db.VarChar(120)
+  slug             String                   @unique @db.VarChar(80)
+  document         String?                  @unique @db.VarChar(18)
+  active           Boolean                  @default(true)
+  createdById      String?                  @map("created_by_id") @db.Uuid
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  createdBy        User?                    @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  memberships      OrganizationMembership[]
+  costCenters      CostCenter[]
+  suppliers        Supplier[]
+  supplierPrices   SupplierPrice[]
+  purchases        Purchase[]
+  invoiceDocuments InvoiceDocument[]
+  auditLogs        AuditLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationMembership {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           OrganizationRole
+  status         MembershipStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId, status])
+  @@map("organization_memberships")
+}
+
+model CostCenter {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  code           String       @db.VarChar(40)
+  name           String       @db.VarChar(120)
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  suppliers      Supplier[]
+  purchaseItems  PurchaseItem[]
+  allocations    CostAllocation[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, active])
+  @@map("cost_centers")
+}
+
+model Supplier {
+  id                  String         @id @default(uuid()) @db.Uuid
+  organizationId      String         @map("organization_id") @db.Uuid
+  legalName           String         @map("legal_name") @db.VarChar(160)
+  tradeName           String?        @map("trade_name") @db.VarChar(160)
+  document            String?        @db.VarChar(18)
+  category            String?        @db.VarChar(100)
+  operationNature     String?        @map("operation_nature") @db.VarChar(100)
+  paymentMethod       String?        @map("payment_method") @db.VarChar(80)
+  defaultCostCenterId String?        @map("default_cost_center_id") @db.Uuid
+  email               String?        @db.VarChar(255)
+  phone               String?        @db.VarChar(30)
+  status              SupplierStatus @default(ACTIVE)
+  notes               String?
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  organization        Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  defaultCostCenter   CostCenter?    @relation(fields: [defaultCostCenterId], references: [id], onDelete: SetNull)
+  prices              SupplierPrice[]
+  purchases           Purchase[]
+
+  @@unique([organizationId, document])
+  @@index([organizationId, status, legalName])
+  @@map("suppliers")
+}
+
+model SupplierPrice {
+  id                String       @id @default(uuid()) @db.Uuid
+  organizationId    String       @map("organization_id") @db.Uuid
+  supplierId        String       @map("supplier_id") @db.Uuid
+  itemCode          String?      @map("item_code") @db.VarChar(80)
+  description       String       @db.VarChar(240)
+  normalizedName    String       @map("normalized_name") @db.VarChar(240)
+  unit              String?      @db.VarChar(30)
+  initialPrice      Decimal?     @map("initial_price") @db.Decimal(14, 4)
+  negotiatedPrice   Decimal      @map("negotiated_price") @db.Decimal(14, 4)
+  validFrom         DateTime?    @map("valid_from") @db.Date
+  validUntil        DateTime?    @map("valid_until") @db.Date
+  status            PriceStatus  @default(ACTIVE)
+  source             String?      @db.VarChar(40)
+  notes              String?
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier           Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, supplierId, status])
+  @@index([organizationId, normalizedName])
+  @@map("supplier_prices")
+}
+
+model Purchase {
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  supplierId       String          @map("supplier_id") @db.Uuid
+  number           String          @db.VarChar(40)
+  issuedAt         DateTime        @map("issued_at") @db.Date
+  status           PurchaseStatus  @default(REGISTERED)
+  category         String?         @db.VarChar(100)
+  operationNature  String?         @map("operation_nature") @db.VarChar(100)
+  paymentMethod    String?         @map("payment_method") @db.VarChar(80)
+  total            Decimal         @db.Decimal(14, 2)
+  negotiatedSavings Decimal        @default(0) @map("negotiated_savings") @db.Decimal(14, 2)
+  notes            String?
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier         Supplier        @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items            PurchaseItem[]
+  installments     Installment[]
+  invoiceDocuments InvoiceDocument[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId, issuedAt])
+  @@index([organizationId, supplierId])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id               String           @id @default(uuid()) @db.Uuid
+  organizationId   String           @map("organization_id") @db.Uuid
+  purchaseId       String           @map("purchase_id") @db.Uuid
+  costCenterId     String?          @map("cost_center_id") @db.Uuid
+  description      String           @db.VarChar(240)
+  quantity         Decimal          @default(1) @db.Decimal(14, 4)
+  unit             String?          @db.VarChar(30)
+  unitPrice        Decimal          @map("unit_price") @db.Decimal(14, 4)
+  negotiatedPrice  Decimal?         @map("negotiated_price") @db.Decimal(14, 4)
+  total            Decimal          @db.Decimal(14, 2)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  purchase         Purchase         @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  costCenter       CostCenter?      @relation(fields: [costCenterId], references: [id], onDelete: SetNull)
+  allocations      CostAllocation[]
+
+  @@index([organizationId, purchaseId])
+  @@index([organizationId, costCenterId])
+  @@map("purchase_items")
+}
+
+model CostAllocation {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  purchaseItemId String       @map("purchase_item_id") @db.Uuid
+  costCenterId   String       @map("cost_center_id") @db.Uuid
+  percentage     Decimal      @db.Decimal(7, 4)
+  amount         Decimal      @db.Decimal(14, 2)
+  purchaseItem   PurchaseItem @relation(fields: [purchaseItemId], references: [id], onDelete: Cascade)
+  costCenter     CostCenter   @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
+
+  @@unique([purchaseItemId, costCenterId])
+  @@index([organizationId, costCenterId])
+  @@map("cost_allocations")
+}
+
+model Installment {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  purchaseId     String   @map("purchase_id") @db.Uuid
+  sequence       Int
+  dueDate        DateTime @map("due_date") @db.Date
+  amount         Decimal  @db.Decimal(14, 2)
+  paidAt         DateTime? @map("paid_at") @db.Date
+  purchase       Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@unique([purchaseId, sequence])
+  @@index([organizationId, dueDate])
+  @@map("installments")
+}
+
+model InvoiceDocument {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  purchaseId     String?      @map("purchase_id") @db.Uuid
+  invoiceNumber  String?      @map("invoice_number") @db.VarChar(60)
+  accessKey      String?      @map("access_key") @db.VarChar(60)
+  fileName       String       @map("file_name") @db.VarChar(255)
+  mimeType       String       @map("mime_type") @db.VarChar(100)
+  storagePath    String       @map("storage_path") @db.VarChar(500)
+  parser         String?      @db.VarChar(80)
+  confidence     Decimal?     @db.Decimal(5, 4)
+  parsedData     Json?        @map("parsed_data")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase       Purchase?    @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, invoiceNumber])
+  @@index([organizationId, accessKey])
+  @@map("invoice_documents")
+}
+
+model AuditLog {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String?      @map("organization_id") @db.Uuid
+  actorUserId    String?      @map("actor_user_id") @db.Uuid
+  action         AuditAction
+  resource       String       @db.VarChar(100)
+  resourceId     String?      @map("resource_id") @db.VarChar(100)
+  requestId      String?      @map("request_id") @db.VarChar(100)
+  ipAddress      String?      @map("ip_address") @db.VarChar(64)
+  metadata       Json?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actor          User?         @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("audit_logs")
+}
+

@@ -1,0 +1,29 @@
+node_modules/
+.pnpm-store/
+dist/
+coverage/
+.vite/
+.turbo/
+__pycache__/
+*.py[cod]
+.tools/
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Runtime output
+*.log
+tmp/
+
+# Previous generated working directories; preserved under legacy/
+outputs/
+work/

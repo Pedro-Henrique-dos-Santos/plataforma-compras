@@ -1,0 +1,4282 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Human Clinic | Compras</title>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    :root {
+      --brand: #963743;
+      --brand-strong: #762833;
+      --brand-soft: #f8edef;
+      --teal: #267a78;
+      --ink: #202428;
+      --muted: #667078;
+      --line: #dfe3e6;
+      --line-strong: #c8ced2;
+      --surface: #ffffff;
+      --surface-alt: #f5f6f7;
+      --canvas: #eef0f2;
+      --warning: #9a6500;
+      --warning-soft: #fff5d8;
+      --danger: #b42318;
+      --danger-soft: #fff0ee;
+      --success: #19704a;
+      --success-soft: #e9f6ef;
+      --shadow: 0 12px 32px rgba(21, 29, 34, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font-family: Inter, Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 228px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 18px 14px;
+      color: #ffffff;
+      background: #292d30;
+      border-right: 1px solid #1e2225;
+    }
+
+    .brand {
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 4px 8px 18px;
+      border-bottom: 1px solid #41474b;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 36px;
+      color: #ffffff;
+      background: var(--brand);
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .brand-text strong,
+    .brand-text span {
+      display: block;
+    }
+
+    .brand-text strong {
+      font-size: 14px;
+    }
+
+    .brand-text span {
+      margin-top: 2px;
+      color: #bfc6ca;
+      font-size: 12px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 4px;
+      padding-top: 18px;
+    }
+
+    .nav-item {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 0 11px;
+      color: #d5dadd;
+      background: transparent;
+      border: 0;
+      border-radius: 5px;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .nav-item.active {
+      color: #ffffff;
+      background: var(--brand);
+      font-weight: 700;
+    }
+
+    .nav-item:not(.active):not(:disabled):hover {
+      background: #383e42;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 14px 8px 2px;
+      color: #aeb6ba;
+      border-top: 1px solid #41474b;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .main {
+      min-width: 0;
+      background: var(--surface);
+    }
+
+    .topbar {
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px 28px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    .topbar p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-chip {
+      max-width: 250px;
+      overflow: hidden;
+      color: var(--muted);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    .icon-button,
+    .primary-button,
+    .secondary-button,
+    .danger-button {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 5px;
+      border: 1px solid transparent;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .icon-button {
+      width: 38px;
+      padding: 0;
+      color: var(--ink);
+      background: var(--surface);
+      border-color: var(--line-strong);
+    }
+
+    .icon-button:hover,
+    .secondary-button:hover {
+      background: var(--surface-alt);
+    }
+
+    .icon-button svg,
+    .primary-button svg,
+    .secondary-button svg,
+    .danger-button svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .primary-button {
+      padding: 0 15px;
+      color: #ffffff;
+      background: var(--brand);
+      border-color: var(--brand);
+    }
+
+    .primary-button:hover {
+      background: var(--brand-strong);
+      border-color: var(--brand-strong);
+    }
+
+    .secondary-button {
+      padding: 0 14px;
+      color: var(--ink);
+      background: var(--surface);
+      border-color: var(--line-strong);
+    }
+
+    .danger-button {
+      padding: 0 14px;
+      color: var(--danger);
+      background: var(--danger-soft);
+      border-color: #f2b8b3;
+    }
+
+    .content {
+      width: 100%;
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 24px 28px 40px;
+    }
+
+    .module-view {
+      display: none;
+    }
+
+    .module-view.active {
+      display: block;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .dashboard-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .dashboard-filters {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dashboard-filters select {
+      width: 190px;
+    }
+
+    .dashboard-source {
+      color: var(--muted);
+      font-size: 11px;
+      text-align: right;
+    }
+
+    .dashboard-kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .dashboard-kpi {
+      min-width: 0;
+      padding: 16px 17px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .dashboard-kpi span,
+    .dashboard-kpi small {
+      display: block;
+    }
+
+    .dashboard-kpi span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .dashboard-kpi strong {
+      display: block;
+      margin-top: 7px;
+      overflow: hidden;
+      font-size: 24px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dashboard-kpi small {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .dashboard-kpi.savings strong {
+      color: var(--teal);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .dashboard-chart {
+      min-width: 0;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .dashboard-chart-wide {
+      grid-column: 1 / -1;
+    }
+
+    .dashboard-chart header {
+      margin-bottom: 12px;
+    }
+
+    .dashboard-chart h2 {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .dashboard-chart p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .dashboard-canvas {
+      position: relative;
+      height: 270px;
+    }
+
+    .dashboard-canvas-pie {
+      max-width: 760px;
+      height: 310px;
+      margin: 0 auto;
+    }
+
+    .dashboard-details {
+      margin-top: 14px;
+    }
+
+    .dashboard-details h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+
+    .dashboard-details .table-wrap {
+      min-height: 0;
+      background: var(--surface);
+    }
+
+    .dashboard-details table {
+      min-width: 850px;
+    }
+
+    .dashboard-quality {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 22px;
+      background: var(--surface-alt);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .summary-item {
+      min-width: 0;
+      padding: 15px 18px;
+      border-right: 1px solid var(--line);
+    }
+
+    .summary-item:last-child {
+      border-right: 0;
+    }
+
+    .summary-label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .summary-value {
+      display: block;
+      margin-top: 5px;
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .summary-item.ativos .summary-value {
+      color: var(--success);
+    }
+
+    .summary-item.revisar .summary-value {
+      color: var(--warning);
+    }
+
+    .summary-item.inativos .summary-value {
+      color: var(--muted);
+    }
+
+    .summary-item.vencendo .summary-value,
+    .summary-item.atencao .summary-value {
+      color: var(--warning);
+    }
+
+    .summary-item.economia .summary-value {
+      color: var(--teal);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .filters {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .search-wrap {
+      position: relative;
+      width: min(520px, 100%);
+    }
+
+    .search-wrap svg {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      width: 17px;
+      height: 17px;
+      color: var(--muted);
+      pointer-events: none;
+      transform: translateY(-50%);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      color: var(--ink);
+      background: #ffffff;
+      border: 1px solid var(--line-strong);
+      border-radius: 5px;
+      outline: none;
+    }
+
+    input,
+    select {
+      min-height: 40px;
+      padding: 0 11px;
+    }
+
+    textarea {
+      min-height: 92px;
+      padding: 10px 11px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(38, 122, 120, 0.14);
+    }
+
+    .search-wrap input {
+      padding-left: 38px;
+    }
+
+    .status-filter {
+      width: 150px;
+      flex: 0 0 150px;
+    }
+
+    .supplier-filter {
+      width: 220px;
+      flex: 0 0 220px;
+    }
+
+    .table-meta {
+      margin: 0 0 9px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .table-wrap {
+      min-height: 340px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 940px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    table.price-table {
+      min-width: 1080px;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+      font-size: 12px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      color: #4d565c;
+      background: var(--surface-alt);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    tbody tr {
+      transition: background 120ms ease;
+    }
+
+    tbody tr:hover {
+      background: #fbf7f8;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .supplier-name strong,
+    .supplier-name span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .supplier-name strong {
+      font-size: 13px;
+    }
+
+    .supplier-name span,
+    .muted-cell {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      min-height: 24px;
+      align-items: center;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .status-badge.ativo {
+      color: var(--success);
+      background: var(--success-soft);
+    }
+
+    .status-badge.revisar {
+      color: var(--warning);
+      background: var(--warning-soft);
+    }
+
+    .status-badge.inativo {
+      color: var(--muted);
+      background: #e9ecee;
+    }
+
+    .status-badge.vencido {
+      color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .status-badge.suspenso {
+      color: #5d6670;
+      background: #e9ecee;
+    }
+
+    .money-value {
+      display: block;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .economy-note {
+      display: block;
+      margin-top: 3px;
+      color: var(--success);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .economy-note.negative {
+      color: var(--danger);
+    }
+
+    .agreement-type {
+      display: inline-flex;
+      min-height: 22px;
+      align-items: center;
+      margin-top: 5px;
+      padding: 0 7px;
+      color: #4d565c;
+      background: #edf0f2;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .row-action {
+      width: 32px;
+      height: 32px;
+      display: inline-grid;
+      place-items: center;
+      color: var(--brand);
+      background: transparent;
+      border: 0;
+      border-radius: 4px;
+    }
+
+    .row-action:hover {
+      background: var(--brand-soft);
+    }
+
+    .row-action svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .empty-state {
+      min-height: 330px;
+      display: none;
+      place-items: center;
+      padding: 40px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-state.visible {
+      display: grid;
+    }
+
+    .empty-state svg {
+      width: 38px;
+      height: 38px;
+      margin-bottom: 12px;
+      color: #9aa3a8;
+    }
+
+    .empty-state strong,
+    .empty-state span {
+      display: block;
+    }
+
+    .empty-state strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .empty-state span {
+      margin-top: 5px;
+      font-size: 12px;
+    }
+
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      background: rgba(20, 24, 27, 0.38);
+    }
+
+    .drawer-overlay.open {
+      display: block;
+    }
+
+    .drawer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: min(660px, 100%);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+      box-shadow: var(--shadow);
+      transform: translateX(100%);
+      transition: transform 180ms ease;
+    }
+
+    .drawer.drawer-wide {
+      width: min(1240px, 100%);
+    }
+
+    #formFornecedor,
+    #formPreco,
+    #formLotePrecos {
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .drawer-overlay.open .drawer {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .drawer-header h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .drawer-header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .drawer-body {
+      min-height: 0;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .form-section {
+      padding: 19px 20px 21px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .form-section h3 {
+      margin: 0 0 14px;
+      font-size: 13px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      color: #3d454a;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .field-hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    input[readonly] {
+      color: var(--muted);
+      background: var(--surface-alt);
+    }
+
+    .calculation-panel {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      margin-top: 14px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+    }
+
+    .calculation-item {
+      min-width: 0;
+      padding: 11px 12px;
+      background: var(--surface-alt);
+    }
+
+    .calculation-item span,
+    .calculation-item strong {
+      display: block;
+    }
+
+    .calculation-item span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .calculation-item strong {
+      margin-top: 4px;
+      overflow: hidden;
+      color: var(--success);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+
+    .calculation-item strong.negative {
+      color: var(--danger);
+    }
+
+    .import-summary {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin: 16px 20px 0;
+      padding: 11px 12px;
+      color: #315b59;
+      background: #eaf5f4;
+      border: 1px solid #bfdedc;
+      border-radius: 5px;
+    }
+
+    .import-summary.hidden {
+      display: none;
+    }
+
+    .import-summary svg {
+      width: 19px;
+      height: 19px;
+      flex: 0 0 19px;
+    }
+
+    .import-summary strong,
+    .import-summary span {
+      display: block;
+    }
+
+    .import-summary strong {
+      font-size: 12px;
+    }
+
+    .import-summary span {
+      margin-top: 2px;
+      color: #52706f;
+      font-size: 11px;
+    }
+
+    .batch-confidence {
+      display: inline-flex;
+      align-items: center;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .batch-confidence.media {
+      color: #8a641f;
+    }
+
+    .batch-confidence.baixa {
+      color: var(--danger);
+    }
+
+    .batch-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 20px;
+      background: var(--surface-alt);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .batch-toolbar-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .batch-count {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .batch-grid-wrap {
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .batch-grid-header,
+    .batch-row {
+      min-width: 1300px;
+      display: grid;
+      grid-template-columns: minmax(230px, 2fr) 125px 90px 135px 135px 120px 180px 180px 42px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .batch-grid-header {
+      min-height: 38px;
+      padding: 0 20px;
+      color: #4d565c;
+      background: #eef0f2;
+      border-bottom: 1px solid var(--line);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .batch-row {
+      min-height: 64px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .batch-row:last-child {
+      border-bottom: 0;
+    }
+
+    .batch-row:hover {
+      background: #fbf7f8;
+    }
+
+    .batch-cell {
+      min-width: 0;
+    }
+
+    .batch-cell::before {
+      display: none;
+    }
+
+    .batch-cell input,
+    .batch-cell select {
+      min-height: 36px;
+      padding-inline: 9px;
+      font-size: 11px;
+    }
+
+    .batch-reference input {
+      color: var(--muted);
+      background: var(--surface-alt);
+    }
+
+    .batch-economy {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .batch-economy.positive {
+      color: var(--success);
+    }
+
+    .batch-economy.negative {
+      color: var(--danger);
+    }
+
+    .batch-remove {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      color: var(--danger);
+      background: transparent;
+      border: 0;
+      border-radius: 4px;
+    }
+
+    .batch-remove:hover {
+      background: var(--danger-soft);
+    }
+
+    .batch-remove svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .required::after {
+      content: ' *';
+      color: var(--danger);
+    }
+
+    .drawer-footer {
+      min-height: 66px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 20px;
+      background: var(--surface-alt);
+      border-top: 1px solid var(--line);
+    }
+
+    .drawer-footer-actions {
+      display: flex;
+      gap: 9px;
+      margin-left: auto;
+    }
+
+    .record-id {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .toast-region {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 40;
+      display: grid;
+      gap: 8px;
+      width: min(380px, calc(100vw - 40px));
+    }
+
+    .toast {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      color: #ffffff;
+      background: #30363a;
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .toast.sucesso {
+      background: var(--success);
+    }
+
+    .toast.erro {
+      background: var(--danger);
+    }
+
+    .toast svg {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 17px;
+    }
+
+    .page-loading {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .page-loading.hidden {
+      display: none;
+    }
+
+    .loading-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #d7dcdf;
+      border-top-color: var(--brand);
+      border-radius: 50%;
+      animation: girar 750ms linear infinite;
+    }
+
+    @keyframes girar {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 900px) {
+      .app-shell {
+        grid-template-columns: 72px minmax(0, 1fr);
+      }
+
+      .sidebar {
+        padding-inline: 10px;
+      }
+
+      .brand {
+        justify-content: center;
+        padding-inline: 0;
+      }
+
+      .brand-text,
+      .nav-item span,
+      .sidebar-footer {
+        display: none;
+      }
+
+      .nav-item {
+        justify-content: center;
+        padding: 0;
+      }
+
+      .summary-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dashboard-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-item:nth-child(2) {
+        border-right: 0;
+      }
+
+      .summary-item:nth-child(-n+2) {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .batch-grid-header {
+        display: none;
+      }
+
+      .batch-row {
+        min-width: 0;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: end;
+        gap: 12px;
+        padding-block: 16px;
+      }
+
+      .batch-cell::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 5px;
+        color: #3d454a;
+        font-size: 10px;
+        font-weight: 800;
+      }
+
+      .batch-item-name,
+      .batch-category,
+      .batch-cost-center {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .app-shell {
+        display: block;
+      }
+
+      .sidebar {
+        position: static;
+        width: 100%;
+        height: 58px;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px;
+      }
+
+      .brand {
+        min-height: auto;
+        padding: 0 12px 0 0;
+        border-right: 1px solid #41474b;
+        border-bottom: 0;
+      }
+
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+      }
+
+      .nav {
+        display: flex;
+        padding: 0 0 0 10px;
+      }
+
+      .nav-item {
+        width: 38px;
+        min-height: 38px;
+      }
+
+      .topbar {
+        min-height: 64px;
+        padding: 12px 16px;
+      }
+
+      .topbar h1 {
+        font-size: 18px;
+      }
+
+      .topbar p,
+      .user-chip {
+        display: none;
+      }
+
+      .topbar .primary-button span {
+        display: none;
+      }
+
+      .topbar .primary-button {
+        width: 38px;
+        padding: 0;
+      }
+
+      .content {
+        padding: 16px 14px 28px;
+      }
+
+      .dashboard-toolbar,
+      .dashboard-filters {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .dashboard-filters,
+      .dashboard-filters select {
+        width: 100%;
+      }
+
+      .dashboard-source {
+        text-align: left;
+      }
+
+      .dashboard-kpis,
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .dashboard-canvas {
+        height: 240px;
+      }
+
+      .toolbar,
+      .filters {
+        align-items: stretch;
+      }
+
+      .toolbar {
+        flex-direction: column;
+      }
+
+      .toolbar-actions {
+        width: 100%;
+      }
+
+      .toolbar-actions button {
+        flex: 1;
+      }
+
+      .filters {
+        width: 100%;
+        flex-direction: column;
+      }
+
+      .search-wrap,
+      .status-filter,
+      .supplier-filter {
+        width: 100%;
+        flex-basis: auto;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .calculation-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .batch-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .batch-toolbar-actions {
+        width: 100%;
+      }
+
+      .batch-toolbar-actions button {
+        flex: 1;
+      }
+
+      .batch-row {
+        grid-template-columns: 1fr;
+      }
+
+      .batch-item-name,
+      .batch-category,
+      .batch-cost-center {
+        grid-column: auto;
+      }
+
+      .import-summary {
+        margin-inline: 14px;
+      }
+
+      .field.full {
+        grid-column: auto;
+      }
+
+      .drawer-footer {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .drawer-footer-actions {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .drawer-footer-actions button {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">HC</div>
+        <div class="brand-text">
+          <strong>Human Clinic</strong>
+          <span>Controle de compras</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Módulos">
+        <button class="nav-item" type="button" data-modulo="dashboard" aria-label="Dashboard" title="Dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item active" type="button" data-modulo="fornecedores" aria-current="page" aria-label="Fornecedores" title="Fornecedores">
+          <i data-lucide="building-2"></i>
+          <span>Fornecedores</span>
+        </button>
+        <button class="nav-item" type="button" disabled aria-label="Pedidos" title="Módulo ainda não disponível">
+          <i data-lucide="shopping-cart"></i>
+          <span>Pedidos</span>
+        </button>
+        <button class="nav-item" type="button" data-modulo="precos" aria-label="Preços negociados" title="Preços negociados">
+          <i data-lucide="badge-dollar-sign"></i>
+          <span>Preços</span>
+        </button>
+        <button class="nav-item" type="button" disabled aria-label="Notas fiscais" title="Módulo ainda não disponível">
+          <i data-lucide="file-check-2"></i>
+          <span>Notas fiscais</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <strong>Base conectada</strong><br>
+        Google Sheets
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="tituloModulo">Fornecedores</h1>
+          <p id="ultimaAtualizacao">Atualizando dados...</p>
+        </div>
+        <div class="topbar-actions">
+          <span class="user-chip" id="usuarioAtual"></span>
+          <button class="icon-button" id="botaoAtualizar" type="button" title="Atualizar lista" aria-label="Atualizar lista">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+          <button class="primary-button" id="botaoNovo" type="button" aria-label="Novo fornecedor" title="Novo fornecedor">
+            <i data-lucide="plus"></i>
+            <span id="textoBotaoNovo">Novo fornecedor</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="module-view" id="viewDashboard">
+          <section class="dashboard-toolbar" aria-label="Filtros do dashboard">
+            <div class="dashboard-filters">
+              <select id="dashboardPeriodo" aria-label="Período do dashboard">
+                <option value="todos">Todo o histórico</option>
+                <option value="365">Últimos 12 meses</option>
+                <option value="90">Últimos 90 dias</option>
+                <option value="30">Últimos 30 dias</option>
+              </select>
+              <select id="dashboardUnidade" aria-label="Unidade do dashboard">
+                <option value="Todas">Todas as unidades</option>
+              </select>
+            </div>
+            <span class="dashboard-source" id="dashboardFonte">Fonte: valores negociados</span>
+          </section>
+
+          <section class="dashboard-kpis" aria-label="Indicadores de compras">
+            <article class="dashboard-kpi savings">
+              <span>Economia total</span>
+              <strong id="dashboardEconomiaTotal">R$ 0,00</strong>
+              <small id="dashboardEconomiaPercentual">0% sobre o valor inicial</small>
+            </article>
+            <article class="dashboard-kpi">
+              <span>Valor negociado</span>
+              <strong id="dashboardValorNegociado">R$ 0,00</strong>
+              <small id="dashboardValorInicial">Inicial: R$ 0,00</small>
+            </article>
+            <article class="dashboard-kpi">
+              <span>Compras registradas</span>
+              <strong id="dashboardQuantidadeCompras">0</strong>
+              <small id="dashboardPeriodoCobertura">Sem período disponível</small>
+            </article>
+            <article class="dashboard-kpi">
+              <span>Fornecedores no período</span>
+              <strong id="dashboardQuantidadeFornecedores">0</strong>
+              <small id="dashboardTicketMedio">Ticket médio: R$ 0,00</small>
+            </article>
+          </section>
+
+          <section class="dashboard-grid" aria-label="Gráficos principais">
+            <article class="dashboard-chart">
+              <header>
+                <h2>Economia por mês</h2>
+                <p>Diferença entre valor inicial e valor negociado</p>
+              </header>
+              <div class="dashboard-canvas"><canvas id="graficoEconomiaMensal"></canvas></div>
+            </article>
+            <article class="dashboard-chart">
+              <header>
+                <h2>Valor negociado por categoria</h2>
+                <p>Principais categorias por volume financeiro</p>
+              </header>
+              <div class="dashboard-canvas"><canvas id="graficoCategorias"></canvas></div>
+            </article>
+          </section>
+
+          <section class="dashboard-grid" aria-label="Gráficos de diagnóstico">
+            <article class="dashboard-chart">
+              <header>
+                <h2>Economia por fornecedor</h2>
+                <p>Fornecedores com maior economia acumulada</p>
+              </header>
+              <div class="dashboard-canvas"><canvas id="graficoFornecedores"></canvas></div>
+            </article>
+            <article class="dashboard-chart">
+              <header>
+                <h2>Gasto por centro de custo</h2>
+                <p>Rateios disponíveis na planilha</p>
+              </header>
+              <div class="dashboard-canvas"><canvas id="graficoCentrosCusto"></canvas></div>
+            </article>
+            <article class="dashboard-chart dashboard-chart-wide">
+              <header>
+                <h2>Distribuição do valor negociado por unidade</h2>
+                <p>Participação de cada unidade no total registrado</p>
+              </header>
+              <div class="dashboard-canvas dashboard-canvas-pie">
+                <canvas id="graficoUnidades" role="img" aria-label="Gráfico de pizza da distribuição do valor negociado por unidade"></canvas>
+              </div>
+            </article>
+          </section>
+
+          <section class="dashboard-details" aria-labelledby="dashboardTituloRecentes">
+            <h2 id="dashboardTituloRecentes">Compras recentes</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 14%">Data</th>
+                    <th style="width: 25%">Fornecedor</th>
+                    <th style="width: 24%">Categoria</th>
+                    <th style="width: 18%">Valor negociado</th>
+                    <th style="width: 19%">Economia</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboardCorpoRecentes"></tbody>
+              </table>
+            </div>
+            <p class="dashboard-quality" id="dashboardQualidade"></p>
+          </section>
+        </div>
+
+        <div class="module-view active" id="viewFornecedores">
+        <section class="summary-strip" aria-label="Resumo dos fornecedores">
+          <div class="summary-item">
+            <span class="summary-label">Total</span>
+            <strong class="summary-value" id="resumoTotal">0</strong>
+          </div>
+          <div class="summary-item ativos">
+            <span class="summary-label">Ativos</span>
+            <strong class="summary-value" id="resumoAtivos">0</strong>
+          </div>
+          <div class="summary-item revisar">
+            <span class="summary-label">Revisar</span>
+            <strong class="summary-value" id="resumoRevisar">0</strong>
+          </div>
+          <div class="summary-item inativos">
+            <span class="summary-label">Inativos</span>
+            <strong class="summary-value" id="resumoInativos">0</strong>
+          </div>
+        </section>
+
+        <section aria-labelledby="tituloTabela">
+          <div class="toolbar">
+            <div class="filters">
+              <div class="search-wrap">
+                <i data-lucide="search"></i>
+                <input id="busca" type="search" placeholder="Buscar por fornecedor, CNPJ, contato ou e-mail" aria-label="Buscar fornecedores">
+              </div>
+              <select id="filtroStatus" class="status-filter" aria-label="Filtrar por status">
+                <option value="Todos">Todos os status</option>
+                <option value="Ativo">Ativos</option>
+                <option value="Revisar">Revisar</option>
+                <option value="Inativo">Inativos</option>
+              </select>
+            </div>
+            <div class="toolbar-actions">
+              <button class="secondary-button" id="botaoSincronizarFornecedores" type="button">
+                <i data-lucide="refresh-ccw"></i>
+                <span>Sincronizar históricos</span>
+              </button>
+            </div>
+          </div>
+
+          <p class="table-meta" id="tituloTabela">0 fornecedores encontrados</p>
+
+          <div class="table-wrap">
+            <table id="tabelaFornecedores">
+              <thead>
+                <tr>
+                  <th style="width: 25%">Fornecedor</th>
+                  <th style="width: 16%">CNPJ</th>
+                  <th style="width: 17%">Contato</th>
+                  <th style="width: 18%">Categoria</th>
+                  <th style="width: 10%">Status</th>
+                  <th style="width: 10%">Atualização</th>
+                  <th style="width: 4%"><span class="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody id="corpoTabela"></tbody>
+            </table>
+
+            <div class="empty-state" id="estadoVazio">
+              <div>
+                <i data-lucide="building-2"></i>
+                <strong>Nenhum fornecedor encontrado</strong>
+                <span>Altere os filtros ou cadastre um novo fornecedor.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        </div>
+
+        <div class="module-view" id="viewPrecos">
+          <section class="summary-strip" aria-label="Resumo dos preços negociados">
+            <div class="summary-item">
+              <span class="summary-label">Acordos</span>
+              <strong class="summary-value" id="resumoPrecosTotal">0</strong>
+            </div>
+            <div class="summary-item ativos">
+              <span class="summary-label">Ativos</span>
+              <strong class="summary-value" id="resumoPrecosAtivos">0</strong>
+            </div>
+            <div class="summary-item vencendo">
+              <span class="summary-label">Vencem em 30 dias</span>
+              <strong class="summary-value" id="resumoPrecosVencendo">0</strong>
+            </div>
+            <div class="summary-item economia">
+              <span class="summary-label">Economia média</span>
+              <strong class="summary-value" id="resumoPrecosEconomia">0%</strong>
+            </div>
+          </section>
+
+          <section aria-labelledby="tituloTabelaPrecos">
+            <div class="toolbar">
+              <div class="filters">
+                <div class="search-wrap">
+                  <i data-lucide="search"></i>
+                  <input id="buscaPreco" type="search" placeholder="Buscar fornecedor, item, CNPJ ou palavra-chave" aria-label="Buscar preços negociados">
+                </div>
+                <select id="filtroFornecedorPreco" class="supplier-filter" aria-label="Filtrar por fornecedor">
+                  <option value="Todos">Todos os fornecedores</option>
+                </select>
+                <select id="filtroStatusPreco" class="status-filter" aria-label="Filtrar preços por status">
+                  <option value="Todos">Todos os status</option>
+                  <option value="Ativo">Ativos</option>
+                  <option value="Revisar">Revisar</option>
+                  <option value="Vencido">Vencidos</option>
+                  <option value="Suspenso">Suspensos</option>
+                </select>
+              </div>
+              <div class="toolbar-actions">
+                <button class="secondary-button" id="botaoImportarPdf" type="button">
+                  <i data-lucide="scan-text"></i>
+                  <span>Importar PDF</span>
+                </button>
+                <button class="secondary-button" id="botaoImportarXml" type="button">
+                  <i data-lucide="file-up"></i>
+                  <span>Importar XML</span>
+                </button>
+                <button class="secondary-button" id="botaoNovoLote" type="button">
+                  <i data-lucide="rows-3"></i>
+                  <span>Cadastro em lote</span>
+                </button>
+              </div>
+            </div>
+
+            <p class="table-meta" id="tituloTabelaPrecos">0 acordos encontrados</p>
+
+            <div class="table-wrap">
+              <table id="tabelaPrecos" class="price-table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%">Fornecedor</th>
+                    <th style="width: 23%">Item / acordo</th>
+                    <th style="width: 11%">Valor inicial</th>
+                    <th style="width: 14%">Valor negociado</th>
+                    <th style="width: 16%">Vigência</th>
+                    <th style="width: 10%">Status</th>
+                    <th style="width: 6%"><span class="sr-only">Ações</span></th>
+                  </tr>
+                </thead>
+                <tbody id="corpoTabelaPrecos"></tbody>
+              </table>
+
+              <div class="empty-state" id="estadoVazioPrecos">
+                <div>
+                  <i data-lucide="badge-dollar-sign"></i>
+                  <strong>Nenhum preço negociado encontrado</strong>
+                  <span>Cadastre o primeiro acordo ou altere os filtros.</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="drawer-overlay" id="drawerOverlay" aria-hidden="true">
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="tituloFormulario">
+      <form id="formFornecedor" novalidate>
+        <div class="drawer-header">
+          <div>
+            <h2 id="tituloFormulario">Novo fornecedor</h2>
+            <p id="subtituloFormulario">Cadastro integrado ao Google Sheets</p>
+          </div>
+          <button class="icon-button" id="botaoFechar" type="button" title="Fechar" aria-label="Fechar">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="drawer-body">
+          <input id="fornecedorId" type="hidden">
+
+          <section class="form-section">
+            <h3>Identificação</h3>
+            <div class="form-grid">
+              <div class="field">
+                <label for="cnpj">CNPJ</label>
+                <input id="cnpj" type="text" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00">
+              </div>
+              <div class="field">
+                <label for="status">Status</label>
+                <select id="status"></select>
+              </div>
+              <div class="field full">
+                <label class="required" for="razaoSocial">Razão social ou nome comercial</label>
+                <input id="razaoSocial" type="text" maxlength="180">
+              </div>
+              <div class="field full">
+                <label for="nomeComercial">Nome comercial</label>
+                <input id="nomeComercial" type="text" maxlength="180">
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3>Contato</h3>
+            <div class="form-grid">
+              <div class="field">
+                <label for="contato">Pessoa de contato</label>
+                <input id="contato" type="text" maxlength="120">
+              </div>
+              <div class="field">
+                <label for="telefone">Telefone</label>
+                <input id="telefone" type="tel" inputmode="tel" maxlength="15" placeholder="(00) 00000-0000">
+              </div>
+              <div class="field full">
+                <label for="email">E-mail</label>
+                <input id="email" type="email" maxlength="180">
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3>Padrões de compra</h3>
+            <div class="form-grid">
+              <div class="field">
+                <label for="categoriaPadrao">Categoria padrão</label>
+                <select id="categoriaPadrao"></select>
+              </div>
+              <div class="field">
+                <label for="centroCustoPadrao">Centro de custo padrão</label>
+                <select id="centroCustoPadrao"></select>
+              </div>
+              <div class="field">
+                <label for="naturezaOperacaoPadrao">Natureza da operação</label>
+                <select id="naturezaOperacaoPadrao"></select>
+              </div>
+              <div class="field">
+                <label for="metodoPagamentoPadrao">Método de pagamento</label>
+                <select id="metodoPagamentoPadrao"></select>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3>Controle</h3>
+            <div class="form-grid">
+              <div class="field full">
+                <label for="observacoes">Observações</label>
+                <textarea id="observacoes" maxlength="1000"></textarea>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <footer class="drawer-footer">
+          <span class="record-id" id="registroMeta"></span>
+          <div class="drawer-footer-actions">
+            <button class="secondary-button" id="botaoCancelar" type="button">Cancelar</button>
+            <button class="primary-button" id="botaoSalvar" type="submit" aria-label="Salvar fornecedor" title="Salvar fornecedor">
+              <i data-lucide="save"></i>
+              <span>Salvar fornecedor</span>
+            </button>
+          </div>
+        </footer>
+      </form>
+    </aside>
+  </div>
+
+  <div class="drawer-overlay" id="priceDrawerOverlay" aria-hidden="true">
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="tituloFormularioPreco">
+      <form id="formPreco" novalidate>
+        <div class="drawer-header">
+          <div>
+            <h2 id="tituloFormularioPreco">Novo preço negociado</h2>
+            <p id="subtituloFormularioPreco">Acordo vinculado ao fornecedor</p>
+          </div>
+          <button class="icon-button" id="botaoFecharPreco" type="button" title="Fechar" aria-label="Fechar">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="drawer-body">
+          <input id="precoId" type="hidden">
+
+          <section class="form-section">
+            <h3>Fornecedor e acordo</h3>
+            <div class="form-grid">
+              <div class="field full">
+                <label class="required" for="precoFornecedorId">Fornecedor</label>
+                <select id="precoFornecedorId" required></select>
+              </div>
+              <div class="field">
+                <label for="precoCnpj">CNPJ</label>
+                <input id="precoCnpj" type="text" readonly>
+              </div>
+              <div class="field">
+                <label class="required" for="tipoAcordo">Tipo de acordo</label>
+                <select id="tipoAcordo" required></select>
+              </div>
+              <div class="field full">
+                <label class="required" for="itemPadronizado">Item, serviço ou contrato</label>
+                <input id="itemPadronizado" type="text" maxlength="180" required>
+              </div>
+              <div class="field full">
+                <label for="palavrasChave">Palavras-chave</label>
+                <input id="palavrasChave" type="text" maxlength="500" placeholder="Separadas por vírgula">
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3>Valores negociados</h3>
+            <div class="form-grid">
+              <div class="field">
+                <label class="required" for="unidadeMedida">Unidade de medida</label>
+                <select id="unidadeMedida" required></select>
+              </div>
+              <div class="field"></div>
+              <div class="field">
+                <label class="required" for="valorUnitarioInicial">Valor inicial</label>
+                <input id="valorUnitarioInicial" type="number" inputmode="decimal" min="0.01" step="0.01" required>
+              </div>
+              <div class="field">
+                <label class="required" for="valorUnitarioNegociado">Valor negociado</label>
+                <input id="valorUnitarioNegociado" type="number" inputmode="decimal" min="0.01" step="0.01" required>
+              </div>
+            </div>
+
+            <div class="calculation-panel" aria-label="Resumo da negociação">
+              <div class="calculation-item">
+                <span>Diferença</span>
+                <strong id="calculoDiferenca">R$ 0,00</strong>
+              </div>
+              <div class="calculation-item">
+                <span>Economia</span>
+                <strong id="calculoPercentual">0%</strong>
+              </div>
+              <div class="calculation-item">
+                <span>Resultado</span>
+                <strong id="calculoSituacao">Sem cálculo</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3>Vigência e classificação</h3>
+            <div class="form-grid">
+              <div class="field">
+                <label class="required" for="vigenciaInicial">Vigência inicial</label>
+                <input id="vigenciaInicial" type="date" required>
+              </div>
+              <div class="field">
+                <label for="vigenciaFinal">Vigência final</label>
+                <input id="vigenciaFinal" type="date">
+              </div>
+              <div class="field">
+                <label for="categoriaPreco">Categoria</label>
+                <select id="categoriaPreco"></select>
+              </div>
+              <div class="field">
+                <label for="centroCustoPreco">Centro de custo</label>
+                <select id="centroCustoPreco"></select>
+              </div>
+              <div class="field">
+                <label class="required" for="statusPreco">Status</label>
+                <select id="statusPreco" required></select>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3>Condições e controle</h3>
+            <div class="form-grid">
+              <div class="field full">
+                <label for="condicaoNegociada">Condição negociada</label>
+                <textarea id="condicaoNegociada" maxlength="1000"></textarea>
+              </div>
+              <div class="field full">
+                <label for="observacoesPreco">Observações</label>
+                <textarea id="observacoesPreco" maxlength="1000"></textarea>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <footer class="drawer-footer">
+          <span class="record-id" id="registroMetaPreco"></span>
+          <div class="drawer-footer-actions">
+            <button class="secondary-button" id="botaoCancelarPreco" type="button">Cancelar</button>
+            <button class="primary-button" id="botaoSalvarPreco" type="submit" aria-label="Salvar preço negociado" title="Salvar preço negociado">
+              <i data-lucide="save"></i>
+              <span>Salvar preço</span>
+            </button>
+          </div>
+        </footer>
+      </form>
+    </aside>
+  </div>
+
+  <div class="drawer-overlay" id="batchDrawerOverlay" aria-hidden="true">
+    <aside class="drawer drawer-wide" role="dialog" aria-modal="true" aria-labelledby="tituloFormularioLote">
+      <form id="formLotePrecos" novalidate>
+        <div class="drawer-header">
+          <div>
+            <h2 id="tituloFormularioLote">Cadastro em lote</h2>
+            <p id="subtituloFormularioLote">Tabela de preços negociados</p>
+          </div>
+          <button class="icon-button" id="botaoFecharLote" type="button" title="Fechar" aria-label="Fechar">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="drawer-body">
+          <div class="import-summary hidden" id="resumoImportacaoXml">
+            <i data-lucide="file-check-2"></i>
+            <div>
+              <strong id="tituloOrigemLote"></strong>
+              <span id="metaOrigemLote"></span>
+            </div>
+          </div>
+
+          <section class="form-section">
+            <h3>Dados comuns</h3>
+            <div class="form-grid">
+              <div class="field full">
+                <label class="required" for="loteFornecedorId">Fornecedor</label>
+                <select id="loteFornecedorId" required></select>
+              </div>
+              <div class="field">
+                <label for="loteCnpj">CNPJ</label>
+                <input id="loteCnpj" type="text" readonly>
+              </div>
+              <div class="field">
+                <label class="required" for="loteTipoAcordo">Tipo de acordo</label>
+                <select id="loteTipoAcordo" required></select>
+              </div>
+              <div class="field">
+                <label class="required" for="loteVigenciaInicial">Vigência inicial</label>
+                <input id="loteVigenciaInicial" type="date" required>
+              </div>
+              <div class="field">
+                <label for="loteVigenciaFinal">Vigência final</label>
+                <input id="loteVigenciaFinal" type="date">
+              </div>
+              <div class="field">
+                <label class="required" for="loteStatus">Status</label>
+                <select id="loteStatus" required></select>
+              </div>
+              <div class="field full">
+                <label for="loteCondicaoNegociada">Condição negociada</label>
+                <input id="loteCondicaoNegociada" type="text" maxlength="1000">
+              </div>
+            </div>
+          </section>
+
+          <div class="batch-toolbar">
+            <span class="batch-count" id="contadorItensLote">0 itens</span>
+            <div class="batch-toolbar-actions">
+              <button class="secondary-button" id="botaoAdicionarItemLote" type="button">
+                <i data-lucide="plus"></i>
+                <span>Adicionar item</span>
+              </button>
+              <button class="secondary-button" id="botaoAdicionarCincoItens" type="button">
+                <i data-lucide="list-plus"></i>
+                <span>Adicionar 5</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="batch-grid-wrap">
+            <div class="batch-grid-header" aria-hidden="true">
+              <span>Item / serviço</span>
+              <span>Unidade</span>
+              <span>Qtd. referência</span>
+              <span>Valor inicial</span>
+              <span>Negociado</span>
+              <span>Economia</span>
+              <span>Categoria</span>
+              <span>Centro de custo</span>
+              <span></span>
+            </div>
+            <div id="listaItensLote"></div>
+          </div>
+        </div>
+
+        <footer class="drawer-footer">
+          <span class="record-id" id="registroMetaLote"></span>
+          <div class="drawer-footer-actions">
+            <button class="secondary-button" id="botaoCancelarLote" type="button">Cancelar</button>
+            <button class="primary-button" id="botaoSalvarLote" type="submit" aria-label="Salvar lote de preços" title="Salvar lote de preços">
+              <i data-lucide="save"></i>
+              <span>Salvar lote</span>
+            </button>
+          </div>
+        </footer>
+      </form>
+    </aside>
+  </div>
+
+  <input id="arquivoXmlNfe" type="file" accept=".xml,text/xml,application/xml" hidden>
+  <input id="arquivoPdfNfe" type="file" accept=".pdf,application/pdf" hidden>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+
+  <div class="page-loading" id="pageLoading">
+    <div class="loading-box">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>Carregando portal...</span>
+    </div>
+  </div>
+
+  <script>
+    const PORTAL_PUBLICADO_URL = 'https://script.google.com/a/macros/humanclinic.com.br/s/AKfycbwO4q2X_LmQVhAsBC7du4ZRhf1XqpyCzB2nLGN9ezyuvyKwCxl7IF1X8pRNb7iuBRZJIA/exec';
+
+    const estado = {
+      moduloAtivo: 'fornecedores',
+      fornecedores: [],
+      precos: [],
+      dashboard: { registros: [], rateios: [], qualidade: {} },
+      graficosDashboard: {},
+      loteItens: [],
+      origemLote: null,
+      opcoes: {},
+      formularioSujo: false,
+      formularioPrecoSujo: false,
+      formularioLoteSujo: false,
+      salvando: false,
+      salvandoPreco: false,
+      salvandoLote: false,
+      lendoPdf: false
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      configurarEventos();
+      atualizarIcones();
+      carregarPortal();
+    });
+
+    function configurarEventos() {
+      document.getElementById('botaoNovo').addEventListener('click', abrirNovoRegistro);
+      document.getElementById('botaoAtualizar').addEventListener('click', atualizarLista);
+      document.querySelectorAll('[data-modulo]').forEach(function (botao) {
+        botao.addEventListener('click', function () { alternarModulo(botao.dataset.modulo); });
+      });
+      document.getElementById('botaoFechar').addEventListener('click', fecharFormulario);
+      document.getElementById('botaoCancelar').addEventListener('click', fecharFormulario);
+      document.getElementById('formFornecedor').addEventListener('submit', salvarFornecedor);
+      document.getElementById('formFornecedor').addEventListener('input', function () {
+        estado.formularioSujo = true;
+      });
+      document.getElementById('busca').addEventListener('input', renderizarLista);
+      document.getElementById('filtroStatus').addEventListener('change', renderizarLista);
+      document.getElementById('buscaPreco').addEventListener('input', renderizarListaPrecos);
+      document.getElementById('filtroStatusPreco').addEventListener('change', renderizarListaPrecos);
+      document.getElementById('filtroFornecedorPreco').addEventListener('change', renderizarListaPrecos);
+      document.getElementById('botaoImportarXml').addEventListener('click', selecionarArquivoXml);
+      document.getElementById('botaoImportarPdf').addEventListener('click', selecionarArquivoPdf);
+      document.getElementById('botaoSincronizarFornecedores').addEventListener('click', sincronizarFornecedoresHistoricos);
+      document.getElementById('dashboardPeriodo').addEventListener('change', renderizarDashboard);
+      document.getElementById('dashboardUnidade').addEventListener('change', renderizarDashboard);
+      document.getElementById('botaoNovoLote').addEventListener('click', function () { abrirLotePrecos(null); });
+      document.getElementById('arquivoXmlNfe').addEventListener('change', importarArquivoXml);
+      document.getElementById('arquivoPdfNfe').addEventListener('change', importarArquivoPdf);
+      document.getElementById('cnpj').addEventListener('input', aplicarMascaraCnpj);
+      document.getElementById('telefone').addEventListener('input', aplicarMascaraTelefone);
+      document.getElementById('drawerOverlay').addEventListener('click', function (evento) {
+        if (evento.target === this) fecharFormulario();
+      });
+      document.getElementById('corpoTabela').addEventListener('click', function (evento) {
+        const botao = evento.target.closest('[data-fornecedor-id]');
+        if (botao) abrirEdicaoFornecedor(botao.dataset.fornecedorId);
+      });
+      document.getElementById('botaoFecharPreco').addEventListener('click', fecharFormularioPreco);
+      document.getElementById('botaoCancelarPreco').addEventListener('click', fecharFormularioPreco);
+      document.getElementById('formPreco').addEventListener('submit', salvarPreco);
+      document.getElementById('formPreco').addEventListener('input', function () {
+        estado.formularioPrecoSujo = true;
+      });
+      document.getElementById('precoFornecedorId').addEventListener('change', function () {
+        atualizarFornecedorDoPreco(true);
+      });
+      document.getElementById('tipoAcordo').addEventListener('change', aplicarPadraoTipoAcordo);
+      document.getElementById('valorUnitarioInicial').addEventListener('input', atualizarCalculoPreco);
+      document.getElementById('valorUnitarioNegociado').addEventListener('input', atualizarCalculoPreco);
+      document.getElementById('priceDrawerOverlay').addEventListener('click', function (evento) {
+        if (evento.target === this) fecharFormularioPreco();
+      });
+      document.getElementById('botaoFecharLote').addEventListener('click', fecharFormularioLote);
+      document.getElementById('botaoCancelarLote').addEventListener('click', fecharFormularioLote);
+      document.getElementById('formLotePrecos').addEventListener('submit', salvarLotePrecos);
+      document.getElementById('formLotePrecos').addEventListener('input', function () {
+        estado.formularioLoteSujo = true;
+      });
+      document.getElementById('loteFornecedorId').addEventListener('change', function () {
+        atualizarFornecedorDoLote(true);
+      });
+      document.getElementById('loteTipoAcordo').addEventListener('change', aplicarTipoAcordoAoLote);
+      document.getElementById('botaoAdicionarItemLote').addEventListener('click', function () { adicionarItensLote(1); });
+      document.getElementById('botaoAdicionarCincoItens').addEventListener('click', function () { adicionarItensLote(5); });
+      document.getElementById('batchDrawerOverlay').addEventListener('click', function (evento) {
+        if (evento.target === this) fecharFormularioLote();
+      });
+      document.getElementById('listaItensLote').addEventListener('input', atualizarItemLotePeloEvento);
+      document.getElementById('listaItensLote').addEventListener('change', atualizarItemLotePeloEvento);
+      document.getElementById('listaItensLote').addEventListener('click', removerItemLotePeloEvento);
+      document.getElementById('corpoTabelaPrecos').addEventListener('click', function (evento) {
+        const botao = evento.target.closest('[data-preco-id]');
+        if (botao) abrirEdicaoPreco(botao.dataset.precoId);
+      });
+      document.addEventListener('keydown', function (evento) {
+        if (evento.key !== 'Escape') return;
+        if (document.getElementById('batchDrawerOverlay').classList.contains('open')) fecharFormularioLote();
+        else if (document.getElementById('priceDrawerOverlay').classList.contains('open')) fecharFormularioPreco();
+        else if (document.getElementById('drawerOverlay').classList.contains('open')) fecharFormulario();
+      });
+    }
+
+    function alternarModulo(modulo) {
+      if (modulo !== 'dashboard' && modulo !== 'fornecedores' && modulo !== 'precos') return;
+      estado.moduloAtivo = modulo;
+
+      document.querySelectorAll('[data-modulo]').forEach(function (botao) {
+        const ativo = botao.dataset.modulo === modulo;
+        botao.classList.toggle('active', ativo);
+        if (ativo) botao.setAttribute('aria-current', 'page');
+        else botao.removeAttribute('aria-current');
+      });
+      document.getElementById('viewDashboard').classList.toggle('active', modulo === 'dashboard');
+      document.getElementById('viewFornecedores').classList.toggle('active', modulo === 'fornecedores');
+      document.getElementById('viewPrecos').classList.toggle('active', modulo === 'precos');
+
+      const ehPrecos = modulo === 'precos';
+      const ehDashboard = modulo === 'dashboard';
+      document.getElementById('tituloModulo').textContent = ehDashboard
+        ? 'Dashboard de compras'
+        : (ehPrecos ? 'Preços negociados' : 'Fornecedores');
+      document.getElementById('textoBotaoNovo').textContent = ehPrecos ? 'Novo preço' : 'Novo fornecedor';
+      document.getElementById('botaoNovo').setAttribute('aria-label', ehPrecos ? 'Novo preço negociado' : 'Novo fornecedor');
+      document.getElementById('botaoNovo').setAttribute('title', ehPrecos ? 'Novo preço negociado' : 'Novo fornecedor');
+      document.getElementById('botaoNovo').hidden = ehDashboard;
+      if (ehDashboard) renderizarDashboard();
+      else if (ehPrecos) renderizarListaPrecos();
+      else renderizarLista();
+      atualizarIcones();
+    }
+
+    function abrirNovoRegistro() {
+      if (estado.moduloAtivo === 'dashboard') return;
+      if (estado.moduloAtivo === 'precos') abrirNovoPreco();
+      else abrirNovoFornecedor();
+    }
+
+    function carregarPortal() {
+      alternarCarregamento(true);
+      if (!servicoAppsScriptDisponivel()) {
+        if (window.location.protocol === 'file:') {
+          document.getElementById('ultimaAtualizacao').textContent = 'Abrindo portal publicado...';
+          window.location.replace(PORTAL_PUBLICADO_URL);
+          window.setTimeout(mostrarPortalIndisponivel, 1200);
+          return;
+        }
+
+        mostrarPortalIndisponivel();
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function (dados) {
+          estado.fornecedores = dados.fornecedores || [];
+          estado.precos = dados.precos || [];
+          estado.dashboard = dados.dashboard || { registros: [], rateios: [], qualidade: {} };
+          estado.opcoes = dados.opcoes || {};
+          document.getElementById('usuarioAtual').textContent = dados.usuario || '';
+          document.getElementById('ultimaAtualizacao').textContent = 'Atualizado em ' + (dados.atualizadoEm || 'agora');
+          prepararSelects();
+          prepararFiltrosDashboard();
+          renderizarResumo(dados.resumo);
+          renderizarLista();
+          renderizarResumoPrecos(dados.resumoPrecos);
+          renderizarListaPrecos();
+          renderizarDashboard();
+          alternarCarregamento(false);
+        })
+        .withFailureHandler(function (erro) {
+          alternarCarregamento(false);
+          mostrarErro(erro);
+        })
+        .obterDadosPortal();
+    }
+
+    function atualizarLista() {
+      if (estado.moduloAtivo === 'dashboard') {
+        carregarPortal();
+        return;
+      }
+      if (estado.moduloAtivo === 'precos') {
+        atualizarListaPrecos();
+        return;
+      }
+
+      const botao = document.getElementById('botaoAtualizar');
+      botao.disabled = true;
+
+      if (!servicoAppsScriptDisponivel()) {
+        botao.disabled = false;
+        mostrarPortalIndisponivel();
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function (fornecedores) {
+          estado.fornecedores = fornecedores || [];
+          renderizarResumo(calcularResumo(estado.fornecedores));
+          renderizarLista();
+          document.getElementById('ultimaAtualizacao').textContent = 'Atualizado agora';
+          botao.disabled = false;
+          mostrarToast('Lista atualizada.', 'sucesso');
+        })
+        .withFailureHandler(function (erro) {
+          botao.disabled = false;
+          mostrarErro(erro);
+        })
+        .listarFornecedoresPortal({ limite: 500 });
+    }
+
+    function atualizarListaPrecos() {
+      const botao = document.getElementById('botaoAtualizar');
+      botao.disabled = true;
+
+      if (!servicoAppsScriptDisponivel()) {
+        botao.disabled = false;
+        mostrarPortalIndisponivel();
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function (precos) {
+          estado.precos = precos || [];
+          renderizarResumoPrecos(calcularResumoPrecos(estado.precos));
+          renderizarListaPrecos();
+          document.getElementById('ultimaAtualizacao').textContent = 'Atualizado agora';
+          botao.disabled = false;
+          mostrarToast('Preços atualizados.', 'sucesso');
+        })
+        .withFailureHandler(function (erro) {
+          botao.disabled = false;
+          mostrarErro(erro);
+        })
+        .listarPrecosPortal({ limite: 500 });
+    }
+
+    function sincronizarFornecedoresHistoricos() {
+      const botao = document.getElementById('botaoSincronizarFornecedores');
+      if (!servicoAppsScriptDisponivel()) {
+        mostrarPortalIndisponivel();
+        return;
+      }
+
+      botao.disabled = true;
+      botao.querySelector('span').textContent = 'Sincronizando...';
+      google.script.run
+        .withSuccessHandler(function (resultado) {
+          estado.fornecedores = resultado.fornecedores || [];
+          prepararSelects();
+          renderizarResumo(calcularResumo(estado.fornecedores));
+          renderizarLista();
+          botao.disabled = false;
+          botao.querySelector('span').textContent = 'Sincronizar históricos';
+          mostrarToast(
+            resultado.criados + ' fornecedor(es) criado(s) e ' +
+            resultado.atualizados + ' atualizado(s).',
+            'sucesso'
+          );
+        })
+        .withFailureHandler(function (erro) {
+          botao.disabled = false;
+          botao.querySelector('span').textContent = 'Sincronizar históricos';
+          mostrarErro(erro);
+        })
+        .sincronizarFornecedoresHistoricosPortal();
+    }
+
+    function prepararFiltrosDashboard() {
+      const select = document.getElementById('dashboardUnidade');
+      const atual = select.value || 'Todas';
+      const unidades = Array.from(new Set((estado.dashboard.registros || []).map(function (item) {
+        return item.unidade;
+      }).filter(Boolean))).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+
+      select.innerHTML = '';
+      select.appendChild(new Option('Todas as unidades', 'Todas'));
+      unidades.forEach(function (unidade) { select.appendChild(new Option(unidade, unidade)); });
+      if (unidades.indexOf(atual) !== -1) select.value = atual;
+    }
+
+    function renderizarDashboard() {
+      const dados = filtrarDadosDashboard();
+      const registros = dados.registros;
+      const valorInicial = somarDashboard(registros, 'valorInicial');
+      const valorNegociado = somarDashboard(registros, 'valorNegociado');
+      const economia = somarDashboard(registros, 'economia');
+      const percentual = valorInicial > 0 ? (economia / valorInicial) * 100 : 0;
+      const fornecedores = new Set(registros.map(function (item) { return item.fornecedor; }).filter(Boolean));
+      const ticket = registros.length ? valorNegociado / registros.length : 0;
+
+      document.getElementById('dashboardEconomiaTotal').textContent = formatarMoedaResumo(economia);
+      document.getElementById('dashboardEconomiaPercentual').textContent =
+        formatarPercentual(percentual) + ' sobre o valor inicial';
+      document.getElementById('dashboardValorNegociado').textContent = formatarMoedaResumo(valorNegociado);
+      document.getElementById('dashboardValorInicial').textContent = 'Inicial: ' + formatarMoedaResumo(valorInicial);
+      document.getElementById('dashboardQuantidadeCompras').textContent = registros.length;
+      document.getElementById('dashboardQuantidadeFornecedores').textContent = fornecedores.size;
+      document.getElementById('dashboardTicketMedio').textContent = 'Ticket médio: ' + formatarMoedaResumo(ticket);
+
+      const datas = registros.map(function (item) { return item.data; }).filter(Boolean).sort();
+      document.getElementById('dashboardPeriodoCobertura').textContent = datas.length
+        ? formatarDataDashboard(datas[0]) + ' a ' + formatarDataDashboard(datas[datas.length - 1])
+        : 'Sem período disponível';
+
+      const qualidade = estado.dashboard.qualidade || {};
+      document.getElementById('dashboardFonte').textContent =
+        'Fonte: ' + (qualidade.fontePrincipal || 'valores negociados') +
+        ' · ' + registros.length + ' registros no filtro';
+      document.getElementById('dashboardQualidade').textContent = montarNotaQualidadeDashboard(qualidade);
+
+      renderizarGraficosDashboard(registros, dados.rateios);
+      renderizarComprasRecentesDashboard(registros);
+    }
+
+    function filtrarDadosDashboard() {
+      const periodo = document.getElementById('dashboardPeriodo').value;
+      const unidade = document.getElementById('dashboardUnidade').value;
+      const todos = (estado.dashboard.registros || []).slice();
+      const datasValidas = todos.map(function (item) { return item.data; }).filter(Boolean).sort();
+      const referencia = datasValidas.length
+        ? new Date(datasValidas[datasValidas.length - 1] + 'T12:00:00')
+        : new Date();
+      const dias = periodo === 'todos' ? null : Number(periodo);
+      const inicio = dias
+        ? new Date(referencia.getFullYear(), referencia.getMonth(), referencia.getDate() - dias + 1)
+        : null;
+
+      function dentroDoFiltro(item) {
+        if (unidade !== 'Todas' && item.unidade !== unidade) return false;
+        if (!inicio) return true;
+        if (!item.data) return false;
+        return new Date(item.data + 'T12:00:00').getTime() >= inicio.getTime();
+      }
+
+      return {
+        registros: todos.filter(dentroDoFiltro),
+        rateios: (estado.dashboard.rateios || []).filter(dentroDoFiltro)
+      };
+    }
+
+    function somarDashboard(lista, campo) {
+      return (lista || []).reduce(function (total, item) {
+        return total + Number(item[campo] || 0);
+      }, 0);
+    }
+
+    function agruparDashboard(lista, campoChave, campoValor) {
+      return (lista || []).reduce(function (mapa, item) {
+        const chave = item[campoChave] || 'Não informado';
+        mapa[chave] = (mapa[chave] || 0) + Number(item[campoValor] || 0);
+        return mapa;
+      }, {});
+    }
+
+    function rankingDashboard(mapa, limite, incluirOutros) {
+      const ordenado = Object.keys(mapa || {}).map(function (chave) {
+        return { chave: chave, valor: Number(mapa[chave] || 0) };
+      }).sort(function (a, b) { return b.valor - a.valor; });
+      const principais = ordenado.slice(0, limite);
+      const restantes = ordenado.slice(limite);
+      if (incluirOutros && restantes.length) {
+        principais.push({
+          chave: 'Outros',
+          valor: restantes.reduce(function (soma, item) { return soma + item.valor; }, 0)
+        });
+      }
+      return principais;
+    }
+
+    function renderizarGraficosDashboard(registros, rateios) {
+      if (!window.Chart) return;
+      Chart.defaults.font.family = 'Inter, Arial, sans-serif';
+      Chart.defaults.color = '#667078';
+
+      const mensal = agruparDashboard(registros, 'competencia', 'economia');
+      const meses = Object.keys(mensal).filter(function (mes) { return mes !== 'Sem data'; }).sort();
+      criarGraficoDashboard('economiaMensal', 'graficoEconomiaMensal', {
+        type: meses.length >= 5 ? 'line' : 'bar',
+        data: {
+          labels: meses.map(formatarCompetenciaDashboard),
+          datasets: [{
+            label: 'Economia',
+            data: meses.map(function (mes) { return mensal[mes]; }),
+            borderColor: '#267a78',
+            backgroundColor: meses.length >= 5 ? 'rgba(38, 122, 120, 0.14)' : '#267a78',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: '#ffffff',
+            pointBorderColor: '#267a78',
+            fill: meses.length >= 5,
+            tension: 0.2
+          }]
+        },
+        options: opcoesGraficoDashboard(false, true)
+      });
+
+      const categorias = rankingDashboard(
+        agruparDashboard(registros, 'categoria', 'valorNegociado'), 6, true
+      );
+      criarGraficoDashboard('categorias', 'graficoCategorias', {
+        type: 'bar',
+        data: {
+          labels: categorias.map(function (item) { return limitarRotuloDashboard(item.chave, 24); }),
+          datasets: [{
+            label: 'Valor negociado',
+            data: categorias.map(function (item) { return item.valor; }),
+            backgroundColor: '#963743',
+            borderColor: '#762833',
+            borderWidth: 1
+          }]
+        },
+        options: opcoesGraficoDashboard(true, true)
+      });
+
+      const fornecedores = rankingDashboard(
+        agruparDashboard(registros, 'fornecedor', 'economia'), 6, false
+      );
+      criarGraficoDashboard('fornecedores', 'graficoFornecedores', {
+        type: 'bar',
+        data: {
+          labels: fornecedores.map(function (item) { return limitarRotuloDashboard(item.chave, 24); }),
+          datasets: [{
+            label: 'Economia',
+            data: fornecedores.map(function (item) { return item.valor; }),
+            backgroundColor: '#267a78',
+            borderColor: '#1d5f5d',
+            borderWidth: 1
+          }]
+        },
+        options: opcoesGraficoDashboard(true, true)
+      });
+
+      const centros = rankingDashboard(
+        agruparDashboard(rateios, 'centroCusto', 'valor'), 6, true
+      );
+      criarGraficoDashboard('centros', 'graficoCentrosCusto', {
+        type: 'bar',
+        data: {
+          labels: centros.map(function (item) { return limitarRotuloDashboard(item.chave, 24); }),
+          datasets: [{
+            label: 'Gasto rateado',
+            data: centros.map(function (item) { return item.valor; }),
+            backgroundColor: '#b98925',
+            borderColor: '#86651d',
+            borderWidth: 1
+          }]
+        },
+        options: opcoesGraficoDashboard(true, true)
+      });
+
+      const unidades = rankingDashboard(
+        agruparDashboard(registros, 'unidade', 'valorNegociado'), 8, false
+      );
+      criarGraficoDashboard('unidades', 'graficoUnidades', {
+        type: 'pie',
+        data: {
+          labels: unidades.map(function (item) { return limitarRotuloDashboard(item.chave, 24); }),
+          datasets: [{
+            label: 'Valor negociado',
+            data: unidades.map(function (item) { return item.valor; }),
+            backgroundColor: ['#267a78', '#963743', '#b98925', '#4f6875', '#5f7854', '#7a5c86', '#9a6b3f', '#697176'],
+            borderColor: '#ffffff',
+            borderWidth: 2,
+            hoverOffset: 5
+          }]
+        },
+        options: opcoesGraficoPizzaDashboard()
+      });
+    }
+
+    function criarGraficoDashboard(chave, idCanvas, configuracao) {
+      if (estado.graficosDashboard[chave]) estado.graficosDashboard[chave].destroy();
+      const canvas = document.getElementById(idCanvas);
+      estado.graficosDashboard[chave] = new Chart(canvas, configuracao);
+    }
+
+    function opcoesGraficoDashboard(horizontal, moeda) {
+      const ticksX = {};
+      const ticksY = {};
+      if (moeda) {
+        if (horizontal) {
+          ticksX.callback = abreviarMoedaDashboard;
+          ticksX.maxTicksLimit = 4;
+        } else {
+          ticksY.callback = abreviarMoedaDashboard;
+          ticksY.maxTicksLimit = 6;
+        }
+      }
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: horizontal ? 'y' : 'x',
+        animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (contexto) {
+                const valor = horizontal ? contexto.parsed.x : contexto.parsed.y;
+                return moeda ? formatarMoedaResumo(valor) : String(valor);
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            grid: { color: '#edf0f2' },
+            ticks: ticksX
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: horizontal ? 'transparent' : '#edf0f2' },
+            ticks: ticksY
+          }
+        }
+      };
+    }
+
+    function opcoesGraficoPizzaDashboard() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 12,
+              boxHeight: 12,
+              padding: 16,
+              usePointStyle: true
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (contexto) {
+                const valor = Number(contexto.raw || 0);
+                const total = (contexto.dataset.data || []).reduce(function (soma, item) {
+                  return soma + Number(item || 0);
+                }, 0);
+                const percentual = total > 0 ? (valor / total) * 100 : 0;
+                return contexto.label + ': ' + formatarMoedaResumo(valor) + ' (' + formatarPercentual(percentual) + ')';
+              }
+            }
+          }
+        }
+      };
+    }
+
+    function abreviarMoedaDashboard(valor) {
+      const numero = Number(valor || 0);
+      if (Math.abs(numero) >= 1000000) return 'R$ ' + (numero / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi';
+      if (Math.abs(numero) >= 1000) return 'R$ ' + (numero / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil';
+      return 'R$ ' + numero.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+    }
+
+    function limitarRotuloDashboard(valor, limite) {
+      const texto = String(valor || 'Não informado');
+      const maximo = Number(limite || 30);
+      if (texto.length <= maximo) return texto;
+      const trecho = texto.slice(0, Math.max(maximo - 3, 1)).trim();
+      const ultimoEspaco = trecho.lastIndexOf(' ');
+      const base = ultimoEspaco >= Math.floor(maximo * 0.6)
+        ? trecho.slice(0, ultimoEspaco)
+        : trecho;
+      return base + '...';
+    }
+
+    function formatarCompetenciaDashboard(valor) {
+      const partes = String(valor || '').split('-');
+      return partes.length === 2 ? partes[1] + '/' + partes[0] : valor;
+    }
+
+    function formatarDataDashboard(valor) {
+      const partes = String(valor || '').split('-');
+      return partes.length === 3 ? partes[2] + '/' + partes[1] + '/' + partes[0] : valor;
+    }
+
+    function renderizarComprasRecentesDashboard(registros) {
+      const recentes = (registros || []).slice().sort(function (a, b) {
+        return String(b.data || '').localeCompare(String(a.data || ''));
+      }).slice(0, 8);
+      const corpo = document.getElementById('dashboardCorpoRecentes');
+      corpo.innerHTML = recentes.length ? recentes.map(function (item) {
+        return '<tr>' +
+          '<td>' + escapar(item.dataFormatada || '-') + '</td>' +
+          '<td class="supplier-name"><strong>' + escapar(item.fornecedor) + '</strong><span>' + escapar(item.unidade || '') + '</span></td>' +
+          '<td>' + escapar(item.categoria || 'Não definida') + '</td>' +
+          '<td><span class="money-value">' + escapar(formatarMoedaResumo(item.valorNegociado)) + '</span></td>' +
+          '<td><span class="money-value">' + escapar(formatarMoedaResumo(item.economia)) + '</span></td>' +
+          '</tr>';
+      }).join('') : '<tr><td colspan="5">Nenhuma compra disponível para o filtro selecionado.</td></tr>';
+    }
+
+    function montarNotaQualidadeDashboard(qualidade) {
+      const partes = [
+        'Base principal: ' + (qualidade.fontePrincipal || 'valores negociados') + '.',
+        (qualidade.quantidadeRegistros || 0) + ' registros carregados.'
+      ];
+      if (qualidade.linhasSemData) partes.push(qualidade.linhasSemData + ' registro(s) sem data.');
+      if (qualidade.linhasSemFornecedor) partes.push(qualidade.linhasSemFornecedor + ' registro(s) sem fornecedor.');
+      if (qualidade.limitadoAosUltimos5000) partes.push('Exibição limitada aos 5.000 registros mais recentes.');
+      if (!(qualidade.quantidadeRateios > 0)) partes.push('Sem rateios disponíveis para centro de custo.');
+      return partes.join(' ');
+    }
+
+    function prepararSelects() {
+      preencherSelect('status', estado.opcoes.status || ['Ativo', 'Inativo', 'Revisar'], false);
+      preencherSelect('categoriaPadrao', estado.opcoes.categorias || [], true);
+      preencherSelect('centroCustoPadrao', estado.opcoes.centrosCusto || [], true);
+      preencherSelect('naturezaOperacaoPadrao', estado.opcoes.naturezasOperacao || [], true);
+      preencherSelect('metodoPagamentoPadrao', estado.opcoes.metodosPagamento || [], true);
+      preencherSelect('tipoAcordo', estado.opcoes.tiposAcordo || ['Produto', 'Serviço', 'Contrato'], false);
+      preencherSelect('unidadeMedida', estado.opcoes.unidadesMedida || ['Unidade', 'Caixa', 'Serviço', 'Mês'], true);
+      preencherSelect('categoriaPreco', estado.opcoes.categorias || [], true);
+      preencherSelect('centroCustoPreco', estado.opcoes.centrosCusto || [], true);
+      preencherSelect('statusPreco', estado.opcoes.statusPreco || ['Ativo', 'Vencido', 'Suspenso', 'Revisar'], false);
+      preencherSelect('loteTipoAcordo', estado.opcoes.tiposAcordo || ['Produto', 'Serviço', 'Contrato'], false);
+      preencherSelect('loteStatus', estado.opcoes.statusPreco || ['Ativo', 'Vencido', 'Suspenso', 'Revisar'], false);
+      prepararFornecedoresPreco();
+    }
+
+    function preencherSelect(id, valores, permitirVazio) {
+      const select = document.getElementById(id);
+      select.innerHTML = '';
+
+      if (permitirVazio) {
+        select.appendChild(new Option('Não definido', ''));
+      }
+
+      (valores || []).forEach(function (valor) {
+        select.appendChild(new Option(valor, valor));
+      });
+    }
+
+    function prepararFornecedoresPreco() {
+      const fornecedores = (estado.fornecedores || [])
+        .filter(function (fornecedor) { return fornecedor.status !== 'Inativo'; })
+        .slice()
+        .sort(function (a, b) {
+          return nomeFornecedor(a).localeCompare(nomeFornecedor(b), 'pt-BR');
+        });
+      const select = document.getElementById('precoFornecedorId');
+      const valorAtual = select.value;
+      select.innerHTML = '';
+      select.appendChild(new Option('Selecione um fornecedor', ''));
+      fornecedores.forEach(function (fornecedor) {
+        const complemento = fornecedor.cnpj ? ' · ' + fornecedor.cnpj : '';
+        select.appendChild(new Option(nomeFornecedor(fornecedor) + complemento, fornecedor.id));
+      });
+      if (fornecedores.some(function (item) { return item.id === valorAtual; })) select.value = valorAtual;
+
+      const filtro = document.getElementById('filtroFornecedorPreco');
+      const filtroAtual = filtro.value;
+      filtro.innerHTML = '';
+      filtro.appendChild(new Option('Todos os fornecedores', 'Todos'));
+      fornecedores.forEach(function (fornecedor) {
+        filtro.appendChild(new Option(nomeFornecedor(fornecedor), fornecedor.id));
+      });
+      if (fornecedores.some(function (item) { return item.id === filtroAtual; })) filtro.value = filtroAtual;
+
+      const lote = document.getElementById('loteFornecedorId');
+      const loteAtual = lote.value;
+      lote.innerHTML = '';
+      lote.appendChild(new Option('Selecione um fornecedor', ''));
+      fornecedores.forEach(function (fornecedor) {
+        const complemento = fornecedor.cnpj ? ' · ' + fornecedor.cnpj : '';
+        lote.appendChild(new Option(nomeFornecedor(fornecedor) + complemento, fornecedor.id));
+      });
+      if (fornecedores.some(function (item) { return item.id === loteAtual; })) lote.value = loteAtual;
+    }
+
+    function nomeFornecedor(fornecedor) {
+      return fornecedor.nomeComercial || fornecedor.razaoSocial || fornecedor.id || 'Fornecedor sem nome';
+    }
+
+    function renderizarLista() {
+      const termo = normalizar(document.getElementById('busca').value);
+      const cnpj = somenteDigitos(document.getElementById('busca').value);
+      const status = document.getElementById('filtroStatus').value;
+
+      const filtrados = estado.fornecedores.filter(function (fornecedor) {
+        if (status !== 'Todos' && fornecedor.status !== status) return false;
+        if (!termo && !cnpj) return true;
+
+        const texto = [
+          fornecedor.id,
+          fornecedor.cnpj,
+          fornecedor.razaoSocial,
+          fornecedor.nomeComercial,
+          fornecedor.contato,
+          fornecedor.telefone,
+          fornecedor.email,
+          fornecedor.categoriaPadrao
+        ].map(normalizar).join(' ');
+
+        return texto.indexOf(termo) !== -1 ||
+          (cnpj && somenteDigitos(fornecedor.cnpj).indexOf(cnpj) !== -1);
+      });
+
+      const corpo = document.getElementById('corpoTabela');
+      const tabela = document.getElementById('tabelaFornecedores');
+      const vazio = document.getElementById('estadoVazio');
+      corpo.innerHTML = filtrados.map(criarLinhaFornecedor).join('');
+      tabela.style.display = filtrados.length ? 'table' : 'none';
+      vazio.classList.toggle('visible', filtrados.length === 0);
+      document.getElementById('tituloTabela').textContent =
+        filtrados.length + (filtrados.length === 1 ? ' fornecedor encontrado' : ' fornecedores encontrados');
+      atualizarIcones();
+    }
+
+    function criarLinhaFornecedor(fornecedor) {
+      const nomePrincipal = fornecedor.nomeComercial || fornecedor.razaoSocial || 'Fornecedor sem nome';
+      const nomeSecundario = fornecedor.nomeComercial && fornecedor.razaoSocial ? fornecedor.razaoSocial : fornecedor.id;
+      const contato = fornecedor.contato || fornecedor.email || '-';
+      const telefone = fornecedor.telefone || '';
+      const classeStatus = normalizar(fornecedor.status).replace(/\s+/g, '-');
+
+      return '<tr>' +
+        '<td class="supplier-name"><strong>' + escapar(nomePrincipal) + '</strong><span>' + escapar(nomeSecundario || '') + '</span></td>' +
+        '<td>' + escapar(fornecedor.cnpj || 'Não informado') + '</td>' +
+        '<td>' + escapar(contato) + (telefone ? '<div class="muted-cell">' + escapar(telefone) + '</div>' : '') + '</td>' +
+        '<td>' + escapar(fornecedor.categoriaPadrao || 'Não definida') + '</td>' +
+        '<td><span class="status-badge ' + escapar(classeStatus) + '">' + escapar(fornecedor.status) + '</span></td>' +
+        '<td>' + escapar(fornecedor.atualizadoEm || '-') + '</td>' +
+        '<td><button class="row-action" type="button" data-fornecedor-id="' + escapar(fornecedor.id) + '" title="Editar fornecedor" aria-label="Editar fornecedor"><i data-lucide="pencil"></i></button></td>' +
+        '</tr>';
+    }
+
+    function renderizarListaPrecos() {
+      const termo = normalizar(document.getElementById('buscaPreco').value);
+      const cnpj = somenteDigitos(document.getElementById('buscaPreco').value);
+      const status = document.getElementById('filtroStatusPreco').value;
+      const fornecedorId = document.getElementById('filtroFornecedorPreco').value;
+
+      const filtrados = estado.precos.filter(function (preco) {
+        if (status !== 'Todos' && preco.status !== status) return false;
+        if (fornecedorId !== 'Todos' && preco.fornecedorId !== fornecedorId) return false;
+        if (!termo && !cnpj) return true;
+
+        const texto = [
+          preco.id,
+          preco.fornecedor,
+          preco.cnpj,
+          preco.itemPadronizado,
+          preco.palavrasChave,
+          preco.categoria,
+          preco.centroCusto,
+          preco.tipoAcordo
+        ].map(normalizar).join(' ');
+
+        return texto.indexOf(termo) !== -1 ||
+          (cnpj && somenteDigitos(preco.cnpj).indexOf(cnpj) !== -1);
+      });
+
+      const corpo = document.getElementById('corpoTabelaPrecos');
+      const tabela = document.getElementById('tabelaPrecos');
+      const vazio = document.getElementById('estadoVazioPrecos');
+      corpo.innerHTML = filtrados.map(criarLinhaPreco).join('');
+      tabela.style.display = filtrados.length ? 'table' : 'none';
+      vazio.classList.toggle('visible', filtrados.length === 0);
+      document.getElementById('tituloTabelaPrecos').textContent =
+        filtrados.length + (filtrados.length === 1 ? ' acordo encontrado' : ' acordos encontrados');
+      atualizarIcones();
+    }
+
+    function criarLinhaPreco(preco) {
+      const classeStatus = normalizar(preco.status).replace(/\s+/g, '-');
+      const economiaNegativa = Number(preco.economiaValor || 0) < 0;
+      const economiaTexto = (economiaNegativa ? 'Acréscimo ' : 'Economia ') +
+        formatarPercentual(Math.abs(Number(preco.economiaPercentual || 0)));
+      const vigencia = preco.vigenciaFinalFormatada
+        ? (preco.vigenciaInicialFormatada || '-') + ' a ' + preco.vigenciaFinalFormatada
+        : (preco.vigenciaInicialFormatada ? 'Desde ' + preco.vigenciaInicialFormatada : 'Sem vigência definida');
+
+      return '<tr>' +
+        '<td class="supplier-name"><strong>' + escapar(preco.fornecedor || 'Fornecedor não informado') + '</strong><span>' + escapar(preco.cnpj || preco.fornecedorId || '') + '</span></td>' +
+        '<td class="supplier-name"><strong>' + escapar(preco.itemPadronizado) + '</strong><span>' + escapar(preco.unidadeMedida || 'Sem unidade') + (preco.categoria ? ' · ' + escapar(preco.categoria) : '') + '</span><span class="agreement-type">' + escapar(preco.tipoAcordo || 'Produto') + '</span></td>' +
+        '<td><span class="money-value">' + escapar(formatarMoeda(preco.valorUnitarioInicial)) + '</span></td>' +
+        '<td><span class="money-value">' + escapar(formatarMoeda(preco.valorUnitarioNegociado)) + '</span><span class="economy-note' + (economiaNegativa ? ' negative' : '') + '">' + escapar(economiaTexto) + '</span></td>' +
+        '<td>' + escapar(vigencia) + '</td>' +
+        '<td><span class="status-badge ' + escapar(classeStatus) + '">' + escapar(preco.status) + '</span></td>' +
+        '<td><button class="row-action" type="button" data-preco-id="' + escapar(preco.id) + '" title="Editar preço" aria-label="Editar preço negociado"><i data-lucide="pencil"></i></button></td>' +
+        '</tr>';
+    }
+
+    function renderizarResumo(resumo) {
+      const dados = resumo || calcularResumo(estado.fornecedores);
+      document.getElementById('resumoTotal').textContent = dados.total || 0;
+      document.getElementById('resumoAtivos').textContent = dados.ativos || 0;
+      document.getElementById('resumoRevisar').textContent = dados.revisar || 0;
+      document.getElementById('resumoInativos').textContent = dados.inativos || 0;
+    }
+
+    function calcularResumo(lista) {
+      return (lista || []).reduce(function (resumo, fornecedor) {
+        resumo.total += 1;
+        if (fornecedor.status === 'Ativo') resumo.ativos += 1;
+        else if (fornecedor.status === 'Inativo') resumo.inativos += 1;
+        else resumo.revisar += 1;
+        return resumo;
+      }, { total: 0, ativos: 0, revisar: 0, inativos: 0 });
+    }
+
+    function renderizarResumoPrecos(resumo) {
+      const dados = resumo || calcularResumoPrecos(estado.precos);
+      document.getElementById('resumoPrecosTotal').textContent = dados.total || 0;
+      document.getElementById('resumoPrecosAtivos').textContent = dados.ativos || 0;
+      document.getElementById('resumoPrecosVencendo').textContent = dados.vencendo || 0;
+      document.getElementById('resumoPrecosEconomia').textContent = formatarPercentual(dados.economiaMedia || 0);
+    }
+
+    function calcularResumoPrecos(lista) {
+      const resumo = (lista || []).reduce(function (total, preco) {
+        total.total += 1;
+        if (preco.status === 'Ativo') total.ativos += 1;
+        else total.atencao += 1;
+        if (preco.status === 'Ativo' && preco.diasAteVencimento != null &&
+            preco.diasAteVencimento >= 0 && preco.diasAteVencimento <= 30) {
+          total.vencendo += 1;
+        }
+        if (Number(preco.valorUnitarioInicial) > 0) {
+          total.somaEconomia += Number(preco.economiaPercentual || 0);
+          total.quantidadeEconomia += 1;
+        }
+        return total;
+      }, { total: 0, ativos: 0, vencendo: 0, atencao: 0, somaEconomia: 0, quantidadeEconomia: 0 });
+
+      resumo.economiaMedia = resumo.quantidadeEconomia
+        ? Math.round((resumo.somaEconomia / resumo.quantidadeEconomia) * 10) / 10
+        : 0;
+      return resumo;
+    }
+
+    function abrirNovoFornecedor() {
+      limparFormulario();
+      document.getElementById('tituloFormulario').textContent = 'Novo fornecedor';
+      document.getElementById('subtituloFormulario').textContent = 'Cadastro integrado ao Google Sheets';
+      document.getElementById('status').value = 'Ativo';
+      abrirDrawer();
+    }
+
+    function abrirEdicaoFornecedor(id) {
+      const fornecedor = estado.fornecedores.find(function (item) { return item.id === id; });
+      if (!fornecedor) {
+        mostrarToast('Fornecedor não encontrado. Atualize a lista.', 'erro');
+        return;
+      }
+
+      limparFormulario();
+      document.getElementById('fornecedorId').value = fornecedor.id || '';
+      document.getElementById('cnpj').value = fornecedor.cnpj || '';
+      document.getElementById('razaoSocial').value = fornecedor.razaoSocial || '';
+      document.getElementById('nomeComercial').value = fornecedor.nomeComercial || '';
+      document.getElementById('contato').value = fornecedor.contato || '';
+      document.getElementById('telefone').value = fornecedor.telefone || '';
+      document.getElementById('email').value = fornecedor.email || '';
+      selecionarValor('categoriaPadrao', fornecedor.categoriaPadrao);
+      selecionarValor('centroCustoPadrao', fornecedor.centroCustoPadrao);
+      selecionarValor('naturezaOperacaoPadrao', fornecedor.naturezaOperacaoPadrao);
+      selecionarValor('metodoPagamentoPadrao', fornecedor.metodoPagamentoPadrao);
+      selecionarValor('status', fornecedor.status || 'Revisar');
+      document.getElementById('observacoes').value = fornecedor.observacoes || '';
+      document.getElementById('tituloFormulario').textContent = fornecedor.nomeComercial || fornecedor.razaoSocial || 'Editar fornecedor';
+      document.getElementById('subtituloFormulario').textContent = fornecedor.atualizadoPor
+        ? 'Atualizado por ' + fornecedor.atualizadoPor
+        : 'Editar cadastro';
+      document.getElementById('registroMeta').textContent = fornecedor.id || '';
+      abrirDrawer();
+    }
+
+    function selecionarValor(id, valor) {
+      const select = document.getElementById(id);
+      if (!valor) {
+        select.value = '';
+        return;
+      }
+
+      const existe = Array.from(select.options).some(function (opcao) { return opcao.value === valor; });
+      if (!existe) select.appendChild(new Option(valor, valor));
+      select.value = valor;
+    }
+
+    function abrirDrawer() {
+      const overlay = document.getElementById('drawerOverlay');
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      estado.formularioSujo = false;
+      window.setTimeout(function () { document.getElementById('cnpj').focus(); }, 100);
+    }
+
+    function fecharFormulario() {
+      if (estado.salvando) return;
+      if (estado.formularioSujo && !window.confirm('Descartar as alterações deste fornecedor?')) return;
+
+      const overlay = document.getElementById('drawerOverlay');
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      estado.formularioSujo = false;
+    }
+
+    function limparFormulario() {
+      document.getElementById('formFornecedor').reset();
+      document.getElementById('fornecedorId').value = '';
+      document.getElementById('registroMeta').textContent = '';
+      prepararSelects();
+    }
+
+    function salvarFornecedor(evento) {
+      evento.preventDefault();
+      const form = evento.currentTarget;
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const payload = {
+        id: document.getElementById('fornecedorId').value,
+        cnpj: document.getElementById('cnpj').value,
+        razaoSocial: document.getElementById('razaoSocial').value,
+        nomeComercial: document.getElementById('nomeComercial').value,
+        contato: document.getElementById('contato').value,
+        telefone: document.getElementById('telefone').value,
+        email: document.getElementById('email').value,
+        categoriaPadrao: document.getElementById('categoriaPadrao').value,
+        centroCustoPadrao: document.getElementById('centroCustoPadrao').value,
+        naturezaOperacaoPadrao: document.getElementById('naturezaOperacaoPadrao').value,
+        metodoPagamentoPadrao: document.getElementById('metodoPagamentoPadrao').value,
+        status: document.getElementById('status').value,
+        observacoes: document.getElementById('observacoes').value
+      };
+
+      if (!payload.razaoSocial.trim() && !payload.nomeComercial.trim()) {
+        mostrarToast('Informe a Razão Social ou o Nome Comercial.', 'erro');
+        document.getElementById('razaoSocial').focus();
+        return;
+      }
+
+      alternarSalvamento(true);
+      if (!servicoAppsScriptDisponivel()) {
+        alternarSalvamento(false);
+        mostrarPortalIndisponivel();
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function (resultado) {
+          estado.fornecedores = resultado.fornecedores || [];
+          estado.precos.forEach(function (preco) {
+            if (preco.fornecedorId === resultado.fornecedor.id) {
+              preco.fornecedor = nomeFornecedor(resultado.fornecedor);
+              preco.cnpj = resultado.fornecedor.cnpj || '';
+            }
+          });
+          prepararFornecedoresPreco();
+          renderizarResumo(resultado.resumo);
+          renderizarLista();
+          renderizarListaPrecos();
+          alternarSalvamento(false);
+          estado.formularioSujo = false;
+          fecharFormulario();
+          mostrarToast(
+            resultado.modo === 'criado' ? 'Fornecedor cadastrado com sucesso.' : 'Fornecedor atualizado com sucesso.',
+            'sucesso'
+          );
+        })
+        .withFailureHandler(function (erro) {
+          alternarSalvamento(false);
+          mostrarErro(erro);
+        })
+        .salvarFornecedorPortal(payload);
+    }
+
+    function alternarSalvamento(salvando) {
+      estado.salvando = salvando;
+      const botao = document.getElementById('botaoSalvar');
+      botao.disabled = salvando;
+      botao.querySelector('span').textContent = salvando ? 'Salvando...' : 'Salvar fornecedor';
+    }
+
+    function abrirNovoPreco() {
+      const disponiveis = estado.fornecedores.filter(function (fornecedor) {
+        return fornecedor.status !== 'Inativo';
+      });
+      if (!disponiveis.length) {
+        alternarModulo('fornecedores');
+        mostrarToast('Cadastre ou ative um fornecedor antes de registrar preços.', 'erro');
+        return;
+      }
+
+      limparFormularioPreco();
+      document.getElementById('tituloFormularioPreco').textContent = 'Novo preço negociado';
+      document.getElementById('subtituloFormularioPreco').textContent = 'Acordo vinculado ao fornecedor';
+      document.getElementById('tipoAcordo').value = 'Produto';
+      document.getElementById('statusPreco').value = 'Ativo';
+      document.getElementById('vigenciaInicial').value = dataHojeIso();
+      if (disponiveis.length === 1) document.getElementById('precoFornecedorId').value = disponiveis[0].id;
+      atualizarFornecedorDoPreco(true);
+      aplicarPadraoTipoAcordo();
+      atualizarCalculoPreco();
+      abrirDrawerPreco();
+    }
+
+    function abrirEdicaoPreco(id) {
+      const preco = estado.precos.find(function (item) { return item.id === id; });
+      if (!preco) {
+        mostrarToast('Preço não encontrado. Atualize a lista.', 'erro');
+        return;
+      }
+
+      limparFormularioPreco();
+      document.getElementById('precoId').value = preco.id || '';
+      selecionarValor('precoFornecedorId', preco.fornecedorId);
+      selecionarValor('tipoAcordo', preco.tipoAcordo || 'Produto');
+      document.getElementById('itemPadronizado').value = preco.itemPadronizado || '';
+      document.getElementById('palavrasChave').value = preco.palavrasChave || '';
+      selecionarValor('unidadeMedida', preco.unidadeMedida);
+      document.getElementById('valorUnitarioInicial').value = preco.valorUnitarioInicial || '';
+      document.getElementById('valorUnitarioNegociado').value = preco.valorUnitarioNegociado || '';
+      selecionarValor('categoriaPreco', preco.categoria);
+      selecionarValor('centroCustoPreco', preco.centroCusto);
+      document.getElementById('condicaoNegociada').value = preco.condicaoNegociada || '';
+      document.getElementById('vigenciaInicial').value = preco.vigenciaInicial || '';
+      document.getElementById('vigenciaFinal').value = preco.vigenciaFinal || '';
+      selecionarValor('statusPreco', preco.status || 'Revisar');
+      document.getElementById('observacoesPreco').value = preco.observacoes || '';
+      document.getElementById('tituloFormularioPreco').textContent = preco.itemPadronizado || 'Editar preço';
+      document.getElementById('subtituloFormularioPreco').textContent = preco.atualizadoPor
+        ? 'Atualizado por ' + preco.atualizadoPor
+        : preco.fornecedor || 'Editar acordo';
+      document.getElementById('registroMetaPreco').textContent = preco.id || '';
+      atualizarFornecedorDoPreco(false);
+      atualizarCalculoPreco();
+      abrirDrawerPreco();
+    }
+
+    function abrirDrawerPreco() {
+      const overlay = document.getElementById('priceDrawerOverlay');
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      estado.formularioPrecoSujo = false;
+      window.setTimeout(function () {
+        const fornecedor = document.getElementById('precoFornecedorId');
+        (fornecedor.value ? document.getElementById('itemPadronizado') : fornecedor).focus();
+      }, 100);
+    }
+
+    function fecharFormularioPreco() {
+      if (estado.salvandoPreco) return;
+      if (estado.formularioPrecoSujo && !window.confirm('Descartar as alterações deste preço negociado?')) return;
+
+      const overlay = document.getElementById('priceDrawerOverlay');
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      estado.formularioPrecoSujo = false;
+    }
+
+    function limparFormularioPreco() {
+      document.getElementById('formPreco').reset();
+      document.getElementById('precoId').value = '';
+      document.getElementById('precoCnpj').value = '';
+      document.getElementById('registroMetaPreco').textContent = '';
+      prepararSelects();
+    }
+
+    function atualizarFornecedorDoPreco(aplicarPadroes) {
+      const id = document.getElementById('precoFornecedorId').value;
+      const fornecedor = estado.fornecedores.find(function (item) { return item.id === id; });
+      document.getElementById('precoCnpj').value = fornecedor ? fornecedor.cnpj || 'Não informado' : '';
+      if (!fornecedor || !aplicarPadroes) return;
+      if (!document.getElementById('categoriaPreco').value && fornecedor.categoriaPadrao) {
+        selecionarValor('categoriaPreco', fornecedor.categoriaPadrao);
+      }
+      if (!document.getElementById('centroCustoPreco').value && fornecedor.centroCustoPadrao) {
+        selecionarValor('centroCustoPreco', fornecedor.centroCustoPadrao);
+      }
+    }
+
+    function aplicarPadraoTipoAcordo() {
+      const select = document.getElementById('unidadeMedida');
+      if (select.value) return;
+      const tipo = document.getElementById('tipoAcordo').value;
+      selecionarValor('unidadeMedida', tipo === 'Contrato' ? 'Mês' : (tipo === 'Serviço' ? 'Serviço' : 'Unidade'));
+    }
+
+    function atualizarCalculoPreco() {
+      const inicial = Number(document.getElementById('valorUnitarioInicial').value || 0);
+      const negociado = Number(document.getElementById('valorUnitarioNegociado').value || 0);
+      const diferenca = inicial - negociado;
+      const percentual = inicial > 0 ? (diferenca / inicial) * 100 : 0;
+      const negativo = diferenca < 0;
+      const diferencaEl = document.getElementById('calculoDiferenca');
+      const percentualEl = document.getElementById('calculoPercentual');
+      const situacaoEl = document.getElementById('calculoSituacao');
+
+      diferencaEl.textContent = formatarMoeda(diferenca);
+      percentualEl.textContent = formatarPercentual(percentual);
+      situacaoEl.textContent = !inicial || !negociado
+        ? 'Sem cálculo'
+        : (negativo ? 'Acima do inicial' : (diferenca === 0 ? 'Mesmo valor' : 'Economia'));
+      [diferencaEl, percentualEl, situacaoEl].forEach(function (elemento) {
+        elemento.classList.toggle('negative', negativo);
+      });
+    }
+
+    function salvarPreco(evento) {
+      evento.preventDefault();
+      const form = evento.currentTarget;
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const payload = {
+        id: document.getElementById('precoId').value,
+        fornecedorId: document.getElementById('precoFornecedorId').value,
+        tipoAcordo: document.getElementById('tipoAcordo').value,
+        itemPadronizado: document.getElementById('itemPadronizado').value,
+        palavrasChave: document.getElementById('palavrasChave').value,
+        unidadeMedida: document.getElementById('unidadeMedida').value,
+        valorUnitarioInicial: document.getElementById('valorUnitarioInicial').value,
+        valorUnitarioNegociado: document.getElementById('valorUnitarioNegociado').value,
+        categoria: document.getElementById('categoriaPreco').value,
+        centroCusto: document.getElementById('centroCustoPreco').value,
+        condicaoNegociada: document.getElementById('condicaoNegociada').value,
+        vigenciaInicial: document.getElementById('vigenciaInicial').value,
+        vigenciaFinal: document.getElementById('vigenciaFinal').value,
+        status: document.getElementById('statusPreco').value,
+        observacoes: document.getElementById('observacoesPreco').value
+      };
+
+      alternarSalvamentoPreco(true);
+      if (!servicoAppsScriptDisponivel()) {
+        alternarSalvamentoPreco(false);
+        mostrarPortalIndisponivel();
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function (resultado) {
+          estado.precos = resultado.precos || [];
+          renderizarResumoPrecos(resultado.resumo);
+          renderizarListaPrecos();
+          alternarSalvamentoPreco(false);
+          estado.formularioPrecoSujo = false;
+          fecharFormularioPreco();
+          mostrarToast(
+            resultado.modo === 'criado' ? 'Preço negociado cadastrado.' : 'Preço negociado atualizado.',
+            'sucesso'
+          );
+        })
+        .withFailureHandler(function (erro) {
+          alternarSalvamentoPreco(false);
+          mostrarErro(erro);
+        })
+        .salvarPrecoPortal(payload);
+    }
+
+    function alternarSalvamentoPreco(salvando) {
+      estado.salvandoPreco = salvando;
+      const botao = document.getElementById('botaoSalvarPreco');
+      botao.disabled = salvando;
+      botao.querySelector('span').textContent = salvando ? 'Salvando...' : 'Salvar preço';
+    }
+
+    function selecionarArquivoXml() {
+      const input = document.getElementById('arquivoXmlNfe');
+      input.value = '';
+      input.click();
+    }
+
+    function selecionarArquivoPdf() {
+      if (estado.lendoPdf) return;
+      const input = document.getElementById('arquivoPdfNfe');
+      input.value = '';
+      input.click();
+    }
+
+    async function importarArquivoPdf(evento) {
+      const arquivo = evento.target.files && evento.target.files[0];
+      if (!arquivo) return;
+
+      if (!/\.pdf$/i.test(arquivo.name) || (arquivo.type && arquivo.type !== 'application/pdf')) {
+        mostrarToast('Selecione um arquivo no formato PDF.', 'erro');
+        return;
+      }
+      if (arquivo.size > 10 * 1024 * 1024) {
+        mostrarToast('O leitor gratuito aceita PDFs de até 10 MB.', 'erro');
+        return;
+      }
+
+      try {
+        alternarLeituraPdf(true);
+        const bytes = new Uint8Array(await arquivo.arrayBuffer());
+        validarAssinaturaPdf(bytes);
+        const leitura = await extrairTextoPdfGratuito(bytes);
+        const resultado = extrairDadosPdfGratuito(leitura, arquivo.name);
+        const importacao = prepararImportacaoPdf(resultado);
+        alternarLeituraPdf(false);
+        abrirLotePrecos(importacao);
+        mostrarToast(
+          importacao.itens.length +
+          (importacao.itens.length === 1 ? ' item lido do PDF.' : ' itens lidos do PDF.'),
+          'sucesso'
+        );
+        if (importacao.origem.avisos && importacao.origem.avisos.length) {
+          mostrarToast(importacao.origem.avisos[0], 'erro');
+        }
+      } catch (erro) {
+        alternarLeituraPdf(false);
+        mostrarErro(erro);
+      }
+    }
+
+    function validarAssinaturaPdf(bytes) {
+      const assinatura = Array.from(bytes.slice(0, 5)).map(function (byte) {
+        return String.fromCharCode(byte);
+      }).join('');
+      if (assinatura !== '%PDF-') {
+        throw new Error('O arquivo não possui uma estrutura PDF válida.');
+      }
+    }
+
+    async function extrairTextoPdfGratuito(bytes) {
+      if (!window.pdfjsLib) throw new Error('O leitor de PDF não foi carregado. Atualize a página.');
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+      const documento = await pdfjsLib.getDocument({ data: bytes }).promise;
+      if (documento.numPages > 30) {
+        throw new Error('O leitor gratuito aceita documentos de até 30 páginas.');
+      }
+
+      const linhas = [];
+      for (let paginaNumero = 1; paginaNumero <= documento.numPages; paginaNumero += 1) {
+        alternarLeituraPdf(true, 'Lendo página ' + paginaNumero + ' de ' + documento.numPages + '...');
+        const pagina = await documento.getPage(paginaNumero);
+        const conteudo = await pagina.getTextContent({ normalizeWhitespace: true });
+        reconstruirLinhasPdf(conteudo.items || []).forEach(function (linha) {
+          if (linha) linhas.push(linha);
+        });
+      }
+
+      let texto = linhas.join('\n');
+      let usouOcr = false;
+      let paginasOcr = 0;
+      const avisos = [];
+      if (pontuarTextoFiscalPdf(texto) < 5) {
+        if (!window.Tesseract) {
+          throw new Error('O PDF parece escaneado e o OCR gratuito não foi carregado. Atualize a página.');
+        }
+
+        usouOcr = true;
+        paginasOcr = Math.min(documento.numPages, 8);
+        const textoOcr = [];
+        for (let paginaNumero = 1; paginaNumero <= paginasOcr; paginaNumero += 1) {
+          alternarLeituraPdf(true, 'Aplicando OCR na página ' + paginaNumero + ' de ' + paginasOcr + '...');
+          const pagina = await documento.getPage(paginaNumero);
+          const viewport = pagina.getViewport({ scale: 1.7 });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
+          const contexto = canvas.getContext('2d', { alpha: false });
+          await pagina.render({ canvasContext: contexto, viewport: viewport }).promise;
+          const resultado = await Tesseract.recognize(canvas, 'por', {
+            logger: function (progresso) {
+              if (progresso.status === 'recognizing text' && progresso.progress) {
+                alternarLeituraPdf(
+                  true,
+                  'OCR página ' + paginaNumero + ': ' + Math.round(progresso.progress * 100) + '%'
+                );
+              }
+            }
+          });
+          textoOcr.push(String(resultado.data && resultado.data.text || ''));
+          canvas.width = 1;
+          canvas.height = 1;
+        }
+        if (documento.numPages > paginasOcr) {
+          avisos.push('O OCR gratuito analisou somente as 8 primeiras páginas.');
+        }
+        if (pontuarTextoFiscalPdf(textoOcr.join('\n')) > pontuarTextoFiscalPdf(texto)) {
+          texto = textoOcr.join('\n');
+        }
+      }
+
+      if (pontuarTextoFiscalPdf(texto) < 3) {
+        throw new Error('Não foi possível extrair texto fiscal suficiente deste PDF.');
+      }
+
+      return {
+        texto: texto,
+        linhas: texto.split(/\r?\n/).map(function (linha) { return linha.trim(); }).filter(Boolean),
+        paginas: documento.numPages,
+        usouOcr: usouOcr,
+        paginasOcr: paginasOcr,
+        avisos: avisos
+      };
+    }
+
+    function reconstruirLinhasPdf(itens) {
+      const elementos = (itens || []).map(function (item) {
+        return {
+          texto: String(item.str || '').replace(/\s+/g, ' ').trim(),
+          x: item.transform ? Number(item.transform[4] || 0) : 0,
+          y: item.transform ? Number(item.transform[5] || 0) : 0
+        };
+      }).filter(function (item) { return item.texto; }).sort(function (a, b) {
+        if (Math.abs(a.y - b.y) > 3) return b.y - a.y;
+        return a.x - b.x;
+      });
+
+      const linhas = [];
+      elementos.forEach(function (item) {
+        const atual = linhas[linhas.length - 1];
+        if (!atual || Math.abs(atual.y - item.y) > 3) {
+          linhas.push({ y: item.y, partes: [item] });
+        } else {
+          atual.partes.push(item);
+        }
+      });
+
+      return linhas.map(function (linha) {
+        return linha.partes.sort(function (a, b) { return a.x - b.x; })
+          .map(function (item) { return item.texto; }).join(' ').replace(/\s+/g, ' ').trim();
+      });
+    }
+
+    function pontuarTextoFiscalPdf(texto) {
+      const normalizado = normalizar(texto);
+      let pontos = normalizado.length >= 120 ? 2 : (normalizado.length >= 50 ? 1 : 0);
+      ['cnpj', 'nota fiscal', 'valor total', 'fornecedor', 'descricao', 'quantidade'].forEach(function (termo) {
+        if (normalizado.indexOf(termo) !== -1) pontos += 1;
+      });
+      return pontos;
+    }
+
+    function extrairDadosPdfGratuito(leitura, nomeArquivo) {
+      const texto = String(leitura.texto || '');
+      const linhas = leitura.linhas || [];
+      const avisos = (leitura.avisos || []).slice();
+      avisos.unshift('Leitura gratuita: confira fornecedor, itens, unidades e valores antes de salvar.');
+
+      const cnpjCorrespondencia = texto.match(/\b\d{2}[.\s]?\d{3}[.\s]?\d{3}[\/\s]?\d{4}[-\s]?\d{2}\b/);
+      const cnpj = cnpjCorrespondencia ? cnpjCorrespondencia[0] : '';
+      if (cnpj && !validarCnpjPdf(cnpj)) avisos.push('O CNPJ lido não passou na validação de dígitos.');
+
+      const fornecedorNome = extrairFornecedorPdf(linhas, cnpj);
+      const numeroNota = extrairNumeroNotaPdf(linhas);
+      const dataEmissao = extrairDataPdf(linhas);
+      const valorNota = extrairValorTotalPdf(linhas);
+      const itens = extrairItensPdf(linhas);
+
+      if (!itens.length) {
+        throw new Error(
+          'O texto do PDF foi lido, mas a tabela de itens não foi reconhecida. Use Cadastro em lote para este arquivo.'
+        );
+      }
+
+      if (!cnpj) avisos.push('CNPJ do fornecedor não identificado.');
+      if (!numeroNota) avisos.push('Número da nota não identificado.');
+      if (!dataEmissao) avisos.push('Data de emissão não identificada.');
+      const confianca = cnpj && numeroNota && dataEmissao && itens.length &&
+        itens.every(function (item) { return item.confianca === 'alta'; })
+        ? 'alta'
+        : (itens.length ? 'media' : 'baixa');
+
+      return {
+        fornecedorCnpj: cnpj,
+        fornecedorNome: fornecedorNome,
+        dataEmissao: dataEmissao,
+        statusSugerido: 'Revisar',
+        itens: itens,
+        origem: {
+          tipo: 'PDF_OCR_GRATUITO',
+          arquivo: nomeArquivo,
+          numeroNota: numeroNota,
+          fornecedorCnpj: cnpj,
+          fornecedorNome: fornecedorNome,
+          valorNota: valorNota,
+          confianca: confianca,
+          avisos: avisos,
+          modelo: leitura.usouOcr ? 'PDF.js + Tesseract.js' : 'PDF.js'
+        }
+      };
+    }
+
+    function extrairFornecedorPdf(linhas, cnpj) {
+      for (let indice = 0; indice < linhas.length; indice += 1) {
+        const correspondencia = linhas[indice].match(
+          /(?:fornecedor|emitente|raz[aã]o social|nome empresarial)\s*[:\-]?\s*(.{4,120})/i
+        );
+        if (correspondencia && !/cnpj|cpf/i.test(correspondencia[1])) return correspondencia[1].trim();
+      }
+
+      const numerosCnpj = somenteDigitos(cnpj);
+      if (numerosCnpj) {
+        const indiceCnpj = linhas.findIndex(function (linha) {
+          return somenteDigitos(linha).indexOf(numerosCnpj) !== -1;
+        });
+        for (let deslocamento = 1; deslocamento <= 2; deslocamento += 1) {
+          const candidata = linhas[indiceCnpj - deslocamento] || linhas[indiceCnpj + deslocamento] || '';
+          if (candidata.length >= 4 && candidata.length <= 120 &&
+              !/cnpj|cpf|endere[cç]o|telefone|nota fiscal/i.test(candidata)) return candidata.trim();
+        }
+      }
+      return '';
+    }
+
+    function extrairNumeroNotaPdf(linhas) {
+      const padroes = [
+        /(?:nota\s*fiscal|nf(?:-?e)?|n[uú]mero\s+da\s+nota)\s*(?:n[ºo.]*)?\s*[:#\-]?\s*(\d{3,12})/i,
+        /(?:n[ºo.]|numero)\s*[:#\-]?\s*(\d{3,12})/i
+      ];
+      for (let indice = 0; indice < linhas.length; indice += 1) {
+        for (let padraoIndice = 0; padraoIndice < padroes.length; padraoIndice += 1) {
+          const correspondencia = linhas[indice].match(padroes[padraoIndice]);
+          if (correspondencia) return correspondencia[1];
+        }
+      }
+      return '';
+    }
+
+    function extrairDataPdf(linhas) {
+      const linhasPrioritarias = linhas.filter(function (linha) {
+        return /emiss[aã]o|emitida|data/i.test(linha);
+      }).concat(linhas);
+      for (let indice = 0; indice < linhasPrioritarias.length; indice += 1) {
+        const br = linhasPrioritarias[indice].match(/\b(\d{2})[\/.-](\d{2})[\/.-](\d{4})\b/);
+        if (br && dataPdfValida(Number(br[3]), Number(br[2]), Number(br[1]))) {
+          return br[3] + '-' + br[2] + '-' + br[1];
+        }
+        const iso = linhasPrioritarias[indice].match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+        if (iso && dataPdfValida(Number(iso[1]), Number(iso[2]), Number(iso[3]))) return iso[0];
+      }
+      return '';
+    }
+
+    function dataPdfValida(ano, mes, dia) {
+      const data = new Date(ano, mes - 1, dia);
+      return data.getFullYear() === ano && data.getMonth() === mes - 1 && data.getDate() === dia;
+    }
+
+    function extrairValorTotalPdf(linhas) {
+      const prioritarias = linhas.filter(function (linha) {
+        return /valor\s+total\s+(?:da\s+)?nota|total\s+geral|valor\s+da\s+nf/i.test(linha);
+      });
+      for (let indice = prioritarias.length - 1; indice >= 0; indice -= 1) {
+        const valores = prioritarias[indice].match(/(?:R\$\s*)?[\d.]+(?:,\d{2,4})?/g) || [];
+        if (valores.length) return numeroMonetarioPdf(valores[valores.length - 1]);
+      }
+      return 0;
+    }
+
+    function extrairItensPdf(linhas) {
+      const unidades = '(UN|UND|UNID|UNIDADE|CX|CAIXA|PCT|PACOTE|FR|FRASCO|AMP|AMPOLA|KIT|RL|ROLO|KG|G|L|LT|ML|M2|M3|SERV|SERVICO|H|HR|HORA|MES|ANO)';
+      const dinheiro = '(?:R\\$\\s*)?([\\d.]+(?:,\\d{2,4})?)';
+      const comCodigo = new RegExp(
+        '^([A-Z0-9._\\/-]{1,30})\\s+(.{3,180}?)\\s+(\\d+(?:[.,]\\d+)?)\\s+' +
+        unidades + '\\s+' + dinheiro + '\\s+' + dinheiro + '$', 'i'
+      );
+      const semCodigo = new RegExp(
+        '^(.{3,180}?)\\s+(\\d+(?:[.,]\\d+)?)\\s+' +
+        unidades + '\\s+' + dinheiro + '\\s+' + dinheiro + '$', 'i'
+      );
+      const vistos = {};
+
+      return linhas.map(function (linha) {
+        if (/descri[cç][aã]o|valor\s+unit|valor\s+total|quantidade|c[oó]digo/i.test(linha)) return null;
+        let correspondencia = linha.match(comCodigo);
+        let codigo = '';
+        let descricao;
+        let quantidade;
+        let unidade;
+        let valorUnitario;
+        let valorTotal;
+
+        if (correspondencia) {
+          codigo = correspondencia[1];
+          descricao = correspondencia[2];
+          quantidade = numeroMonetarioPdf(correspondencia[3]);
+          unidade = correspondencia[4];
+          valorUnitario = numeroMonetarioPdf(correspondencia[5]);
+          valorTotal = numeroMonetarioPdf(correspondencia[6]);
+        } else {
+          correspondencia = linha.match(semCodigo);
+          if (!correspondencia) return null;
+          descricao = correspondencia[1];
+          quantidade = numeroMonetarioPdf(correspondencia[2]);
+          unidade = correspondencia[3];
+          valorUnitario = numeroMonetarioPdf(correspondencia[4]);
+          valorTotal = numeroMonetarioPdf(correspondencia[5]);
+        }
+
+        if (!descricao || quantidade <= 0 || valorUnitario <= 0) return null;
+        const esperado = quantidade * valorUnitario;
+        const tolerancia = Math.max(0.05, Math.abs(valorTotal) * 0.03);
+        const confianca = valorTotal > 0 && Math.abs(esperado - valorTotal) <= tolerancia ? 'alta' : 'media';
+        const chave = normalizar(codigo + ' ' + descricao + ' ' + valorUnitario);
+        if (vistos[chave]) return null;
+        vistos[chave] = true;
+
+        return novoItemLote({
+          itemPadronizado: descricao.trim(),
+          palavrasChave: [descricao.trim(), codigo].filter(Boolean).join(', '),
+          unidadeMedida: normalizarUnidadeXml(unidade),
+          quantidadeReferencia: formatarNumeroReferencia(quantidade),
+          valorUnitarioInicial: arredondarNumero(valorUnitario),
+          valorUnitarioNegociado: arredondarNumero(valorUnitario),
+          codigo: codigo,
+          confianca: confianca,
+          observacoes: 'Leitura gratuita de PDF: confiança ' + confianca
+        });
+      }).filter(Boolean).slice(0, 100);
+    }
+
+    function numeroMonetarioPdf(valor) {
+      let texto = String(valor == null ? '' : valor).replace(/R\$/gi, '').replace(/\s/g, '');
+      texto = texto.replace(/[^0-9,.-]/g, '');
+      if (!texto) return 0;
+      if (texto.indexOf(',') !== -1) texto = texto.replace(/\./g, '').replace(',', '.');
+      else {
+        const pontos = texto.match(/\./g) || [];
+        if (pontos.length > 1) {
+          const ultimo = texto.lastIndexOf('.');
+          texto = texto.slice(0, ultimo).replace(/\./g, '') + texto.slice(ultimo);
+        }
+      }
+      const numero = Number(texto);
+      return Number.isFinite(numero) ? numero : 0;
+    }
+
+    function validarCnpjPdf(valor) {
+      const numeros = somenteDigitos(valor);
+      if (numeros.length !== 14 || /^(\d)\1{13}$/.test(numeros)) return false;
+
+      function digito(base, pesos) {
+        const soma = base.split('').reduce(function (total, caractere, indice) {
+          return total + Number(caractere) * pesos[indice];
+        }, 0);
+        const resto = soma % 11;
+        return resto < 2 ? 0 : 11 - resto;
+      }
+
+      const primeiro = digito(numeros.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+      const segundo = digito(numeros.slice(0, 12) + primeiro, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+      return numeros === numeros.slice(0, 12) + primeiro + segundo;
+    }
+
+    function lerArquivoBase64(arquivo) {
+      return new Promise(function (resolve, reject) {
+        const leitor = new FileReader();
+        leitor.onload = function () {
+          const resultado = String(leitor.result || '');
+          resolve(resultado.replace(/^data:application\/pdf;base64,/i, ''));
+        };
+        leitor.onerror = function () { reject(new Error('Não foi possível ler o arquivo PDF.')); };
+        leitor.readAsDataURL(arquivo);
+      });
+    }
+
+    function prepararImportacaoPdf(resultado) {
+      const importacao = resultado || {};
+      importacao.fornecedorId = '';
+      const fornecedor = estado.fornecedores.find(function (item) {
+        return somenteDigitos(item.cnpj) === somenteDigitos(importacao.fornecedorCnpj);
+      });
+      if (fornecedor) importacao.fornecedorId = fornecedor.id;
+
+      importacao.itens = (importacao.itens || []).map(function (item) {
+        return novoItemLote(Object.assign({}, item, {
+          unidadeMedida: normalizarUnidadeXml(item.unidadeMedida)
+        }));
+      });
+      importacao.statusSugerido = 'Revisar';
+      return importacao;
+    }
+
+    function alternarLeituraPdf(lendo, texto) {
+      estado.lendoPdf = lendo;
+      const botao = document.getElementById('botaoImportarPdf');
+      botao.disabled = lendo;
+      botao.querySelector('span').textContent = lendo ? (texto || 'Analisando PDF...') : 'Importar PDF';
+    }
+
+    async function importarArquivoXml(evento) {
+      const arquivo = evento.target.files && evento.target.files[0];
+      if (!arquivo) return;
+
+      try {
+        const conteudo = await lerArquivoTexto(arquivo);
+        const importacao = extrairDadosXmlNfe(conteudo, arquivo.name);
+        abrirLotePrecos(importacao);
+        mostrarToast(
+          importacao.itens.length + (importacao.itens.length === 1 ? ' item carregado do XML.' : ' itens carregados do XML.'),
+          'sucesso'
+        );
+      } catch (erro) {
+        mostrarErro(erro);
+      }
+    }
+
+    function lerArquivoTexto(arquivo) {
+      return new Promise(function (resolve, reject) {
+        const leitor = new FileReader();
+        leitor.onload = function () { resolve(String(leitor.result || '')); };
+        leitor.onerror = function () { reject(new Error('Não foi possível ler o arquivo XML.')); };
+        leitor.readAsText(arquivo, 'UTF-8');
+      });
+    }
+
+    function extrairDadosXmlNfe(conteudo, nomeArquivo) {
+      const xml = new DOMParser().parseFromString(conteudo, 'application/xml');
+      if (xml.getElementsByTagName('parsererror').length) {
+        throw new Error('O arquivo selecionado não contém um XML válido.');
+      }
+
+      const infNfe = primeiroElementoXml(xml, 'infNFe') || xml;
+      const emitente = primeiroElementoXml(infNfe, 'emit');
+      if (!emitente) throw new Error('O emitente não foi encontrado no XML da NF-e.');
+
+      const cnpj = textoElementoXml(emitente, 'CNPJ') || textoElementoXml(emitente, 'CPF');
+      const nomeEmitente = textoElementoXml(emitente, 'xNome');
+      const ide = primeiroElementoXml(infNfe, 'ide');
+      const numeroNota = ide ? textoElementoXml(ide, 'nNF') : '';
+      const dataEmissaoBruta = ide
+        ? textoElementoXml(ide, 'dhEmi') || textoElementoXml(ide, 'dEmi')
+        : '';
+      const dataEmissao = /^\d{4}-\d{2}-\d{2}/.test(dataEmissaoBruta)
+        ? dataEmissaoBruta.slice(0, 10)
+        : dataHojeIso();
+      const totalNfe = primeiroElementoXml(infNfe, 'ICMSTot');
+      const valorNota = totalNfe ? numeroXml(textoElementoXml(totalNfe, 'vNF')) : 0;
+      const chave = infNfe.getAttribute && infNfe.getAttribute('Id')
+        ? infNfe.getAttribute('Id').replace(/^NFe/i, '')
+        : '';
+      const detalhes = elementosXml(infNfe, 'det');
+
+      if (!detalhes.length) throw new Error('Nenhum item foi encontrado no XML da NF-e.');
+
+      const itens = detalhes.map(function (detalhe) {
+        const produto = primeiroElementoXml(detalhe, 'prod');
+        if (!produto) return null;
+        const descricao = textoElementoXml(produto, 'xProd');
+        const codigo = textoElementoXml(produto, 'cProd');
+        const quantidade = numeroXml(textoElementoXml(produto, 'qCom'));
+        const totalItem = numeroXml(textoElementoXml(produto, 'vProd'));
+        let valorUnitario = numeroXml(textoElementoXml(produto, 'vUnCom'));
+        if (!valorUnitario && quantidade > 0 && totalItem > 0) valorUnitario = totalItem / quantidade;
+
+        return novoItemLote({
+          itemPadronizado: descricao,
+          palavrasChave: [descricao, codigo].filter(Boolean).join(', '),
+          unidadeMedida: normalizarUnidadeXml(textoElementoXml(produto, 'uCom')),
+          quantidadeReferencia: quantidade > 0 ? formatarNumeroReferencia(quantidade) : '',
+          valorUnitarioInicial: valorUnitario > 0 ? arredondarNumero(valorUnitario) : '',
+          valorUnitarioNegociado: valorUnitario > 0 ? arredondarNumero(valorUnitario) : '',
+          codigo: codigo
+        });
+      }).filter(function (item) { return item && item.itemPadronizado; });
+
+      if (!itens.length) throw new Error('Os itens do XML não possuem descrição utilizável.');
+
+      const fornecedor = estado.fornecedores.find(function (item) {
+        return somenteDigitos(item.cnpj) === somenteDigitos(cnpj);
+      });
+
+      return {
+        fornecedorId: fornecedor ? fornecedor.id : '',
+        fornecedorCnpj: cnpj,
+        fornecedorNome: nomeEmitente,
+        dataEmissao: dataEmissao,
+        itens: itens,
+        origem: {
+          tipo: 'XML_NFE',
+          arquivo: nomeArquivo,
+          numeroNota: numeroNota,
+          chave: chave,
+          fornecedorCnpj: cnpj,
+          fornecedorNome: nomeEmitente,
+          valorNota: valorNota
+        }
+      };
+    }
+
+    function elementosXml(no, nome) {
+      if (!no) return [];
+      const porNamespace = no.getElementsByTagNameNS ? no.getElementsByTagNameNS('*', nome) : [];
+      if (porNamespace && porNamespace.length) return Array.from(porNamespace);
+      return Array.from(no.getElementsByTagName(nome) || []);
+    }
+
+    function primeiroElementoXml(no, nome) {
+      const elementos = elementosXml(no, nome);
+      return elementos.length ? elementos[0] : null;
+    }
+
+    function textoElementoXml(no, nome) {
+      const elemento = primeiroElementoXml(no, nome);
+      return elemento ? String(elemento.textContent || '').trim() : '';
+    }
+
+    function numeroXml(valor) {
+      const texto = String(valor || '').trim().replace(',', '.');
+      const numero = Number(texto);
+      return Number.isFinite(numero) ? numero : 0;
+    }
+
+    function normalizarUnidadeXml(valor) {
+      const original = String(valor || '').trim();
+      const chave = normalizar(original).replace(/[^a-z0-9]/g, '');
+      const mapa = {
+        un: 'Unidade', und: 'Unidade', unid: 'Unidade', unidade: 'Unidade',
+        cx: 'Caixa', cxa: 'Caixa', caixa: 'Caixa',
+        pct: 'Pacote', pcte: 'Pacote', pacote: 'Pacote',
+        fr: 'Frasco', frs: 'Frasco', frasco: 'Frasco',
+        amp: 'Ampola', ampola: 'Ampola', kit: 'Kit',
+        rl: 'Rolo', rolo: 'Rolo', serv: 'Serviço', sv: 'Serviço', servico: 'Serviço',
+        mes: 'Mês', ano: 'Ano', h: 'Hora', hr: 'Hora', hora: 'Hora',
+        dia: 'Diária', diaria: 'Diária'
+      };
+      return mapa[chave] || original || 'Unidade';
+    }
+
+    function abrirLotePrecos(importacao) {
+      const disponiveis = estado.fornecedores.filter(function (fornecedor) {
+        return fornecedor.status !== 'Inativo';
+      });
+      if (!disponiveis.length) {
+        alternarModulo('fornecedores');
+        mostrarToast('Cadastre ou ative um fornecedor antes de registrar preços.', 'erro');
+        return;
+      }
+
+      limparFormularioLote();
+      estado.origemLote = importacao ? importacao.origem : null;
+      estado.loteItens = importacao && importacao.itens.length
+        ? importacao.itens
+        : [novoItemLote()];
+      document.getElementById('loteTipoAcordo').value = 'Produto';
+      document.getElementById('loteStatus').value = importacao && importacao.statusSugerido
+        ? importacao.statusSugerido
+        : 'Ativo';
+      document.getElementById('loteVigenciaInicial').value = importacao && importacao.dataEmissao
+        ? importacao.dataEmissao
+        : dataHojeIso();
+
+      if (importacao && importacao.fornecedorId) {
+        document.getElementById('loteFornecedorId').value = importacao.fornecedorId;
+      } else if (!importacao && disponiveis.length === 1) {
+        document.getElementById('loteFornecedorId').value = disponiveis[0].id;
+      }
+
+      atualizarFornecedorDoLote(true);
+      atualizarResumoOrigemLote(importacao);
+      renderizarItensLote();
+      document.getElementById('tituloFormularioLote').textContent = importacao
+        ? 'Conferir itens da nota fiscal'
+        : 'Cadastro em lote';
+      document.getElementById('subtituloFormularioLote').textContent = importacao && importacao.origem.numeroNota
+        ? 'Nota fiscal ' + importacao.origem.numeroNota
+        : 'Tabela de preços negociados';
+      abrirDrawerLote();
+
+      if (importacao && !importacao.fornecedorId) {
+        const tipoOrigem = importacao.origem && String(importacao.origem.tipo || '').indexOf('PDF') !== -1
+          ? 'PDF'
+          : 'XML';
+        mostrarToast('O CNPJ lido do ' + tipoOrigem + ' não corresponde a um fornecedor cadastrado.', 'erro');
+      }
+    }
+
+    function novoItemLote(dados) {
+      const origem = dados || {};
+      return {
+        itemPadronizado: origem.itemPadronizado || '',
+        palavrasChave: origem.palavrasChave || '',
+        unidadeMedida: origem.unidadeMedida || '',
+        quantidadeReferencia: origem.quantidadeReferencia || '',
+        valorUnitarioInicial: origem.valorUnitarioInicial || '',
+        valorUnitarioNegociado: origem.valorUnitarioNegociado || '',
+        categoria: origem.categoria || '',
+        centroCusto: origem.centroCusto || '',
+        codigo: origem.codigo || '',
+        ncm: origem.ncm || '',
+        confianca: origem.confianca || '',
+        observacoes: origem.observacoes || ''
+      };
+    }
+
+    function limparFormularioLote() {
+      document.getElementById('formLotePrecos').reset();
+      document.getElementById('loteCnpj').value = '';
+      document.getElementById('registroMetaLote').textContent = '';
+      estado.loteItens = [];
+      estado.origemLote = null;
+      prepararSelects();
+      atualizarResumoOrigemLote(null);
+    }
+
+    function atualizarFornecedorDoLote(aplicarPadroes) {
+      const id = document.getElementById('loteFornecedorId').value;
+      const fornecedor = estado.fornecedores.find(function (item) { return item.id === id; });
+      document.getElementById('loteCnpj').value = fornecedor ? fornecedor.cnpj || 'Não informado' : '';
+
+      if (fornecedor && aplicarPadroes) {
+        estado.loteItens.forEach(function (item) {
+          if (!item.categoria && fornecedor.categoriaPadrao) item.categoria = fornecedor.categoriaPadrao;
+          if (!item.centroCusto && fornecedor.centroCustoPadrao) item.centroCusto = fornecedor.centroCustoPadrao;
+        });
+      }
+      renderizarItensLote();
+    }
+
+    function aplicarTipoAcordoAoLote() {
+      const tipo = document.getElementById('loteTipoAcordo').value;
+      const unidade = tipo === 'Contrato' ? 'Mês' : (tipo === 'Serviço' ? 'Serviço' : 'Unidade');
+      estado.loteItens.forEach(function (item) {
+        if (!item.unidadeMedida) item.unidadeMedida = unidade;
+      });
+      estado.formularioLoteSujo = true;
+      renderizarItensLote();
+    }
+
+    function adicionarItensLote(quantidade) {
+      const disponivel = Math.max(100 - estado.loteItens.length, 0);
+      const adicionar = Math.min(Number(quantidade || 1), disponivel);
+      const fornecedor = estado.fornecedores.find(function (item) {
+        return item.id === document.getElementById('loteFornecedorId').value;
+      });
+      const tipo = document.getElementById('loteTipoAcordo').value || 'Produto';
+      const unidade = tipo === 'Contrato' ? 'Mês' : (tipo === 'Serviço' ? 'Serviço' : 'Unidade');
+
+      for (let indice = 0; indice < adicionar; indice += 1) {
+        estado.loteItens.push(novoItemLote({
+          unidadeMedida: unidade,
+          categoria: fornecedor ? fornecedor.categoriaPadrao : '',
+          centroCusto: fornecedor ? fornecedor.centroCustoPadrao : ''
+        }));
+      }
+      if (!adicionar) mostrarToast('O lote já atingiu 100 itens.', 'erro');
+      estado.formularioLoteSujo = true;
+      renderizarItensLote();
+    }
+
+    function atualizarItemLotePeloEvento(evento) {
+      const campo = evento.target.dataset.field;
+      const linha = evento.target.closest('[data-lote-index]');
+      if (!campo || !linha) return;
+      const indice = Number(linha.dataset.loteIndex);
+      if (!estado.loteItens[indice]) return;
+      estado.loteItens[indice][campo] = evento.target.value;
+      estado.formularioLoteSujo = true;
+      atualizarEconomiaLinhaLote(linha, estado.loteItens[indice]);
+    }
+
+    function removerItemLotePeloEvento(evento) {
+      const botao = evento.target.closest('[data-action="remover-item-lote"]');
+      if (!botao) return;
+      const indice = Number(botao.dataset.index);
+      if (estado.loteItens.length === 1) estado.loteItens = [novoItemLote()];
+      else estado.loteItens.splice(indice, 1);
+      estado.formularioLoteSujo = true;
+      renderizarItensLote();
+    }
+
+    function renderizarItensLote() {
+      const lista = document.getElementById('listaItensLote');
+      const unidades = estado.opcoes.unidadesMedida || ['Unidade', 'Caixa', 'Serviço', 'Mês'];
+      const categorias = estado.opcoes.categorias || [];
+      const centros = estado.opcoes.centrosCusto || [];
+
+      lista.innerHTML = estado.loteItens.map(function (item, indice) {
+        const economia = calcularEconomiaItemLote(item);
+        const confianca = item.confianca
+          ? '<span class="batch-confidence ' + escapar(item.confianca) + '">IA: confiança ' + escapar(item.confianca) + '</span>'
+          : '';
+        return '<div class="batch-row" data-lote-index="' + indice + '">' +
+          '<div class="batch-cell batch-item-name" data-label="Item / serviço"><input data-field="itemPadronizado" type="text" maxlength="180" value="' + escapar(item.itemPadronizado) + '" required>' + confianca + '</div>' +
+          '<div class="batch-cell" data-label="Unidade"><select data-field="unidadeMedida" required>' + opcoesSelectLoteHtml(unidades, item.unidadeMedida, true) + '</select></div>' +
+          '<div class="batch-cell batch-reference" data-label="Qtd. referência"><input data-field="quantidadeReferencia" type="text" value="' + escapar(item.quantidadeReferencia) + '" readonly title="Informação de origem; não altera o preço cadastrado"></div>' +
+          '<div class="batch-cell" data-label="Valor inicial"><input data-field="valorUnitarioInicial" type="number" inputmode="decimal" min="0.01" step="0.01" value="' + escapar(item.valorUnitarioInicial) + '" required></div>' +
+          '<div class="batch-cell" data-label="Negociado"><input data-field="valorUnitarioNegociado" type="number" inputmode="decimal" min="0.01" step="0.01" value="' + escapar(item.valorUnitarioNegociado) + '" required></div>' +
+          '<div class="batch-cell" data-label="Economia"><span class="batch-economy ' + economia.classe + '" data-economia>' + escapar(economia.texto) + '</span></div>' +
+          '<div class="batch-cell batch-category" data-label="Categoria"><select data-field="categoria">' + opcoesSelectLoteHtml(categorias, item.categoria, true) + '</select></div>' +
+          '<div class="batch-cell batch-cost-center" data-label="Centro de custo"><select data-field="centroCusto">' + opcoesSelectLoteHtml(centros, item.centroCusto, true) + '</select></div>' +
+          '<div class="batch-cell" data-label="Remover"><button class="batch-remove" type="button" data-action="remover-item-lote" data-index="' + indice + '" title="Remover item" aria-label="Remover item ' + (indice + 1) + '"><i data-lucide="trash-2"></i></button></div>' +
+          '</div>';
+      }).join('');
+
+      const quantidade = estado.loteItens.length;
+      document.getElementById('contadorItensLote').textContent = quantidade + (quantidade === 1 ? ' item' : ' itens');
+      document.getElementById('registroMetaLote').textContent = quantidade ? quantidade + (quantidade === 1 ? ' item no lote' : ' itens no lote') : '';
+      atualizarIcones();
+    }
+
+    function opcoesSelectLoteHtml(valores, atual, permitirVazio) {
+      const lista = (valores || []).slice();
+      if (atual && !lista.some(function (valor) { return valor === atual; })) lista.push(atual);
+      let html = permitirVazio ? '<option value="">Não definido</option>' : '';
+      lista.forEach(function (valor) {
+        html += '<option value="' + escapar(valor) + '"' + (valor === atual ? ' selected' : '') + '>' + escapar(valor) + '</option>';
+      });
+      return html;
+    }
+
+    function calcularEconomiaItemLote(item) {
+      const inicial = Number(String(item.valorUnitarioInicial || '').replace(',', '.'));
+      const negociado = Number(String(item.valorUnitarioNegociado || '').replace(',', '.'));
+      if (!inicial || !negociado) return { texto: '-', classe: '' };
+      const diferenca = inicial - negociado;
+      const percentual = inicial > 0 ? (diferenca / inicial) * 100 : 0;
+      return {
+        texto: formatarMoeda(diferenca) + ' · ' + formatarPercentual(percentual),
+        classe: diferenca < 0 ? 'negative' : 'positive'
+      };
+    }
+
+    function atualizarEconomiaLinhaLote(linha, item) {
+      const elemento = linha.querySelector('[data-economia]');
+      if (!elemento) return;
+      const economia = calcularEconomiaItemLote(item);
+      elemento.textContent = economia.texto;
+      elemento.className = 'batch-economy ' + economia.classe;
+    }
+
+    function atualizarResumoOrigemLote(importacao) {
+      const resumo = document.getElementById('resumoImportacaoXml');
+      if (!importacao || !importacao.origem) {
+        resumo.classList.add('hidden');
+        document.getElementById('tituloOrigemLote').textContent = '';
+        document.getElementById('metaOrigemLote').textContent = '';
+        return;
+      }
+
+      const origem = importacao.origem;
+      const ehPdf = String(origem.tipo || '').indexOf('PDF') !== -1;
+      const titulo = origem.numeroNota
+        ? (ehPdf ? 'Nota fiscal ' : 'NF-e ') + origem.numeroNota
+        : origem.arquivo;
+      const meta = [
+        origem.fornecedorNome,
+        formatarCnpjVisual(origem.fornecedorCnpj),
+        importacao.itens.length + (importacao.itens.length === 1 ? ' item' : ' itens'),
+        origem.valorNota ? formatarMoeda(origem.valorNota) : '',
+        ehPdf && origem.confianca ? 'Confiança ' + origem.confianca : ''
+      ].filter(Boolean).join(' · ');
+      document.getElementById('tituloOrigemLote').textContent = titulo;
+      document.getElementById('metaOrigemLote').textContent = meta;
+      resumo.classList.remove('hidden');
+    }
+
+    function abrirDrawerLote() {
+      const overlay = document.getElementById('batchDrawerOverlay');
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      estado.formularioLoteSujo = false;
+      window.setTimeout(function () {
+        const fornecedor = document.getElementById('loteFornecedorId');
+        fornecedor.focus();
+      }, 100);
+    }
+
+    function fecharFormularioLote() {
+      if (estado.salvandoLote) return;
+      if (estado.formularioLoteSujo && !window.confirm('Descartar este lote de preços?')) return;
+      const overlay = document.getElementById('batchDrawerOverlay');
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      estado.formularioLoteSujo = false;
+    }
+
+    function salvarLotePrecos(evento) {
+      evento.preventDefault();
+      const form = evento.currentTarget;
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      if (!estado.loteItens.length) {
+        mostrarToast('Adicione ao menos um item ao lote.', 'erro');
+        return;
+      }
+
+      const payload = {
+        fornecedorId: document.getElementById('loteFornecedorId').value,
+        tipoAcordo: document.getElementById('loteTipoAcordo').value,
+        vigenciaInicial: document.getElementById('loteVigenciaInicial').value,
+        vigenciaFinal: document.getElementById('loteVigenciaFinal').value,
+        status: document.getElementById('loteStatus').value,
+        condicaoNegociada: document.getElementById('loteCondicaoNegociada').value,
+        origem: estado.origemLote,
+        itens: estado.loteItens.map(function (item) {
+          return Object.assign({}, item);
+        })
+      };
+
+      alternarSalvamentoLote(true);
+      if (!servicoAppsScriptDisponivel()) {
+        alternarSalvamentoLote(false);
+        mostrarPortalIndisponivel();
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function (resultado) {
+          estado.precos = resultado.precos || [];
+          renderizarResumoPrecos(resultado.resumo);
+          renderizarListaPrecos();
+          alternarSalvamentoLote(false);
+          estado.formularioLoteSujo = false;
+          fecharFormularioLote();
+          mostrarToast(
+            resultado.quantidade + (resultado.quantidade === 1 ? ' preço cadastrado.' : ' preços cadastrados.'),
+            'sucesso'
+          );
+        })
+        .withFailureHandler(function (erro) {
+          alternarSalvamentoLote(false);
+          mostrarErro(erro);
+        })
+        .salvarPrecosEmLotePortal(payload);
+    }
+
+    function alternarSalvamentoLote(salvando) {
+      estado.salvandoLote = salvando;
+      const botao = document.getElementById('botaoSalvarLote');
+      botao.disabled = salvando;
+      botao.querySelector('span').textContent = salvando ? 'Salvando...' : 'Salvar lote';
+    }
+
+    function formatarNumeroReferencia(valor) {
+      return Number(valor || 0).toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+    }
+
+    function arredondarNumero(valor) {
+      return Math.round((Number(valor) + Number.EPSILON) * 10000) / 10000;
+    }
+
+    function formatarCnpjVisual(valor) {
+      const numeros = somenteDigitos(valor);
+      if (numeros.length !== 14) return valor || '';
+      return numeros.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    }
+
+    function alternarCarregamento(carregando) {
+      document.getElementById('pageLoading').classList.toggle('hidden', !carregando);
+    }
+
+    function servicoAppsScriptDisponivel() {
+      return !!(window.google && google.script && google.script.run);
+    }
+
+    function mostrarPortalIndisponivel() {
+      alternarCarregamento(false);
+      prepararSelects();
+      renderizarResumo(calcularResumo(estado.fornecedores));
+      renderizarLista();
+      renderizarResumoPrecos(calcularResumoPrecos(estado.precos));
+      renderizarListaPrecos();
+      document.getElementById('ultimaAtualizacao').textContent = 'Portal publicado necessario';
+      mostrarToast('Abra o portal pelo link publicado para conectar ao Google Sheets.', 'erro');
+    }
+
+    function aplicarMascaraCnpj(evento) {
+      let valor = somenteDigitos(evento.target.value).slice(0, 14);
+      valor = valor.replace(/^(\d{2})(\d)/, '$1.$2');
+      valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+      valor = valor.replace(/\.(\d{3})(\d)/, '.$1/$2');
+      valor = valor.replace(/(\d{4})(\d)/, '$1-$2');
+      evento.target.value = valor;
+
+      if (!valor) document.getElementById('status').value = 'Revisar';
+    }
+
+    function aplicarMascaraTelefone(evento) {
+      let valor = somenteDigitos(evento.target.value).slice(0, 11);
+      if (valor.length > 10) {
+        valor = valor.replace(/^(\d{2})(\d{5})(\d{0,4})$/, '($1) $2-$3');
+      } else if (valor.length > 6) {
+        valor = valor.replace(/^(\d{2})(\d{4})(\d{0,4})$/, '($1) $2-$3');
+      } else if (valor.length > 2) {
+        valor = valor.replace(/^(\d{2})(\d+)$/, '($1) $2');
+      }
+      evento.target.value = valor;
+    }
+
+    function mostrarErro(erro) {
+      const mensagem = erro && erro.message ? erro.message : String(erro || 'Erro desconhecido.');
+      mostrarToast(mensagem, 'erro');
+    }
+
+    function mostrarToast(mensagem, tipo) {
+      const regiao = document.getElementById('toastRegion');
+      const toast = document.createElement('div');
+      toast.className = 'toast ' + (tipo || '');
+      toast.innerHTML = '<i data-lucide="' + (tipo === 'sucesso' ? 'circle-check' : 'circle-alert') + '"></i><span>' + escapar(mensagem) + '</span>';
+      regiao.appendChild(toast);
+      atualizarIcones();
+      window.setTimeout(function () { toast.remove(); }, 4500);
+    }
+
+    function atualizarIcones() {
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function formatarMoeda(valor) {
+      return Number(valor || 0).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4
+      });
+    }
+
+    function formatarMoedaResumo(valor) {
+      return Number(valor || 0).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function formatarPercentual(valor) {
+      return Number(valor || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 1
+      }) + '%';
+    }
+
+    function dataHojeIso() {
+      const hoje = new Date();
+      const ano = hoje.getFullYear();
+      const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+      const dia = String(hoje.getDate()).padStart(2, '0');
+      return ano + '-' + mes + '-' + dia;
+    }
+
+    function somenteDigitos(valor) {
+      return String(valor || '').replace(/\D/g, '');
+    }
+
+    function normalizar(valor) {
+      return String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+    }
+
+    function escapar(valor) {
+      return String(valor == null ? '' : valor)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
