@@ -10,6 +10,8 @@ describe('organization access', () => {
   it('keeps report viewers read-only', () => {
     expect(hasOrganizationPermission('REPORT_VIEWER', 'purchase:read')).toBe(true);
     expect(hasOrganizationPermission('REPORT_VIEWER', 'purchase:write')).toBe(false);
+    expect(hasOrganizationPermission('REPORT_VIEWER', 'cost-center:read')).toBe(true);
+    expect(hasOrganizationPermission('REPORT_VIEWER', 'cost-center:write')).toBe(false);
   });
 
   it('does not grant platform management to company roles', () => {

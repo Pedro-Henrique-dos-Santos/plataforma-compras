@@ -17,21 +17,21 @@
 
 ## Fase 2: cadastros mestres
 
-- [Proximo] Migrar fornecedores e centros de custo.
-- [Proximo] Migrar tabela de precos e importacao em lote.
-- [Proximo] Criar conciliacao entre planilha e PostgreSQL.
+- [Concluido] Migrar fornecedores e centros de custo.
+- [Concluido] Migrar tabela de precos e importacao em lote.
+- [Em andamento] Criar conciliacao entre planilha e PostgreSQL.
 
 ## Fase 3: operacao de compras
 
-- Migrar cadastro de compras, itens, rateios e parcelas.
-- Incorporar notas fiscais e documentos no fluxo externo.
-- Garantir idempotencia e rastreabilidade.
+- [Concluido] Migrar cadastro de compras, itens, rateios e parcelas.
+- [Proximo] Incorporar notas fiscais e documentos no fluxo externo.
+- [Concluido] Garantir idempotencia, isolamento por empresa e auditoria das gravacoes.
 
 ## Fase 4: inteligencia
 
-- Migrar dashboard e indicadores para consultas do banco.
-- Criar filtros multiempresa e exportacoes.
-- Consolidar economia negociada e comparativos historicos.
+- [Concluido] Migrar dashboard e indicadores para consultas do banco.
+- [Em andamento] Criar filtros multiempresa e exportacoes.
+- [Concluido] Consolidar economia negociada, comparativos mensais e gastos por departamento.
 
 ## Fase 5: producao
 

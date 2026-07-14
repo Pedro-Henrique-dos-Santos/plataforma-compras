@@ -45,6 +45,26 @@ const SettingsView = lazy(() =>
     default: module.SettingsView,
   })),
 );
+const PurchasesView = lazy(() =>
+  import('./components/PurchasesView').then((module) => ({
+    default: module.PurchasesView,
+  })),
+);
+const SuppliersView = lazy(() =>
+  import('./components/SuppliersView').then((module) => ({
+    default: module.SuppliersView,
+  })),
+);
+const PricesView = lazy(() =>
+  import('./components/PricesView').then((module) => ({
+    default: module.PricesView,
+  })),
+);
+const CostCentersView = lazy(() =>
+  import('./components/CostCentersView').then((module) => ({
+    default: module.CostCentersView,
+  })),
+);
 
 export default function App() {
   const [sessionState, setSessionState] = useState<SessionState>('checking');
@@ -53,6 +73,7 @@ export default function App() {
   const [activeOrganizationId, setActiveOrganizationId] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dataRevision, setDataRevision] = useState(0);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [view, setView] = useState<ViewId>('dashboard');
@@ -166,7 +187,7 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [accessToken, activeOrganization]);
+  }, [accessToken, activeOrganization, dataRevision]);
 
   useEffect(() => {
     if (!activeOrganization || view !== 'access') {
@@ -274,6 +295,10 @@ export default function App() {
     setMembers((current) => sortMembers(upsertMember(current, member)));
   }
 
+  function handleOperationalChanged() {
+    setDataRevision((current) => current + 1);
+  }
+
   if (sessionState === 'checking') {
     return <FullPageLoading />;
   }
@@ -300,6 +325,10 @@ export default function App() {
     );
   }
 
+  const canWriteOperationalData =
+    user.platformRoles.includes('PLATFORM_OWNER') ||
+    activeOrganization.role !== 'REPORT_VIEWER';
+
   return (
     <AppShell
       activeOrganization={activeOrganization}
@@ -321,6 +350,38 @@ export default function App() {
       <Suspense fallback={<ViewLoading />}>
         {view === 'dashboard' && (
           <DashboardView loading={dashboardLoading} summary={dashboard} />
+        )}
+        {view === 'purchases' && (
+          <PurchasesView
+            accessToken={accessToken}
+            canWrite={canWriteOperationalData}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'suppliers' && (
+          <SuppliersView
+            accessToken={accessToken}
+            canWrite={canWriteOperationalData}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'prices' && (
+          <PricesView
+            accessToken={accessToken}
+            canWrite={canWriteOperationalData}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'cost-centers' && (
+          <CostCentersView
+            accessToken={accessToken}
+            canWrite={canWriteOperationalData}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
         )}
         {view === 'organizations' && (
           <OrganizationsView

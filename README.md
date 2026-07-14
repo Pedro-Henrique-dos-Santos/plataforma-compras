@@ -10,6 +10,10 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 - O banco definitivo sera PostgreSQL, com Supabase Free no desenvolvimento remoto.
 - A identidade, as empresas, os convites e os papeis ja possuem implementacao de API e persistencia.
 - A interface inclui os temas Normal, Escuro e Branco e uma barra lateral recolhivel.
+- Centros de custo e fornecedores possuem cadastro por empresa, status e regras padrao.
+- A tabela de precos aceita varias linhas e importacao CSV idempotente por fornecedor.
+- Compras suportam varios itens, economia negociada, centro automatico, rateios e parcelas opcionais.
+- O dashboard e calculado a partir das compras e inclui gastos por categoria e departamento.
 
 ## Estrutura
 
@@ -47,6 +51,9 @@ pnpm check
 ```
 
 Esse comando executa lint, verificacao de tipos, testes e build de todos os pacotes.
+
+Na versao `0.3.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
+importacoes idempotentes, rateios e agregacoes do dashboard.
 
 ## Seguranca
 

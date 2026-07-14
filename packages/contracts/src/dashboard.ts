@@ -6,6 +6,7 @@ export const moneyMetricSchema = z.object({
 });
 
 export const dashboardSummarySchema = z.object({
+  dataSource: z.enum(['DEMO', 'DATABASE']),
   periodLabel: z.string(),
   totalPurchased: moneyMetricSchema,
   negotiatedSavings: moneyMetricSchema,
@@ -20,6 +21,13 @@ export const dashboardSummarySchema = z.object({
   spendByCategory: z.array(
     z.object({
       category: z.string(),
+      value: z.number().nonnegative(),
+      color: z.string(),
+    }),
+  ),
+  spendByDepartment: z.array(
+    z.object({
+      department: z.string(),
       value: z.number().nonnegative(),
       color: z.string(),
     }),
