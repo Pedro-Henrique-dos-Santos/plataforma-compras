@@ -36,6 +36,10 @@ describe('procurement Excel export', () => {
       'Administrativo',
     );
     expect(workbook.getWorksheet('Departamentos')?.getCell('C2').value).toBe(100);
+    expect(workbook.getWorksheet('Compras')?.getColumn(4).width).toBe(48);
+    expect(workbook.getWorksheet('Compras')?.getCell('D2').alignment.wrapText).toBe(true);
+    expect(workbook.getWorksheet('Fornecedores')?.getColumn(1).width).toBe(52);
+    expect(workbook.getWorksheet('Fornecedores')?.getCell('A2').alignment.wrapText).toBe(true);
   });
 });
 

@@ -105,9 +105,9 @@ function addPurchasesSheet(workbook: Workbook, purchases: ProcurementReportRow[]
     { header: 'Pedido', key: 'number', width: 18 },
     { header: 'Nota fiscal', key: 'invoice', width: 18 },
     { header: 'Data', key: 'issuedAt', width: 13 },
-    { header: 'Fornecedor', key: 'supplier', width: 36 },
-    { header: 'Categoria', key: 'category', width: 24 },
-    { header: 'Departamentos', key: 'departments', width: 34 },
+    { header: 'Fornecedor', key: 'supplier', width: 48 },
+    { header: 'Categoria', key: 'category', width: 34 },
+    { header: 'Departamentos', key: 'departments', width: 24 },
     { header: 'Origem', key: 'source', width: 18 },
     { header: 'Status', key: 'status', width: 15 },
     { header: 'Itens', key: 'items', width: 10 },
@@ -133,6 +133,16 @@ function addPurchasesSheet(workbook: Workbook, purchases: ProcurementReportRow[]
     row.getCell(9).numFmt = '0';
     row.getCell(10).numFmt = MONEY_FORMAT;
     row.getCell(11).numFmt = MONEY_FORMAT;
+    [4, 5, 6].forEach((column) => {
+      row.getCell(column).alignment = { vertical: 'middle', wrapText: true };
+    });
+    if (
+      purchase.supplierName.length > 44 ||
+      (purchase.category?.length ?? 0) > 30 ||
+      purchase.departments.join(', ').length > 22
+    ) {
+      row.height = 30;
+    }
   });
   sheet.autoFilter = {
     from: { column: 1, row: 1 },
@@ -150,7 +160,7 @@ function addBreakdownSheet(
     views: [{ state: 'frozen', ySplit: 1 }],
   });
   sheet.columns = [
-    { header: name === 'Meses' ? 'Mes' : name.slice(0, -1), key: 'label', width: 38 },
+    { header: name === 'Meses' ? 'Mes' : name.slice(0, -1), key: 'label', width: 52 },
     { header: 'Compras', key: 'purchases', width: 14 },
     { header: 'Gasto', key: 'total', width: 18 },
     { header: 'Economia', key: 'savings', width: 18 },
@@ -166,6 +176,8 @@ function addBreakdownSheet(
     row.getCell(2).numFmt = '0';
     row.getCell(3).numFmt = MONEY_FORMAT;
     row.getCell(4).numFmt = MONEY_FORMAT;
+    row.getCell(1).alignment = { vertical: 'middle', wrapText: true };
+    if (entry.label.length > 48) row.height = 30;
   });
   sheet.autoFilter = {
     from: { column: 1, row: 1 },
