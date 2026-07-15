@@ -7,6 +7,7 @@
 - Endurecidos CORS, proxy confiavel, origens HTTPS e validacoes do ambiente de producao.
 - Adicionada barreira de erro na interface para preservar a sessao em falhas de renderizacao.
 - Criados teste de carga leve, backup PostgreSQL e verificacao estrutural de backup.
+- Separado o comando seguro de implantacao das migracoes do fluxo de desenvolvimento.
 - Documentados alertas, implantacao controlada, restauracao e resposta a incidentes.
 - Validado o modo demonstracao com 100 requisicoes, sem falhas e p95 abaixo do limite.
 

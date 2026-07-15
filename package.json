@@ -19,6 +19,7 @@
     "db:generate": "pnpm --filter @compras/database prisma:generate",
     "db:validate": "pnpm --filter @compras/database prisma:validate",
     "db:migrate": "pnpm --filter @compras/database prisma:migrate",
+    "db:deploy": "pnpm --filter @compras/database prisma:deploy",
     "db:seed": "pnpm --filter @compras/database prisma:seed",
     "db:studio": "pnpm --filter @compras/database prisma:studio",
     "db:backup": "node scripts/backup-database.mjs",

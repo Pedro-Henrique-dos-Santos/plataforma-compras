@@ -47,3 +47,5 @@ O padrao executa 100 requisicoes com concorrencia 10 e falha quando ocorre erro 
 8. Conciliar os totais da planilha e do PostgreSQL antes de alterar a fonte primaria.
 9. Executar backup e restauracao de ensaio.
 10. Liberar usuarios em grupos pequenos e manter o Apps Script disponivel durante a estabilizacao.
+
+Em implantacoes, use `pnpm db:deploy`. O comando `pnpm db:migrate` e reservado ao desenvolvimento local porque pode criar ou alterar migracoes interativamente.
