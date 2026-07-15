@@ -57,11 +57,12 @@ pnpm check
 
 Esse comando executa lint, verificacao de tipos, testes e build de todos os pacotes.
 
-Na versao `0.7.2`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
+Na versao `0.7.3`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
 importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets e
 automacao documental com revisao obrigatoria, relatorios filtrados, exportacao segura e
 prontidao operacional. O CI aplica todas as migracoes em um PostgreSQL descartavel e executa
 testes de isolamento dos repositorios, das protecoes RLS e de recuperacao completa do banco.
+Um workflow manual protegido prepara e valida o Supabase de homologacao sem armazenar segredos no codigo.
 
 ## Seguranca
 

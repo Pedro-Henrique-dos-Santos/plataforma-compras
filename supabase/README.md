@@ -63,3 +63,15 @@ No painel do Supabase, defina a URL do front-end e as URLs de redirecionamento p
 8. Execute um backup e uma restauracao de ensaio conforme `docs/RECOVERY_RUNBOOK.md`.
 
 O modo demonstracao funciona sem credenciais, mas deve permanecer desativado fora do desenvolvimento local.
+
+## 7. Homologacao automatizada pelo GitHub
+
+Crie um ambiente protegido chamado `staging` no repositorio e cadastre somente nele:
+
+- `STAGING_DATABASE_URL`: conexao PostgreSQL com permissao para migracoes.
+- `STAGING_SUPABASE_URL`: URL HTTPS do projeto.
+- `STAGING_SUPABASE_SERVICE_ROLE_KEY`: chave privilegiada usada apenas pelo job protegido.
+
+Execute manualmente o workflow `Supabase Staging` e informe `APLICAR HOMOLOGACAO`. O job aplica migracoes com `prisma migrate deploy`, executa os testes de isolamento multiempresa e garante que o bucket `invoice-documents` exista como privado.
+
+O workflow nao cria usuarios, empresas permanentes nem dados demonstrativos. Os registros sinteticos dos testes usam identificadores aleatorios e sao removidos ao final. Nunca use credenciais de producao no ambiente `staging`.

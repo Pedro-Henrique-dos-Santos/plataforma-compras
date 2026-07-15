@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.3 - 2026-07-14
+
+- Adicionado workflow manual e protegido para homologacao do banco Supabase.
+- Adicionada confirmacao explicita antes de aplicar migracoes no ambiente remoto.
+- Adicionada validacao multiempresa contra o banco de homologacao com limpeza dos dados sinteticos.
+- Adicionado provisionamento idempotente do bucket privado de notas fiscais.
+- Adicionadas validacoes de URL, chave de servico, nome do bucket e privacidade final.
+- Adicionados quatro testes do provisionamento do Supabase Storage.
+
 ## 0.7.2 - 2026-07-14
 
 - Adicionado ensaio automatizado de backup e restauracao em banco PostgreSQL descartavel.

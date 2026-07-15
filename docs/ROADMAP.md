@@ -39,5 +39,6 @@
 - [Concluido no codigo] Backups, prontidao, observabilidade e plano de alertas.
 - [Concluido no CI] Aplicar migracoes em PostgreSQL descartavel e testar isolamento multiempresa e RLS.
 - [Concluido no CI] Executar backup, restauracao integral e reconciliacao em banco descartavel.
+- [Preparado] Workflow protegido para migrar e validar o Supabase de homologacao e o bucket privado.
 - [Pendente externo] Criar e homologar a instancia Supabase.
 - [Pendente externo] Implantacao controlada e desligamento gradual do Apps Script.

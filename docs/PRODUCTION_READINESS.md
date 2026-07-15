@@ -47,8 +47,8 @@ O padrao executa 100 requisicoes com concorrencia 10 e falha quando ocorre erro 
 ## Checklist de implantacao
 
 1. Criar o projeto Supabase e guardar as credenciais no gerenciador de segredos.
-2. Aplicar todas as migracoes Prisma e o endurecimento de acesso descrito em `supabase/README.md`.
-3. Criar o bucket privado de notas fiscais.
+2. Cadastrar as credenciais somente no ambiente protegido `staging` do GitHub.
+3. Executar o workflow manual `Supabase Staging` para migrar, testar o isolamento e provisionar o bucket privado.
 4. Definir um proprietario global independente das empresas clientes.
 5. Configurar HTTPS, CORS explicito e `TRUST_PROXY=true` somente atras de proxy confiavel.
 6. Publicar API e interface em ambientes separados de homologacao e producao.
