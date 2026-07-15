@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.2 - 2026-07-14
+
+- Adicionado ensaio automatizado de backup e restauracao em banco PostgreSQL descartavel.
+- Adicionada reconciliacao de migracoes, RLS, contagens e totais monetarios entre origem e restauracao.
+- Adicionadas protecoes contra restauracao no banco de origem, bancos reservados e hosts remotos sem confirmacao.
+- Adicionados seis testes das validacoes de seguranca e integridade do ensaio.
+- Substituido o seed por dados totalmente sinteticos de empresa, fornecedor, preco, compra, rateio e sincronizacao.
+- Integrado o ensaio completo ao GitHub Actions.
+
 ## 0.7.1 - 2026-07-14
 
 - Protegidas com RLS as tabelas de integracao e execucao do Google Sheets.

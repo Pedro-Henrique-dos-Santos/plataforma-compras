@@ -21,6 +21,7 @@ O balanceador deve retirar a instancia do trafego quando `ready` retornar `503`,
 - Chaves de negocio iguais sao exercitadas em duas empresas sem conflito entre tenants.
 - Fornecedor e centro de custo de outra empresa sao rejeitados pelo repositorio.
 - Dashboard, relatorio, compras, fornecedores e auditoria sao conferidos por organizacao.
+- Um backup customizado e restaurado em outro banco, com reconciliacao de migracoes, RLS, contagens e totais.
 
 ## Alertas iniciais
 
@@ -53,7 +54,7 @@ O padrao executa 100 requisicoes com concorrencia 10 e falha quando ocorre erro 
 6. Publicar API e interface em ambientes separados de homologacao e producao.
 7. Executar testes de login, troca de empresa, isolamento, escrita, relatorios e recuperacao de senha.
 8. Conciliar os totais da planilha e do PostgreSQL antes de alterar a fonte primaria.
-9. Executar backup e restauracao de ensaio.
+9. Confirmar o ensaio automatizado do CI e repetir a restauracao com um backup da homologacao.
 10. Liberar usuarios em grupos pequenos e manter o Apps Script disponivel durante a estabilizacao.
 
 Em implantacoes, use `pnpm db:deploy`. O comando `pnpm db:migrate` e reservado ao desenvolvimento local porque pode criar ou alterar migracoes interativamente.

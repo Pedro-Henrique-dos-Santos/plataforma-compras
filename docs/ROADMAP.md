@@ -38,6 +38,6 @@
 - [Concluido no codigo] Testes de carga, seguranca e recuperacao.
 - [Concluido no codigo] Backups, prontidao, observabilidade e plano de alertas.
 - [Concluido no CI] Aplicar migracoes em PostgreSQL descartavel e testar isolamento multiempresa e RLS.
+- [Concluido no CI] Executar backup, restauracao integral e reconciliacao em banco descartavel.
 - [Pendente externo] Criar e homologar a instancia Supabase.
-- [Pendente externo] Executar restauracao de ensaio em PostgreSQL descartavel.
 - [Pendente externo] Implantacao controlada e desligamento gradual do Apps Script.

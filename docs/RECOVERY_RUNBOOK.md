@@ -27,6 +27,25 @@ A verificacao lista a estrutura com `pg_restore` sem alterar o banco. Ela detect
 
 ## Ensaio de restauracao
 
+Em PostgreSQL local ou descartavel, o ensaio automatizado executa backup, restauracao, comparacao e limpeza:
+
+```bash
+DATABASE_URL=postgresql://... pnpm db:restore:drill
+```
+
+Hosts remotos exigem `RESTORE_DRILL_CONFIRM=true`. O alvo recebe um nome aleatorio e nunca pode ser o banco de origem, `postgres`, `template0` ou `template1`. O CI executa o comando com dados sinteticos e exige que empresas, fornecedores, compras e itens sejam recuperados.
+
+O processo automatizado:
+
+1. Confere migracoes aplicadas e RLS no banco de origem.
+2. Gera e inspeciona um backup customizado sem proprietarios ou ACLs.
+3. Cria um banco descartavel separado.
+4. Restaura o arquivo com falha imediata em qualquer erro.
+5. Compara contagens, totais de compras, economia, rateios e migracoes.
+6. Apaga o banco e o arquivo temporario mesmo quando uma validacao falha.
+
+Para um ensaio manual em infraestrutura separada:
+
 1. Criar um banco PostgreSQL descartavel e vazio.
 2. Restaurar o arquivo com `pg_restore --clean --if-exists --no-owner --no-acl`.
 3. Executar as migracoes pendentes.

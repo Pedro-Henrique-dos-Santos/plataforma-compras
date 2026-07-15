@@ -18,7 +18,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compras?schema=public
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:16-alpine
         env:
           POSTGRES_DB: compras
           POSTGRES_PASSWORD: postgres
@@ -62,4 +62,20 @@ jobs:
 
       - name: Validate PostgreSQL tenant isolation
         run: pnpm test:integration
+
+      - name: Verify PostgreSQL client tools
+        run: |
+          pg_dump --version
+          pg_restore --version
+          psql --version
+          createdb --version
+          dropdb --version
+
+      - name: Seed synthetic recovery fixture
+        run: pnpm db:seed
+
+      - name: Run backup and restore drill
+        env:
+          RESTORE_DRILL_REQUIRE_DATA: "true"
+        run: pnpm db:restore:drill
 

@@ -68,7 +68,7 @@ O produto usa a marca E-Gestao Compras e exibe o nome da empresa ativa no cabeca
 
 A API separa verificacoes de vida e prontidao. Fora do modo demonstrativo, a prontidao executa uma consulta minima no PostgreSQL. Toda resposta recebe `x-request-id`, e o log estruturado registra metodo, caminho sem parametros, status e duracao.
 
-Backups usam o formato customizado do `pg_dump` sem expor a senha na linha de comando. A verificacao estrutural usa `pg_restore --list`; a restauracao completa deve ocorrer primeiro em um banco descartavel e ser reconciliada com os totais operacionais.
+Backups usam o formato customizado do `pg_dump` sem expor a senha na linha de comando. A verificacao estrutural usa `pg_restore --list`; o CI restaura o arquivo em outro banco descartavel e compara migracoes, contagens, totais monetarios e RLS antes de apagar o ambiente de ensaio.
 
 ## Transicao do legado
 

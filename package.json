@@ -1,6 +1,6 @@
 {
   "name": "plataforma-compras",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": true,
   "description": "Plataforma multiempresa para gestao, inteligencia e controle de compras.",
   "packageManager": "pnpm@11.7.0",
@@ -13,7 +13,7 @@
     "dev:api": "pnpm --filter @compras/api dev",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --if-present test && node --test scripts/restore-drill.test.mjs",
     "test:integration": "pnpm --filter @compras/api test:integration",
     "lint": "pnpm -r --if-present lint",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
@@ -25,6 +25,7 @@
     "db:studio": "pnpm --filter @compras/database prisma:studio",
     "db:backup": "node scripts/backup-database.mjs",
     "db:backup:verify": "node scripts/verify-backup.mjs",
+    "db:restore:drill": "node scripts/restore-drill.mjs",
     "load:smoke": "node scripts/load-smoke.mjs"
   }
 }
