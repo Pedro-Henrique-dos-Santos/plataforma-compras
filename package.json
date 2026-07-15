@@ -1,6 +1,6 @@
 {
   "name": "plataforma-compras",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "description": "Plataforma multiempresa para gestao, inteligencia e controle de compras.",
   "packageManager": "pnpm@11.7.0",
@@ -14,6 +14,7 @@
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
+    "test:integration": "pnpm --filter @compras/api test:integration",
     "lint": "pnpm -r --if-present lint",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:generate": "pnpm --filter @compras/database prisma:generate",

@@ -14,6 +14,14 @@ O codigo cobre identidade, multiempresa, papeis, cadastros, precos, compras, rat
 
 O balanceador deve retirar a instancia do trafego quando `ready` retornar `503`, mas reiniciar o processo somente quando `live` falhar.
 
+## Verificacoes do banco no CI
+
+- Um PostgreSQL descartavel recebe todas as migracoes com `pnpm db:deploy`.
+- O catalogo e validado para garantir RLS em todas as tabelas da aplicacao.
+- Chaves de negocio iguais sao exercitadas em duas empresas sem conflito entre tenants.
+- Fornecedor e centro de custo de outra empresa sao rejeitados pelo repositorio.
+- Dashboard, relatorio, compras, fornecedores e auditoria sao conferidos por organizacao.
+
 ## Alertas iniciais
 
 Configurar alertas no provedor de hospedagem para:

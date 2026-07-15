@@ -18,7 +18,7 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 - A sincronizacao com Google Sheets possui configuracao por empresa, previa persistida, conciliacao e aplicacao idempotente.
 - Notas em XML ou PDF passam por validacao, leitura estruturada ou OCR gratuito, revisao humana e conciliacao antes de criar compras.
 - A API possui prontidao do banco, identificadores de requisicao e logs estruturados.
-- O repositorio inclui teste de carga leve e rotinas de backup e verificacao para PostgreSQL.
+- O repositorio inclui teste de carga leve, rotinas de backup e integracao multiempresa contra PostgreSQL real no CI.
 
 ## Estrutura
 
@@ -57,10 +57,11 @@ pnpm check
 
 Esse comando executa lint, verificacao de tipos, testes e build de todos os pacotes.
 
-Na versao `0.7.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
+Na versao `0.7.1`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
 importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets e
 automacao documental com revisao obrigatoria, relatorios filtrados, exportacao segura e
-prontidao operacional.
+prontidao operacional. O CI aplica todas as migracoes em um PostgreSQL descartavel e executa
+testes de isolamento dos repositorios e das protecoes RLS.
 
 ## Seguranca
 

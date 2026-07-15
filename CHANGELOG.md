@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.1 - 2026-07-14
+
+- Protegidas com RLS as tabelas de integracao e execucao do Google Sheets.
+- Adicionado PostgreSQL descartavel ao CI com aplicacao integral das migracoes.
+- Adicionados testes de integracao para isolamento de fornecedores, compras, centros de custo, indicadores e auditoria.
+- Adicionada verificacao de catalogo que impede novas tabelas da aplicacao sem RLS.
+- Habilitada a validacao automatica para branches de desenvolvimento `agent/**`.
+
 ## 0.7.0 - 2026-07-14
 
 - Adicionados endpoints separados de vida e prontidao com verificacao do PostgreSQL.

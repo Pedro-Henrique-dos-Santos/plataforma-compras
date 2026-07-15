@@ -1,6 +1,6 @@
 {
   "name": "@compras/api",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "pretest": "pnpm --filter @compras/contracts build && pnpm --filter @compras/database build",
     "test": "vitest run",
+    "pretest:integration": "pnpm --filter @compras/contracts build && pnpm --filter @compras/database build",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
