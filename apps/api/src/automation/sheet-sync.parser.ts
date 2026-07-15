@@ -25,6 +25,11 @@ type PurchaseDraft = Omit<ParsedSheetPurchase, 'items' | 'rowNumbers' | 'install
   rowNumbers: number[];
 };
 
+type LegacyParseResult = {
+  purchases: ParsedSheetPurchase[];
+  sourceRows: number;
+};
+
 export function parseSheetWorkbook(
   workbook: SheetWorkbook,
   integration: StoredGoogleSheetsIntegration,
@@ -59,16 +64,28 @@ export function parseSheetWorkbook(
     issues,
     warnings,
   );
+  const legacy = optionalTable(workbook, 'valores negociados');
+  const legacyResult = legacy
+    ? parseLegacyPurchases(
+        legacy,
+        integration.headerRow,
+        suppliers,
+        purchases,
+        issues,
+        warnings,
+      )
+    : { purchases: [], sourceRows: 0 };
 
   return {
     sourceRows:
-      countDataRows(suppliersTable) +
-      countDataRows(pricesTable) +
-      countDataRows(itemsTable) +
-      countDataRows(installmentsTable),
+      countContentRows(suppliersTable) +
+      countContentRows(pricesTable) +
+      countContentRows(itemsTable) +
+      countContentRows(installmentsTable) +
+      legacyResult.sourceRows,
     suppliers,
     prices,
-    purchases,
+    purchases: [...purchases, ...legacyResult.purchases],
     issues,
     warnings,
   };
@@ -373,12 +390,190 @@ function parsePurchases(
   }));
 }
 
+function parseLegacyPurchases(
+  table: SheetTable,
+  headerRow: number,
+  suppliers: ParsedSheetSupplier[],
+  normalizedPurchases: ParsedSheetPurchase[],
+  issues: SheetSyncAction[],
+  warnings: string[],
+): LegacyParseResult {
+  const rows = tableRows(table, headerRow);
+  assertHeaders(rows.headers, table.name, [
+    ['prestador de servicos', 'fornecedor', 'razao social'],
+    ['descricao da compra', 'item', 'descricao'],
+    ['valor negociado', 'valor total negociado'],
+  ]);
+  const supplierProfiles = new Map<string, ParsedSheetSupplier>();
+  for (const supplier of suppliers) {
+    supplierProfiles.set(normalizeText(supplier.legalName), supplier);
+    if (supplier.tradeName) {
+      supplierProfiles.set(normalizeText(supplier.tradeName), supplier);
+    }
+  }
+  const normalizedOrders = new Set(
+    normalizedPurchases.map((purchase) => normalizeText(purchase.number)),
+  );
+  const normalizedInvoices = new Set(
+    normalizedPurchases.flatMap((purchase) =>
+      purchase.invoiceNumber
+        ? [legacyInvoiceKey(purchase.supplierName, purchase.invoiceNumber)]
+        : [],
+    ),
+  );
+  const sourceKeys = new Set<string>();
+  const purchases: ParsedSheetPurchase[] = [];
+  let sourceRows = 0;
+
+  for (const row of rows.data) {
+    const supplierName = textCell(row, [
+      'prestador de servicos',
+      'fornecedor',
+      'razao social',
+    ]);
+    const description = textCell(row, ['descricao da compra', 'item', 'descricao']);
+    const number = textCell(row, ['numero do pedido', 'pedido']);
+    const issuedAt = dateCell(row, ['data de emissao', 'emissao']);
+    const invoiceNumber = textCell(row, [
+      'documento',
+      'numero da nota fiscal',
+      'numero da nota',
+    ]);
+    const initialPrice = numberCell(row, ['valor inicial', 'valor total inicial']);
+    const negotiatedPrice = numberCell(row, [
+      'valor negociado',
+      'valor total negociado',
+    ]);
+    const hasBusinessIdentity = Boolean(
+      supplierName || description || number || issuedAt || invoiceNumber,
+    );
+    if (!hasBusinessIdentity) continue;
+    sourceRows += 1;
+
+    const normalizedNumber = normalizeText(number ?? '');
+    const invoiceKey =
+      supplierName && invoiceNumber
+        ? legacyInvoiceKey(supplierName, invoiceNumber)
+        : null;
+    if (
+      (normalizedNumber && normalizedOrders.has(normalizedNumber)) ||
+      (invoiceKey && normalizedInvoices.has(invoiceKey))
+    ) {
+      issues.push({
+        key: `purchase:legacy-duplicate:${row.rowNumber}`,
+        entity: 'PURCHASE',
+        action: 'SKIP_DUPLICATE',
+        rowNumbers: [row.rowNumber],
+        label: number ?? `${supplierName ?? 'Fornecedor'} | ${invoiceNumber ?? 'sem NF'}`,
+        reason: 'Registro historico ja representado na aba normalizada de itens.',
+        amount: negotiatedPrice,
+      });
+      continue;
+    }
+    if (!supplierName || !description || negotiatedPrice === null || negotiatedPrice < 0) {
+      issues.push(
+        invalidAction(
+          'PURCHASE',
+          row.rowNumber,
+          'Compra historica sem fornecedor, descricao ou valor negociado valido.',
+        ),
+      );
+      continue;
+    }
+    if (!issuedAt) {
+      issues.push({
+        ...invalidAction(
+          'PURCHASE',
+          row.rowNumber,
+          'Compra historica sem data de emissao. Preencha a data na planilha para liberar a importacao.',
+        ),
+        label: `${supplierName} | ${description}`,
+        amount: negotiatedPrice,
+      });
+      continue;
+    }
+
+    const stableNumber =
+      number ??
+      `LEG-${shortHash(
+        [
+          normalizeText(supplierName),
+          issuedAt,
+          normalizeText(invoiceNumber ?? ''),
+          normalizeText(description),
+          negotiatedPrice.toFixed(4),
+        ].join('|'),
+      ).toUpperCase()}`;
+    const sourceKey = normalizeText(stableNumber);
+    if (sourceKeys.has(sourceKey)) {
+      issues.push({
+        key: `purchase:legacy-repeated:${row.rowNumber}`,
+        entity: 'PURCHASE',
+        action: 'INVALID',
+        rowNumbers: [row.rowNumber],
+        label: stableNumber,
+        reason: 'Compra repetida na propria aba historica.',
+        amount: negotiatedPrice,
+      });
+      continue;
+    }
+    sourceKeys.add(sourceKey);
+
+    const supplier = supplierProfiles.get(normalizeText(supplierName));
+    const sourceUnit = textCell(row, ['unidade']);
+    purchases.push({
+      sourceKey,
+      rowNumbers: [row.rowNumber],
+      number: stableNumber,
+      invoiceNumber,
+      issuedAt,
+      supplierName,
+      supplierDocument: supplier?.document ?? null,
+      category: textCell(row, ['categoria']) ?? supplier?.category ?? null,
+      operationNature:
+        textCell(row, ['natureza da operacao']) ?? supplier?.operationNature ?? null,
+      paymentMethod: textCell(row, ['metodo de pagamento']),
+      notes: sourceUnit
+        ? `${description} Unidade de origem: ${sourceUnit}.`
+        : description,
+      items: [
+        {
+          rowNumber: row.rowNumber,
+          description,
+          quantity: 1,
+          unit: null,
+          unitPrice: initialPrice ?? negotiatedPrice,
+          negotiatedPrice,
+          costCenterName: supplier?.costCenterName ?? null,
+        },
+      ],
+      installments: [],
+    });
+  }
+
+  if (purchases.length) {
+    warnings.push(
+      `${purchases.length} compras da aba historica foram convertidas com quantidade 1 e centro de custo herdado do fornecedor.`,
+    );
+  }
+  return { purchases, sourceRows };
+}
+
 function requiredTable(workbook: SheetWorkbook, name: string): SheetTable {
   const table = workbook.tables[name];
   if (!table) {
     throw new BadRequestException(`A aba ${name} nao foi retornada pelo Google Sheets.`);
   }
   return table;
+}
+
+function optionalTable(workbook: SheetWorkbook, name: string): SheetTable | null {
+  const target = normalizeText(name);
+  return (
+    Object.values(workbook.tables).find(
+      (table) => normalizeText(table.name) === target,
+    ) ?? null
+  );
 }
 
 function tableRows(
@@ -451,8 +646,14 @@ function hasContent(row: TableRow): boolean {
   return [...row.values.values()].some((value) => stringValue(value).trim());
 }
 
-function countDataRows(table: SheetTable): number {
-  return Math.max(0, table.values.length - 1);
+function countContentRows(table: SheetTable): number {
+  return table.values
+    .slice(1)
+    .filter((row) => row.some((value) => stringValue(value).trim())).length;
+}
+
+function legacyInvoiceKey(supplierName: string, invoiceNumber: string): string {
+  return `${normalizeText(supplierName)}|${normalizeText(invoiceNumber)}`;
 }
 
 function invalidAction(

@@ -8,7 +8,8 @@
 
 ## Fase 1: identidade e empresas
 
-- [Preparado] Configurar Supabase Free. O codigo e as migracoes estao prontos; falta criar e vincular a instancia remota.
+- [Concluido] Criar o Supabase Free de homologacao na regiao de Sao Paulo.
+- [Concluido] Aplicar as migracoes, habilitar RLS, bloquear tabelas operacionais e criar o bucket privado.
 - [Concluido] Implementar login, recuperacao e redefinicao de acesso.
 - [Concluido] Criar organizacoes, convites, vinculos e troca de empresa ativa.
 - [Concluido] Aplicar papeis e auditoria sem fluxo de aprovacao.
@@ -20,6 +21,7 @@
 - [Concluido] Migrar fornecedores e centros de custo.
 - [Concluido] Migrar tabela de precos e importacao em lote.
 - [Concluido] Criar conciliacao entre planilha e PostgreSQL.
+- [Concluido] Adicionar importacao XLSX com historico legado, previa e deduplicacao.
 
 ## Fase 3: operacao de compras
 
@@ -30,7 +32,7 @@
 ## Fase 4: inteligencia
 
 - [Concluido] Migrar dashboard e indicadores para consultas do banco.
-- [Concluido] Criar filtros por empresa e exportacoes.
+- [Concluido] Criar filtros por empresa e exportacoes CSV e XLSX.
 - [Concluido] Consolidar economia negociada, comparativos mensais e gastos por departamento.
 
 ## Fase 5: producao
@@ -40,6 +42,8 @@
 - [Concluido no CI] Aplicar migracoes em PostgreSQL descartavel e testar isolamento multiempresa e RLS.
 - [Concluido no CI] Executar backup, restauracao integral e reconciliacao em banco descartavel.
 - [Concluido local] Executar aceite funcional sintetico dos cadastros, compras, rateios, documentos e dashboard.
-- [Preparado] Workflow protegido para migrar e validar o Supabase de homologacao e o bucket privado.
-- [Pendente externo] Criar e homologar a instancia Supabase.
+- [Concluido] Executar migracoes e validar o Supabase de homologacao e o bucket privado.
+- [Em homologacao] Criar o proprietario global independente e a empresa Human Clinic.
+- [Em homologacao] Aplicar o primeiro lote real e reconciliar os totais com a planilha.
+- [Em homologacao] Gerar o primeiro relatorio XLSX a partir do PostgreSQL.
 - [Pendente externo] Implantacao controlada e desligamento gradual do Apps Script.

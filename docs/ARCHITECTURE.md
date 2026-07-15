@@ -46,9 +46,13 @@ As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele,
 
 Cada empresa possui no maximo uma configuracao ativa de Google Sheets. A credencial da conta de servico fica somente no ambiente do servidor; o banco guarda apenas o ID da planilha, os nomes das abas e o estado da ultima sincronizacao.
 
-A leitura usa as abas normalizadas de fornecedores, precos, itens e parcelas. O servidor converte formatos `pt_BR`, valida cabecalhos e cria uma previa imutavel com hash do conteudo. A aplicacao reivindica essa previa de forma atomica para impedir execucao dupla.
+A leitura usa as abas normalizadas de fornecedores, precos, itens e parcelas. Quando a aba `valores negociados` existe, o adaptador tambem incorpora o historico legado, elimina pedidos que ja aparecem nos itens normalizados e herda o centro de custo padrao do fornecedor. Registros historicos sem data permanecem visiveis como pendencia e nao recebem datas inventadas.
+
+O mesmo fluxo aceita um arquivo `.xlsx` exportado da planilha. O upload possui limite de tamanho, valida o formato real, preserva os numeros das linhas e usa exatamente o mesmo parser, hash, previa e aplicacao da leitura pela API do Google. Isso permite homologar a migracao antes de disponibilizar uma conta de servico.
 
 A conciliacao resolve primeiro centros de custo e fornecedores, depois precos e compras. Uma compra existente com o mesmo fornecedor e valor recebe somente a nota fiscal ausente. Ambiguidades permanecem para revisao; parcelas ausentes ou divergentes nao bloqueiam o registro principal.
+
+Durante a transicao, o fluxo de dados e intencionalmente unidirecional: Google Sheets ou XLSX para previa, previa confirmada para PostgreSQL e PostgreSQL para relatorios. Nao existe sincronizacao automatica bidirecional, pois edicoes concorrentes criariam conflitos e dupla contagem. Depois da homologacao, o PostgreSQL passa a ser a fonte oficial.
 
 ## Indicadores
 
@@ -58,7 +62,7 @@ O dashboard nao armazena totais derivados. A API agrega compras registradas por 
 
 Os relatorios usam as compras como fonte unica e aplicam o `organizationId` antes de qualquer filtro. A API consolida valores, economia, ticket medio e contagens e devolve agrupamentos por fornecedor, categoria, departamento e mes. Os valores departamentais usam os montantes exatos dos rateios e mantem itens sem classificacao visiveis.
 
-A exportacao CSV repete os filtros da consulta, usa separador compativel com Excel em `pt_BR` e neutraliza celulas iniciadas por caracteres de formula. Nenhuma agregacao e calculada no navegador.
+As exportacoes CSV e XLSX repetem os filtros da consulta e neutralizam celulas iniciadas por caracteres de formula. O CSV usa separador compativel com Excel em `pt_BR`. O XLSX entrega resumo, compras e agrupamentos por departamento, fornecedor, categoria e mes, com datas e valores monetarios tipados. Nenhuma agregacao e calculada no navegador.
 
 ## Interface
 

@@ -25,10 +25,12 @@ export class AuthService {
     this.demoMode = isDemoMode(this.config);
 
     const url = this.config.get<string>('SUPABASE_URL');
-    const anonKey = this.config.get<string>('SUPABASE_ANON_KEY');
+    const publishableKey =
+      this.config.get<string>('SUPABASE_PUBLISHABLE_KEY') ??
+      this.config.get<string>('SUPABASE_ANON_KEY');
     this.supabase =
-      url && anonKey
-        ? createClient(url, anonKey, {
+      url && publishableKey
+        ? createClient(url, publishableKey, {
             auth: { autoRefreshToken: false, persistSession: false },
           })
         : null;

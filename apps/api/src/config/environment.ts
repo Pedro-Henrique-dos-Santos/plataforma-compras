@@ -3,8 +3,6 @@ const requiredProductionKeys = [
   'CORS_ORIGIN',
   'DATABASE_URL',
   'SUPABASE_URL',
-  'SUPABASE_ANON_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
   'PLATFORM_OWNER_EMAILS',
 ] as const;
 
@@ -57,10 +55,18 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
   }
 
   if (!demoMode) {
-    const missing = requiredProductionKeys.filter((key) => !textValue(raw[key]));
+    const supabasePublishableKey =
+      textValue(raw['SUPABASE_PUBLISHABLE_KEY']) || textValue(raw['SUPABASE_ANON_KEY']);
+    const supabaseSecretKey =
+      textValue(raw['SUPABASE_SECRET_KEY']) || textValue(raw['SUPABASE_SERVICE_ROLE_KEY']);
+    const missing: string[] = requiredProductionKeys.filter((key) => !textValue(raw[key]));
+    if (!supabasePublishableKey) missing.push('SUPABASE_PUBLISHABLE_KEY');
+    if (!supabaseSecretKey) missing.push('SUPABASE_SECRET_KEY');
     if (missing.length) {
       throw new Error(`Missing production environment variables: ${missing.join(', ')}.`);
     }
+    environment['SUPABASE_PUBLISHABLE_KEY'] = supabasePublishableKey;
+    environment['SUPABASE_SECRET_KEY'] = supabaseSecretKey;
 
     const appWebOrigin = normalizeHttpOrigin(textValue(raw['APP_WEB_URL']));
     if (!appWebOrigin) {
@@ -94,8 +100,8 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
     }
     environment['PLATFORM_OWNER_EMAILS'] = ownerEmails.join(',');
 
-    if (raw['SUPABASE_ANON_KEY'] === raw['SUPABASE_SERVICE_ROLE_KEY']) {
-      throw new Error('SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY must be different.');
+    if (supabasePublishableKey === supabaseSecretKey) {
+      throw new Error('Supabase publishable and secret keys must be different.');
     }
   }
 

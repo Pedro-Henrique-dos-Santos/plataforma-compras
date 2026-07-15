@@ -25,10 +25,12 @@ export class MemberProvisioningService {
   constructor(@Inject(ConfigService) private readonly config: ConfigService) {
     this.demoMode = isDemoMode(config);
     const url = config.get<string>('SUPABASE_URL');
-    const serviceRoleKey = config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
+    const secretKey =
+      config.get<string>('SUPABASE_SECRET_KEY') ??
+      config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
     this.supabase =
-      !this.demoMode && url && serviceRoleKey
-        ? createClient(url, serviceRoleKey, {
+      !this.demoMode && url && secretKey
+        ? createClient(url, secretKey, {
             auth: { autoRefreshToken: false, persistSession: false },
           })
         : null;

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { Workbook } from 'exceljs';
 
 import type { ProcurementReport } from '@compras/contracts';
 
-import { buildProcurementCsv } from './reports.service.js';
+import { buildProcurementCsv, buildProcurementXlsx } from './reports.service.js';
 
 describe('procurement CSV export', () => {
   it('uses Excel-friendly separators and neutralizes formula injection', () => {
@@ -12,6 +13,29 @@ describe('procurement CSV export', () => {
     expect(csv).toContain('"Pedido";"Nota fiscal"');
     expect(csv).toContain('"\'=FORNECEDOR!A1"');
     expect(csv).toContain('"100,00"');
+  });
+});
+
+describe('procurement Excel export', () => {
+  it('creates a structured workbook and keeps imported text inert', async () => {
+    const buffer = await buildProcurementXlsx(report('=FORNECEDOR!A1'));
+    const workbook = new Workbook();
+    await workbook.xlsx.load(Uint8Array.from(buffer).buffer);
+
+    expect(buffer.subarray(0, 2).toString()).toBe('PK');
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([
+      'Resumo',
+      'Compras',
+      'Departamentos',
+      'Fornecedores',
+      'Categorias',
+      'Meses',
+    ]);
+    expect(workbook.getWorksheet('Compras')?.getCell('D2').value).toBe("'=FORNECEDOR!A1");
+    expect(workbook.getWorksheet('Departamentos')?.getCell('A2').value).toBe(
+      'Administrativo',
+    );
+    expect(workbook.getWorksheet('Departamentos')?.getCell('C2').value).toBe(100);
   });
 });
 
@@ -28,10 +52,24 @@ function report(supplierName: string): ProcurementReport {
       purchaseCount: 1,
       supplierCount: 1,
     },
-    bySupplier: [],
-    byCategory: [],
-    byDepartment: [],
-    byMonth: [],
+    bySupplier: [
+      { key: 'supplier-1', label: supplierName, purchaseCount: 1, total: 100, savings: 10 },
+    ],
+    byCategory: [
+      { key: 'materiais', label: 'Materiais', purchaseCount: 1, total: 100, savings: 10 },
+    ],
+    byDepartment: [
+      {
+        key: 'department-1',
+        label: 'Administrativo',
+        purchaseCount: 1,
+        total: 100,
+        savings: 10,
+      },
+    ],
+    byMonth: [
+      { key: '2026-07', label: 'Jul/2026', purchaseCount: 1, total: 100, savings: 10 },
+    ],
     purchases: [
       {
         id: '71000000-0000-4000-8000-000000000001',

@@ -107,6 +107,10 @@ export const applySheetSyncInputSchema = z.object({
 });
 export type ApplySheetSyncInput = z.infer<typeof applySheetSyncInputSchema>;
 
+export const sheetWorkbookUploadConstraints = {
+  maximumBytes: 10 * 1024 * 1024,
+} as const;
+
 export const sheetSyncResultSchema = z.object({
   runId: z.string().uuid(),
   suppliersCreated: z.number().int().nonnegative(),

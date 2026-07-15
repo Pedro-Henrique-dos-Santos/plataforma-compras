@@ -30,7 +30,7 @@ export class ReportsController {
   }
 
   @Get('procurement.csv')
-  @RequirePermission('purchase:read')
+  @RequirePermission('report:export')
   async exportProcurementReport(
     @ActiveOrganization() organization: OrganizationSummary,
     @Query(new ZodValidationPipe(procurementReportFiltersSchema))
@@ -43,5 +43,21 @@ export class ReportsController {
       `attachment; filename="relatorio-compras-${new Date().toISOString().slice(0, 10)}.csv"`,
     );
     return this.reports.exportProcurementCsv(organization.id, query);
+  }
+
+  @Get('procurement.xlsx')
+  @RequirePermission('report:export')
+  async exportProcurementWorkbook(
+    @ActiveOrganization() organization: OrganizationSummary,
+    @Query(new ZodValidationPipe(procurementReportFiltersSchema))
+    query: ProcurementReportFilters,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="relatorio-compras-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+    );
+    return this.reports.exportProcurementXlsx(organization.id, query);
   }
 }

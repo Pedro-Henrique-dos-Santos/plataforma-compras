@@ -24,6 +24,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
       INVOICE_STORAGE_BUCKET: invoice-documents
+      SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
     steps:
@@ -36,7 +37,7 @@ jobs:
         run: |
           test -n "$DATABASE_URL"
           test -n "$SUPABASE_URL"
-          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "${SUPABASE_SECRET_KEY:-$SUPABASE_SERVICE_ROLE_KEY}"
 
       - name: Checkout
         uses: actions/checkout@v4

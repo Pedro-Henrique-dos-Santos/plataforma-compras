@@ -24,6 +24,7 @@ import type {
 import type { AuthenticatedIdentity } from '../domain/identity.js';
 import { ProcurementRepository } from '../procurement/procurement.repository.js';
 import { AutomationRepository } from './automation.repository.js';
+import { readExcelWorkbook } from './excel-workbook.reader.js';
 import { GoogleSheetsReader } from './google-sheets.reader.js';
 import {
   costCenterCode,
@@ -37,6 +38,7 @@ import type {
   ParsedSheetSupplier,
   PlannedSheetOperation,
   SheetSyncPayload,
+  SheetWorkbook,
   StoredGoogleSheetsIntegration,
 } from './sheet-sync.types.js';
 
@@ -80,10 +82,32 @@ export class GoogleSheetsSyncService {
     organizationId: string,
   ): Promise<SheetSyncPreview> {
     const integration = await this.requireIntegration(organizationId);
+    const workbook = await this.reader.readWorkbook(integration);
+    return this.createPreview(actor, organizationId, integration, workbook);
+  }
+
+  async previewWorkbook(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    file: Express.Multer.File | undefined,
+  ): Promise<SheetSyncPreview> {
+    if (!file) {
+      throw new BadRequestException('Selecione um arquivo Excel para gerar a previa.');
+    }
+    const integration = await this.requireIntegration(organizationId);
+    const workbook = await readExcelWorkbook(file.buffer, file.originalname);
+    return this.createPreview(actor, organizationId, integration, workbook);
+  }
+
+  private async createPreview(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    integration: StoredGoogleSheetsIntegration,
+    workbook: SheetWorkbook,
+  ): Promise<SheetSyncPreview> {
     if (!integration.enabled) {
       throw new BadRequestException('A integracao Google Sheets esta desativada.');
     }
-    const workbook = await this.reader.readWorkbook(integration);
     const parsed = parseSheetWorkbook(workbook, integration);
     const [centers, suppliers, prices, purchases] = await Promise.all([
       this.procurement.listCostCenters(organizationId, { includeInactive: true }),

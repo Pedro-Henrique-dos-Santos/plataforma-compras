@@ -35,6 +35,23 @@ describe('validateEnvironment', () => {
     expect(environment['PLATFORM_OWNER_EMAILS']).toBe('owner@example.com');
   });
 
+  it('normalizes current Supabase publishable and secret keys', () => {
+    const environment = validateEnvironment({
+      APP_WEB_URL: 'https://compras.example.com',
+      CORS_ORIGIN: 'https://compras.example.com',
+      DATABASE_URL: 'postgresql://example',
+      DEMO_MODE: 'false',
+      NODE_ENV: 'production',
+      PLATFORM_OWNER_EMAILS: 'owner@example.com',
+      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_example',
+      SUPABASE_SECRET_KEY: 'sb_secret_example',
+      SUPABASE_URL: 'https://project.supabase.co',
+    });
+
+    expect(environment['SUPABASE_PUBLISHABLE_KEY']).toBe('sb_publishable_example');
+    expect(environment['SUPABASE_SECRET_KEY']).toBe('sb_secret_example');
+  });
+
   it('normalizes trailing slashes from configured origins', () => {
     const environment = validateEnvironment({
       APP_WEB_URL: 'https://compras.example.com/',

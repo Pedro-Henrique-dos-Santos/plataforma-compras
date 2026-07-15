@@ -12,15 +12,15 @@ Preencha `apps/api/.env` a partir de `apps/api/.env.example`:
 - `APP_WEB_URL` com a origem exata do front-end
 - `DATABASE_URL` com a conexao PostgreSQL do projeto
 - `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY`
 - `PLATFORM_OWNER_EMAILS` com a conta independente do proprietario da plataforma
 - `REQUIRE_VERIFIED_EMAIL=true`
 - `CORS_ORIGIN` com as origens HTTPS autorizadas
 - `TRUST_PROXY=true` somente quando houver um proxy confiavel na frente da API
 - `INVOICE_STORAGE_BUCKET` com o nome do bucket privado de documentos
 
-`SUPABASE_SERVICE_ROLE_KEY` e `DATABASE_URL` existem somente no back-end.
+`SUPABASE_SECRET_KEY` e `DATABASE_URL` existem somente no back-end. As variaveis legadas `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` continuam aceitas apenas para compatibilidade.
 
 ## 3. Configurar o front-end
 
@@ -28,7 +28,7 @@ Preencha `apps/web/.env` a partir de `apps/web/.env.example`:
 
 - `VITE_DEMO_MODE=false`
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `VITE_API_URL=/api` quando o front-end usar o proxy local
 
 A chave anonima e publica por definicao, mas nao concede acesso as tabelas operacionais deste projeto.
@@ -70,7 +70,7 @@ Crie um ambiente protegido chamado `staging` no repositorio e cadastre somente n
 
 - `STAGING_DATABASE_URL`: conexao PostgreSQL com permissao para migracoes.
 - `STAGING_SUPABASE_URL`: URL HTTPS do projeto.
-- `STAGING_SUPABASE_SERVICE_ROLE_KEY`: chave privilegiada usada apenas pelo job protegido.
+- `STAGING_SUPABASE_SECRET_KEY`: chave privilegiada usada apenas pelo job protegido.
 
 Execute manualmente o workflow `Supabase Staging` e informe `APLICAR HOMOLOGACAO`. O job aplica migracoes com `prisma migrate deploy`, executa os testes de isolamento multiempresa e garante que o bucket `invoice-documents` exista como privado.
 

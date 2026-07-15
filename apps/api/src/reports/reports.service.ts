@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { ProcurementReport, ProcurementReportFilters } from '@compras/contracts';
 
 import { ProcurementRepository } from '../procurement/procurement.repository.js';
+import { buildProcurementWorkbook } from './procurement-workbook.js';
 
 @Injectable()
 export class ReportsService {
@@ -23,7 +24,16 @@ export class ReportsService {
   ): Promise<string> {
     return buildProcurementCsv(await this.getProcurementReport(organizationId, filters));
   }
+
+  async exportProcurementXlsx(
+    organizationId: string,
+    filters: ProcurementReportFilters,
+  ): Promise<Buffer> {
+    return buildProcurementWorkbook(await this.getProcurementReport(organizationId, filters));
+  }
 }
+
+export { buildProcurementWorkbook as buildProcurementXlsx };
 
 export function buildProcurementCsv(report: ProcurementReport): string {
   const rows = report.purchases.map((purchase) => [

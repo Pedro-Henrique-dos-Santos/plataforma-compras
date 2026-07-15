@@ -11,6 +11,11 @@ type ApiWriteOptions = ApiRequestOptions & {
   body: unknown;
 };
 
+type ApiDownloadOptions = ApiRequestOptions & {
+  accept?: string;
+  fallbackFileName?: string;
+};
+
 export async function apiGet<T>(
   path: string,
   options: ApiRequestOptions = {},
@@ -61,10 +66,10 @@ export async function apiUpload<T>(
 
 export async function apiDownload(
   path: string,
-  options: ApiRequestOptions = {},
+  options: ApiDownloadOptions = {},
 ): Promise<{ blob: Blob; fileName: string }> {
   const headers = requestHeaders(options);
-  headers.set('Accept', 'text/csv');
+  headers.set('Accept', options.accept ?? 'application/octet-stream');
   const response = await fetch(`${API_URL}${path}`, {
     headers,
     method: 'GET',
@@ -75,7 +80,10 @@ export async function apiDownload(
   }
   return {
     blob: await response.blob(),
-    fileName: responseFileName(response.headers.get('Content-Disposition')),
+    fileName: responseFileName(
+      response.headers.get('Content-Disposition'),
+      options.fallbackFileName ?? 'relatorio-compras',
+    ),
   };
 }
 
@@ -119,7 +127,7 @@ async function readResponse<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-function responseFileName(disposition: string | null): string {
+function responseFileName(disposition: string | null, fallback: string): string {
   const match = disposition?.match(/filename="?([^";]+)"?/i);
-  return match?.[1] ?? 'relatorio-compras.csv';
+  return match?.[1] ?? fallback;
 }

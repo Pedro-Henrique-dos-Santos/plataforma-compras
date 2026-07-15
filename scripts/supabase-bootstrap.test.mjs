@@ -8,7 +8,7 @@ import {
 
 const environment = {
   INVOICE_STORAGE_BUCKET: 'invoice-documents',
-  SUPABASE_SERVICE_ROLE_KEY: 'service-role-key-for-unit-tests',
+  SUPABASE_SECRET_KEY: 'sb_secret_key-for-unit-tests',
   SUPABASE_URL: 'https://example.supabase.co',
 };
 
@@ -45,6 +45,48 @@ test('creates a missing bucket as private and verifies it', async () => {
     name: 'invoice-documents',
     public: false,
   });
+  assert.equal(calls[0].headers.apikey, environment.SUPABASE_SECRET_KEY);
+  assert.equal(calls[0].headers.Authorization, undefined);
+});
+
+test('recognizes the hosted Storage missing-bucket response', async () => {
+  const calls = [];
+  const fetchImplementation = queuedFetch(
+    [
+      response({ statusCode: '404', error: 'Bucket not found', message: 'Bucket not found' }, 400),
+      response({ name: 'invoice-documents' }, 200),
+      response({ name: 'invoice-documents', public: false }, 200),
+    ],
+    calls,
+  );
+
+  const result = await ensurePrivateInvoiceBucket({ environment, fetchImplementation });
+
+  assert.equal(result.action, 'created');
+  assert.deepEqual(calls.map((call) => call.method), ['GET', 'POST', 'GET']);
+});
+
+test('keeps bearer authorization only for legacy service role keys', async () => {
+  const calls = [];
+  const legacyEnvironment = {
+    ...environment,
+    SUPABASE_SECRET_KEY: undefined,
+    SUPABASE_SERVICE_ROLE_KEY: 'legacy-service-role-key-for-tests',
+  };
+  const fetchImplementation = queuedFetch(
+    [
+      response({ name: 'invoice-documents', public: false }, 200),
+      response({ name: 'invoice-documents', public: false }, 200),
+    ],
+    calls,
+  );
+
+  await ensurePrivateInvoiceBucket({ environment: legacyEnvironment, fetchImplementation });
+
+  assert.equal(
+    calls[0].headers.Authorization,
+    `Bearer ${legacyEnvironment.SUPABASE_SERVICE_ROLE_KEY}`,
+  );
 });
 
 test('changes a public bucket to private before reporting success', async () => {
@@ -79,7 +121,12 @@ test('rejects a bucket that remains public after provisioning', async () => {
 
 function queuedFetch(responses, calls = []) {
   return async (url, options = {}) => {
-    calls.push({ body: options.body, method: options.method ?? 'GET', url });
+    calls.push({
+      body: options.body,
+      headers: options.headers ?? {},
+      method: options.method ?? 'GET',
+      url,
+    });
     const next = responses.shift();
     if (!next) throw new Error('Unexpected request in test.');
     return next;

@@ -4,6 +4,7 @@ import { google } from 'googleapis';
 
 import { isDemoMode } from '../config/runtime-mode.js';
 import { demoSheetWorkbook } from './demo-sheet.workbook.js';
+import { normalizeText } from './sheet-sync.parser.js';
 import type { StoredGoogleSheetsIntegration, ConnectorInfo, SheetWorkbook } from './sheet-sync.types.js';
 
 type ServiceAccountCredentials = {
@@ -14,6 +15,7 @@ type ServiceAccountCredentials = {
 
 const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const MAX_SOURCE_ROWS = 5_000;
+const LEGACY_SHEET_NAME = 'valores negociados';
 
 @Injectable()
 export class GoogleSheetsReader {
@@ -57,26 +59,41 @@ export class GoogleSheetsReader {
         fields: 'properties.title,sheets.properties.title',
       });
       const title = metadata.data.properties?.title?.trim() || 'Google Sheets';
-      const available = new Set(
+      const available =
         (metadata.data.sheets ?? [])
           .map((sheet) => sheet.properties?.title)
-          .filter((sheetTitle): sheetTitle is string => Boolean(sheetTitle)),
-      );
+          .filter((sheetTitle): sheetTitle is string => Boolean(sheetTitle));
       const requiredNames = [
         integration.itemsSheetName,
         integration.installmentsSheetName,
         integration.suppliersSheetName,
         integration.pricesSheetName,
       ];
-      const missing = requiredNames.filter((sheetName) => !available.has(sheetName));
+      const requiredSheets = requiredNames.map((configuredName) => ({
+        configuredName,
+        actualName: resolveSheetName(available, configuredName),
+      }));
+      const missing = requiredSheets
+        .filter((sheet) => !sheet.actualName)
+        .map((sheet) => sheet.configuredName);
       if (missing.length) {
         throw new BadGatewayException(
           `Abas nao encontradas na planilha: ${missing.join(', ')}.`,
         );
       }
 
-      const ranges = requiredNames.map((sheetName) =>
-        sheetRange(sheetName, integration.headerRow),
+      const legacyName = resolveSheetName(available, LEGACY_SHEET_NAME);
+      const requestedSheets = [
+        ...requiredSheets.map((sheet) => ({
+          key: sheet.configuredName,
+          actualName: sheet.actualName as string,
+        })),
+        ...(legacyName && !requiredNames.some((name) => normalizeText(name) === normalizeText(legacyName))
+          ? [{ key: legacyName, actualName: legacyName }]
+          : []),
+      ];
+      const ranges = requestedSheets.map((sheet) =>
+        sheetRange(sheet.actualName, integration.headerRow),
       );
       const response = await sheets.spreadsheets.values.batchGet({
         spreadsheetId: integration.spreadsheetId,
@@ -86,9 +103,9 @@ export class GoogleSheetsReader {
         dateTimeRenderOption: 'FORMATTED_STRING',
       });
       const tables: SheetWorkbook['tables'] = {};
-      requiredNames.forEach((sheetName, index) => {
-        tables[sheetName] = {
-          name: sheetName,
+      requestedSheets.forEach((sheet, index) => {
+        tables[sheet.key] = {
+          name: sheet.actualName,
           values: response.data.valueRanges?.[index]?.values ?? [],
         };
       });
@@ -129,4 +146,9 @@ export class GoogleSheetsReader {
 function sheetRange(sheetName: string, headerRow: number): string {
   const escapedName = sheetName.replaceAll("'", "''");
   return `'${escapedName}'!A${headerRow}:Z${headerRow + MAX_SOURCE_ROWS}`;
+}
+
+function resolveSheetName(available: string[], requested: string): string | null {
+  const target = normalizeText(requested);
+  return available.find((name) => normalizeText(name) === target) ?? null;
 }

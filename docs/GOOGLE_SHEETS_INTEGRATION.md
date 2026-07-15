@@ -15,6 +15,8 @@ Por padrao, cada empresa configura estas quatro abas:
 | `Itens do Pedido` | pedido, nota fiscal, fornecedor, itens, valores e centro de custo |
 | `Parcelas do Pedido` | pedido, vencimento e valor da parcela |
 
+Se a aba `valores negociados` estiver presente, ela e lida como historico legado. Linhas que ja possuem o mesmo pedido ou nota nas abas normalizadas sao classificadas como duplicadas. Compras historicas sem numero de pedido recebem uma chave deterministica; compras sem data de emissao ficam em revisao e nao sao gravadas.
+
 Os nomes podem ser alterados na tela `Automacoes`. Os cabecalhos sao normalizados sem depender de acentos ou caixa, mas colunas obrigatorias ausentes interrompem a previa.
 
 ## Credencial de producao
@@ -27,6 +29,12 @@ Os nomes podem ser alterados na tela `Automacoes`. Os cabecalhos sao normalizado
 
 Para leitura e futura escrita controlada, a conta usa o escopo `spreadsheets`. O modo demonstracao usa um lote local isolado e nunca altera a planilha real.
 
+## Importacao por Excel
+
+A tela `Automacoes` tambem aceita um `.xlsx` exportado do Google Sheets. O arquivo passa pelas mesmas regras de cabecalho, conciliacao, deduplicacao e confirmacao da leitura direta. O limite e 10 MB, e arquivos com macros ou extensoes diferentes de `.xlsx` sao rejeitados.
+
+O arquivo nao e um banco paralelo. Ele serve como uma fotografia para homologacao e migracao controlada. Depois que o lote e aplicado, consultas, dashboard e relatorios usam o PostgreSQL.
+
 ## Regras de conciliacao
 
 - CNPJ valido tem prioridade para localizar fornecedor; razao social e nome comercial sao alternativas.
@@ -36,6 +44,7 @@ Para leitura e futura escrita controlada, a conta usa o escopo `spreadsheets`. O
 - Quando fornecedor e valor coincidem com uma unica compra sem NF, somente o numero da nota e completado.
 - Mais de uma correspondencia por fornecedor e valor exige revisao manual.
 - Metodo de pagamento pode ficar vazio.
+- O centro de custo de uma compra historica pode ser herdado do cadastro do fornecedor.
 - Parcelas ausentes ou com total divergente sao ignoradas sem bloquear a compra.
 
 ## Execucao segura

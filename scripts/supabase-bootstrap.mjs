@@ -11,14 +11,16 @@ export async function ensurePrivateInvoiceBucket({
   const config = parseBootstrapConfiguration(environment);
   const bucketUrl = `${config.supabaseUrl}/storage/v1/bucket/${encodeURIComponent(config.bucket)}`;
   const headers = {
-    apikey: config.serviceRoleKey,
-    Authorization: `Bearer ${config.serviceRoleKey}`,
+    apikey: config.secretKey,
     'Content-Type': 'application/json',
   };
+  if (!config.secretKey.startsWith('sb_secret_')) {
+    headers.Authorization = `Bearer ${config.secretKey}`;
+  }
   let action = 'verified';
   let response = await fetchImplementation(bucketUrl, { headers });
 
-  if (response.status === 404) {
+  if (await isMissingBucketResponse(response)) {
     response = await fetchImplementation(`${config.supabaseUrl}/storage/v1/bucket`, {
       body: JSON.stringify({ id: config.bucket, name: config.bucket, public: false }),
       headers,
@@ -52,11 +54,12 @@ export async function ensurePrivateInvoiceBucket({
 
 export function parseBootstrapConfiguration(environment) {
   const rawUrl = environment.SUPABASE_URL;
-  const serviceRoleKey = environment.SUPABASE_SERVICE_ROLE_KEY;
+  const secretKey =
+    environment.SUPABASE_SECRET_KEY ?? environment.SUPABASE_SERVICE_ROLE_KEY;
   const bucket = environment.INVOICE_STORAGE_BUCKET ?? 'invoice-documents';
   if (!rawUrl) throw new Error('SUPABASE_URL is required.');
-  if (!serviceRoleKey || serviceRoleKey.length < 20) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required.');
+  if (!secretKey || secretKey.length < 20) {
+    throw new Error('SUPABASE_SECRET_KEY is required.');
   }
 
   let url;
@@ -78,9 +81,20 @@ export function parseBootstrapConfiguration(environment) {
 
   return {
     bucket,
-    serviceRoleKey,
+    secretKey,
     supabaseUrl: url.href.replace(/\/$/, ''),
   };
+}
+
+async function isMissingBucketResponse(response) {
+  if (response.status === 404) return true;
+  if (response.status !== 400) return false;
+  try {
+    const body = await response.clone().json();
+    return String(body?.statusCode) === '404' && body?.message === 'Bucket not found';
+  } catch {
+    return false;
+  }
 }
 
 function assertSuccessfulResponse(response, operation) {

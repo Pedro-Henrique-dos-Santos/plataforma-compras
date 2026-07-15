@@ -1725,10 +1725,18 @@ td {
 
 .report-filter-actions .primary-button,
 .report-filter-actions .secondary-button,
+.report-table-panel .primary-button,
 .report-table-panel .secondary-button {
   min-height: 38px;
   padding-inline: 12px;
   font-size: 11px;
+}
+
+.report-export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .report-metrics-grid {

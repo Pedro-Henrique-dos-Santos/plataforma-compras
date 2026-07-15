@@ -60,6 +60,82 @@ describe('Google Sheets parser', () => {
     expect(parseBrazilianDate('29/02/2024')).toBe('2024-02-29');
     expect(parseBrazilianDate('31/02/2024')).toBeNull();
   });
+
+  it('merges legacy purchases without duplicating normalized orders', () => {
+    const source = workbook();
+    source.tables['valores negociados'] = {
+      name: 'valores negociados',
+      values: [
+        [
+          'Numero do Pedido',
+          'Unidade',
+          'Prestador de Servicos',
+          'Categoria',
+          'Descricao da Compra',
+          'Valor inicial',
+          'Valor negociado',
+          'Data de Emissao',
+          'Documento',
+        ],
+        [
+          '',
+          'Matriz',
+          'Be Life Clinica LTDA',
+          'Servicos',
+          'Servico historico',
+          800,
+          600,
+          '25/06/2026',
+          '171',
+        ],
+        [
+          'PED-2026-0004',
+          'Matriz',
+          'Be Life Clinica LTDA',
+          'Servicos',
+          'Pedido ja normalizado',
+          1500,
+          1250,
+          '22/06/2026',
+          '3304',
+        ],
+        [
+          '',
+          'Matriz',
+          'Be Life Clinica LTDA',
+          'Servicos',
+          'Compra sem data',
+          300,
+          250,
+          '',
+          '',
+        ],
+      ],
+    };
+
+    const parsed = parseSheetWorkbook(source, integration);
+    const legacy = parsed.purchases.find((purchase) => purchase.number.startsWith('LEG-'));
+
+    expect(parsed.sourceRows).toBe(8);
+    expect(parsed.purchases).toHaveLength(2);
+    expect(legacy).toMatchObject({
+      invoiceNumber: '171',
+      issuedAt: '2026-06-25',
+      supplierName: 'Be Life Clinica LTDA',
+    });
+    expect(legacy?.items[0]).toMatchObject({
+      quantity: 1,
+      unitPrice: 800,
+      negotiatedPrice: 600,
+      costCenterName: 'Farmacia',
+    });
+    expect(parsed.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ action: 'SKIP_DUPLICATE', rowNumbers: [3] }),
+        expect.objectContaining({ action: 'INVALID', rowNumbers: [4], amount: 250 }),
+      ]),
+    );
+  });
 });
 
 function workbook(): SheetWorkbook {

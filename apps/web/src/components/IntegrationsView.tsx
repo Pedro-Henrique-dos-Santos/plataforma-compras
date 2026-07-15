@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type {
   GoogleSheetsConnectorStatus,
   GoogleSheetsIntegration,
@@ -14,9 +14,10 @@ import {
   RefreshCw,
   Save,
   Sheet,
+  Upload,
 } from 'lucide-react';
 
-import { apiGet, apiPost, apiPut } from '../lib/api';
+import { apiGet, apiPost, apiPut, apiUpload } from '../lib/api';
 
 type IntegrationsViewProps = {
   accessToken: string | null;
@@ -66,8 +67,10 @@ export function IntegrationsView({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const workbookInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -170,6 +173,26 @@ export function IntegrationsView({
     }
   }
 
+  async function generateWorkbookPreview(file: File) {
+    setUploading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const nextPreview = await apiUpload<SheetSyncPreview>(
+        '/integrations/google-sheets/workbook-preview',
+        file,
+        { token: accessToken, organizationId },
+      );
+      setPreview(nextPreview);
+      setFilter('ALL');
+    } catch (requestError) {
+      setError(errorMessage(requestError));
+    } finally {
+      setUploading(false);
+      if (workbookInput.current) workbookInput.current.value = '';
+    }
+  }
+
   if (loading) {
     return <div className="skeleton view-loading" aria-label="Carregando integracoes" />;
   }
@@ -193,6 +216,30 @@ export function IntegrationsView({
               <ExternalLink size={16} />
               Abrir planilha
             </a>
+          )}
+          {canWrite && (
+            <>
+              <input
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void generateWorkbookPreview(file);
+                }}
+                ref={workbookInput}
+                type="file"
+              />
+              <button
+                className="secondary-button"
+                disabled={!integrationSaved || uploading}
+                onClick={() => workbookInput.current?.click()}
+                title="Gerar previa a partir de um arquivo Excel"
+                type="button"
+              >
+                <Upload size={16} />
+                {uploading ? 'Lendo Excel' : 'Importar Excel'}
+              </button>
+            </>
           )}
           {canWrite && (
             <button

@@ -9,6 +9,7 @@ import type {
 import {
   CircleDollarSign,
   Download,
+  FileSpreadsheet,
   Filter,
   HandCoins,
   Landmark,
@@ -49,7 +50,7 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [activeBreakdown, setActiveBreakdown] = useState<BreakdownTab>('department');
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<'csv' | 'xlsx' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -117,13 +118,21 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
     setError(null);
   }
 
-  async function exportCsv() {
-    setExporting(true);
+  async function exportReport(format: 'csv' | 'xlsx') {
+    setExporting(format);
     setError(null);
     try {
       const result = await apiDownload(
-        `/reports/procurement.csv?${reportQuery(appliedFilters)}`,
-        { organizationId, token: accessToken },
+        `/reports/procurement.${format}?${reportQuery(appliedFilters)}`,
+        {
+          accept:
+            format === 'xlsx'
+              ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+              : 'text/csv',
+          fallbackFileName: `relatorio-compras.${format}`,
+          organizationId,
+          token: accessToken,
+        },
       );
       const url = URL.createObjectURL(result.blob);
       const anchor = document.createElement('a');
@@ -136,7 +145,7 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   }
 
@@ -309,15 +318,26 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
                 <h3>Compras do periodo</h3>
                 <p>{integer.format(report.purchases.length)} registros encontrados</p>
               </span>
-              <button
-                className="secondary-button compact-button"
-                disabled={exporting || !report.purchases.length}
-                onClick={() => void exportCsv()}
-                type="button"
-              >
-                <Download size={16} />
-                {exporting ? 'Exportando' : 'Exportar CSV'}
-              </button>
+              <div className="report-export-actions">
+                <button
+                  className="secondary-button compact-button"
+                  disabled={Boolean(exporting) || !report.purchases.length}
+                  onClick={() => void exportReport('csv')}
+                  type="button"
+                >
+                  <Download size={16} />
+                  {exporting === 'csv' ? 'Exportando' : 'CSV'}
+                </button>
+                <button
+                  className="primary-button compact-button"
+                  disabled={Boolean(exporting) || !report.purchases.length}
+                  onClick={() => void exportReport('xlsx')}
+                  type="button"
+                >
+                  <FileSpreadsheet size={16} />
+                  {exporting === 'xlsx' ? 'Gerando Excel' : 'Exportar Excel'}
+                </button>
+              </div>
             </header>
             <div className="table-scroll">
               <table className="report-table">

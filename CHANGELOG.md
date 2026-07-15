@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.0 - 2026-07-14
+
+- Criado e protegido o projeto Supabase Free de homologacao na regiao de Sao Paulo.
+- Aplicadas e validadas todas as migracoes, o isolamento multiempresa e o bucket privado de documentos.
+- Adicionado suporte as chaves atuais publishable e secret do Supabase com compatibilidade para as chaves legadas.
+- Adicionada importacao segura de arquivos XLSX pelo mesmo fluxo de previa e aplicacao do Google Sheets.
+- Incorporada a aba historica `valores negociados` sem duplicar pedidos ja normalizados.
+- Mantidas compras sem data em revisao, sem preencher informacoes fiscais por suposicao.
+- Adicionada exportacao gerencial XLSX com resumo, compras, departamentos, fornecedores, categorias e meses.
+- Corrigida a interoperabilidade do ExcelJS com o runtime Node usado em producao.
+
 ## 0.7.4 - 2026-07-14
 
 - Diferenciadas as tentativas de importar uma nota ainda nao revisada, em processamento ou ja importada.

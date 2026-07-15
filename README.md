@@ -7,15 +7,15 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 - O portal de producao em Apps Script continua preservado em `legacy/apps-script`.
 - A nova aplicacao nao substitui a versao em producao automaticamente.
 - O modo demonstracao permite desenvolver sem credenciais do Supabase.
-- O banco definitivo sera PostgreSQL, com Supabase Free no desenvolvimento remoto.
+- O Supabase Free de homologacao esta criado, migrado, protegido por RLS e com armazenamento privado.
 - A identidade, as empresas, os convites e os papeis ja possuem implementacao de API e persistencia.
 - A interface inclui os temas Normal, Escuro e Branco e uma barra lateral recolhivel.
 - Centros de custo e fornecedores possuem cadastro por empresa, status e regras padrao.
 - A tabela de precos aceita varias linhas e importacao CSV idempotente por fornecedor.
 - Compras suportam varios itens, economia negociada, centro automatico, rateios e parcelas opcionais.
 - O dashboard e calculado a partir das compras e inclui gastos por categoria e departamento.
-- Os relatorios filtram compras por periodo, fornecedor, departamento, categoria e status, com exportacao CSV.
-- A sincronizacao com Google Sheets possui configuracao por empresa, previa persistida, conciliacao e aplicacao idempotente.
+- Os relatorios filtram compras por periodo, fornecedor, departamento, categoria e status, com exportacoes CSV e XLSX.
+- A sincronizacao com Google Sheets possui configuracao por empresa, importacao XLSX, leitura do historico legado, previa persistida, conciliacao e aplicacao idempotente.
 - Notas em XML ou PDF passam por validacao, leitura estruturada ou OCR gratuito, revisao humana e conciliacao antes de criar compras.
 - A API possui prontidao do banco, identificadores de requisicao e logs estruturados.
 - O repositorio inclui teste de carga leve, backup com restauracao integral e integracao multiempresa contra PostgreSQL real no CI.
@@ -57,9 +57,9 @@ pnpm check
 
 Esse comando executa lint, verificacao de tipos, testes e build de todos os pacotes.
 
-Na versao `0.7.4`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
+Na versao `0.8.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
 importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets e
-automacao documental com revisao obrigatoria, relatorios filtrados, exportacao segura e
+automacao documental com revisao obrigatoria, relatorios filtrados, exportacao segura em CSV e XLSX e
 prontidao operacional. O CI aplica todas as migracoes em um PostgreSQL descartavel e executa
 testes de isolamento dos repositorios, das protecoes RLS e de recuperacao completa do banco.
 Um workflow manual protegido prepara e valida o Supabase de homologacao sem armazenar segredos no codigo.
