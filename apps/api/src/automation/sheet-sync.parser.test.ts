@@ -61,6 +61,20 @@ describe('Google Sheets parser', () => {
     expect(parseBrazilianDate('31/02/2024')).toBeNull();
   });
 
+  it('matches configured sheet names without depending on accents', () => {
+    const source = workbook();
+    const prices = source.tables['Tabela de Precos Negociados'];
+    delete source.tables['Tabela de Precos Negociados'];
+    if (prices) {
+      source.tables['Tabela de Preços Negociados'] = {
+        ...prices,
+        name: 'Tabela de Preços Negociados',
+      };
+    }
+
+    expect(parseSheetWorkbook(source, integration).prices).toHaveLength(1);
+  });
+
   it('merges legacy purchases without duplicating normalized orders', () => {
     const source = workbook();
     source.tables['valores negociados'] = {

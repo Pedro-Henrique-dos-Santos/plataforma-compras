@@ -560,7 +560,7 @@ function parseLegacyPurchases(
 }
 
 function requiredTable(workbook: SheetWorkbook, name: string): SheetTable {
-  const table = workbook.tables[name];
+  const table = workbook.tables[name] ?? optionalTable(workbook, name);
   if (!table) {
     throw new BadRequestException(`A aba ${name} nao foi retornada pelo Google Sheets.`);
   }
