@@ -19,6 +19,7 @@ import {
   type CreateInvoiceDocumentRecord,
   type InvoiceDocumentFilters,
   type InvoiceDocumentRecord,
+  invoiceImportConflictMessage,
   InvoiceDocumentsRepository,
   toInvoiceDocumentSummary,
 } from './invoice-documents.repository.js';
@@ -250,7 +251,7 @@ export class PrismaInvoiceDocumentsRepository extends InvoiceDocumentsRepository
     if (!updated.count) {
       const document = await this.find(organizationId, id);
       if (!document) throw new NotFoundException('Documento fiscal nao encontrado.');
-      throw new ConflictException('A nota precisa estar revisada antes da importacao.');
+      throw new ConflictException(invoiceImportConflictMessage(document.status));
     }
     return this.require(organizationId, id);
   }

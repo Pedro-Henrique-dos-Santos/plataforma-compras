@@ -110,6 +110,16 @@ export abstract class InvoiceDocumentsRepository {
   ): Promise<InvoiceDocumentRecord>;
 }
 
+export function invoiceImportConflictMessage(
+  status: InvoiceDocumentStatus,
+): string {
+  if (status === 'IMPORTED') return 'A nota ja foi importada.';
+  if (status === 'IMPORTING') {
+    return 'A importacao desta nota ja esta em andamento.';
+  }
+  return 'A nota precisa estar revisada antes da importacao.';
+}
+
 export function toInvoiceDocumentSummary(
   document: InvoiceDocumentRecord,
 ): InvoiceDocumentSummary {

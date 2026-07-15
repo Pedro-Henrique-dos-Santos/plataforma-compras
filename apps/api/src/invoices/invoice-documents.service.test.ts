@@ -103,6 +103,16 @@ describe('invoice document import reconciliation', () => {
     expect(result.purchase.source).toBe('INVOICE');
     expect(result.purchase.sourceReference).toBe(documentId);
     expect(result.document.review?.supplierId).toBe(result.purchase.supplierId);
+    const purchaseCountAfterImport = (
+      await procurement.listPurchases(HUMAN_CLINIC_ID)
+    ).length;
+
+    await expect(
+      service.import(actor, HUMAN_CLINIC_ID, documentId),
+    ).rejects.toThrow('ja foi importada');
+    expect(await procurement.listPurchases(HUMAN_CLINIC_ID)).toHaveLength(
+      purchaseCountAfterImport,
+    );
   });
 });
 

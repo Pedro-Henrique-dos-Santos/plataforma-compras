@@ -91,13 +91,25 @@ describe('demo invoice document repository', () => {
         confidence: 1,
       },
     });
-    const ready = await repository.saveReview(actor, HUMAN_CLINIC_ID, document.id, review);
+    await expect(
+      repository.claimForImport(actor, HUMAN_CLINIC_ID, document.id),
+    ).rejects.toThrow('precisa estar revisada');
+    const ready = await repository.saveReview(
+      actor,
+      HUMAN_CLINIC_ID,
+      document.id,
+      review,
+    );
     expect(ready.status).toBe('READY');
-    const claimed = await repository.claimForImport(actor, HUMAN_CLINIC_ID, document.id);
+    const claimed = await repository.claimForImport(
+      actor,
+      HUMAN_CLINIC_ID,
+      document.id,
+    );
     expect(claimed.status).toBe('IMPORTING');
     await expect(
       repository.claimForImport(actor, HUMAN_CLINIC_ID, document.id),
-    ).rejects.toThrow('revisada');
+    ).rejects.toThrow('ja esta em andamento');
     const imported = await repository.markImported(
       actor,
       HUMAN_CLINIC_ID,
@@ -106,7 +118,12 @@ describe('demo invoice document repository', () => {
       '88888888-8888-4888-8888-888888888888',
     );
     expect(imported.status).toBe('IMPORTED');
-    expect(imported.review?.supplierId).toBe('88888888-8888-4888-8888-888888888888');
+    expect(imported.review?.supplierId).toBe(
+      '88888888-8888-4888-8888-888888888888',
+    );
+    await expect(
+      repository.claimForImport(actor, HUMAN_CLINIC_ID, document.id),
+    ).rejects.toThrow('ja foi importada');
   });
 
   it('never exposes tenant, hash or storage path in the public detail', async () => {

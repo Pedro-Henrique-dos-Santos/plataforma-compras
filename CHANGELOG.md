@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.4 - 2026-07-14
+
+- Diferenciadas as tentativas de importar uma nota ainda nao revisada, em processamento ou ja importada.
+- Mantido o bloqueio atomico que impede a criacao duplicada de compras por repeticao da importacao fiscal.
+- Adicionadas verificacoes que comprovam as mensagens de conflito e a estabilidade da quantidade de compras.
+- Adicionado roteiro de aceite operacional para os fluxos centrais e os criterios de liberacao.
+- Validado em navegador o fluxo sintetico de XML, conferencia, fornecedor automatico, centro de custo e compra.
+
 ## 0.7.3 - 2026-07-14
 
 - Adicionado workflow manual e protegido para homologacao do banco Supabase.

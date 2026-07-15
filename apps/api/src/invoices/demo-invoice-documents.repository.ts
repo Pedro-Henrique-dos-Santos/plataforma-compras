@@ -12,6 +12,7 @@ import {
   type CreateInvoiceDocumentRecord,
   type InvoiceDocumentFilters,
   type InvoiceDocumentRecord,
+  invoiceImportConflictMessage,
   InvoiceDocumentsRepository,
   toInvoiceDocumentSummary,
 } from './invoice-documents.repository.js';
@@ -199,7 +200,7 @@ export class DemoInvoiceDocumentsRepository extends InvoiceDocumentsRepository {
   ): Promise<InvoiceDocumentRecord> {
     const document = this.require(organizationId, id);
     if (document.status !== 'READY' || !document.review) {
-      throw new ConflictException('A nota precisa estar revisada antes da importacao.');
+      throw new ConflictException(invoiceImportConflictMessage(document.status));
     }
     document.status = 'IMPORTING';
     return structuredClone(document);
