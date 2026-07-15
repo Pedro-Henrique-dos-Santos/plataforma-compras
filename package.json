@@ -1,6 +1,6 @@
 {
   "name": "plataforma-compras",
-  "version": "0.2.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Plataforma multiempresa para gestao, inteligencia e controle de compras.",
   "packageManager": "pnpm@11.7.0",
@@ -20,6 +20,9 @@
     "db:validate": "pnpm --filter @compras/database prisma:validate",
     "db:migrate": "pnpm --filter @compras/database prisma:migrate",
     "db:seed": "pnpm --filter @compras/database prisma:seed",
-    "db:studio": "pnpm --filter @compras/database prisma:studio"
+    "db:studio": "pnpm --filter @compras/database prisma:studio",
+    "db:backup": "node scripts/backup-database.mjs",
+    "db:backup:verify": "node scripts/verify-backup.mjs",
+    "load:smoke": "node scripts/load-smoke.mjs"
   }
 }

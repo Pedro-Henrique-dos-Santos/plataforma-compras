@@ -24,6 +24,7 @@ Thumbs.db
 # Runtime output
 *.log
 tmp/
+backups/
 
 # Previous generated working directories; preserved under legacy/
 outputs/

@@ -7,7 +7,7 @@ type ApiRequestOptions = {
 };
 
 type ApiWriteOptions = ApiRequestOptions & {
-  method: 'POST' | 'PATCH';
+  method: 'POST' | 'PATCH' | 'PUT';
   body: unknown;
 };
 
@@ -34,17 +34,56 @@ export async function apiPatch<T>(
   return apiRequest<T>(path, { ...options, body, method: 'PATCH' });
 }
 
+export async function apiPut<T>(
+  path: string,
+  body: unknown,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(path, { ...options, body, method: 'PUT' });
+}
+
+export async function apiUpload<T>(
+  path: string,
+  file: File,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  const headers = requestHeaders(options);
+  const body = new FormData();
+  body.append('file', file);
+  const response = await fetch(`${API_URL}${path}`, {
+    body,
+    headers,
+    method: 'POST',
+    signal: options.signal,
+  });
+  return readResponse<T>(response);
+}
+
+export async function apiDownload(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<{ blob: Blob; fileName: string }> {
+  const headers = requestHeaders(options);
+  headers.set('Accept', 'text/csv');
+  const response = await fetch(`${API_URL}${path}`, {
+    headers,
+    method: 'GET',
+    signal: options.signal,
+  });
+  if (!response.ok) {
+    await readResponse<never>(response);
+  }
+  return {
+    blob: await response.blob(),
+    fileName: responseFileName(response.headers.get('Content-Disposition')),
+  };
+}
+
 async function apiRequest<T>(
   path: string,
   options: (ApiRequestOptions & { method: 'GET' }) | ApiWriteOptions,
 ): Promise<T> {
-  const headers = new Headers({ Accept: 'application/json' });
-  if (options.token) {
-    headers.set('Authorization', `Bearer ${options.token}`);
-  }
-  if (options.organizationId) {
-    headers.set('x-organization-id', options.organizationId);
-  }
+  const headers = requestHeaders(options);
   if (options.method !== 'GET') {
     headers.set('Content-Type', 'application/json');
   }
@@ -55,6 +94,19 @@ async function apiRequest<T>(
     signal: options.signal,
     body: options.method === 'GET' ? undefined : JSON.stringify(options.body),
   });
+  return readResponse<T>(response);
+}
+
+function requestHeaders(options: ApiRequestOptions): Headers {
+  const headers = new Headers({ Accept: 'application/json' });
+  if (options.token) headers.set('Authorization', `Bearer ${options.token}`);
+  if (options.organizationId) {
+    headers.set('x-organization-id', options.organizationId);
+  }
+  return headers;
+}
+
+async function readResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as
       | { message?: string | string[] }
@@ -64,6 +116,10 @@ async function apiRequest<T>(
       : body?.message;
     throw new Error(message ?? `Falha na API (${response.status}).`);
   }
-
   return (await response.json()) as T;
+}
+
+function responseFileName(disposition: string | null): string {
+  const match = disposition?.match(/filename="?([^";]+)"?/i);
+  return match?.[1] ?? 'relatorio-compras.csv';
 }

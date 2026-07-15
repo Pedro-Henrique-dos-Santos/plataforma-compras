@@ -10,6 +10,15 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 - O banco definitivo sera PostgreSQL, com Supabase Free no desenvolvimento remoto.
 - A identidade, as empresas, os convites e os papeis ja possuem implementacao de API e persistencia.
 - A interface inclui os temas Normal, Escuro e Branco e uma barra lateral recolhivel.
+- Centros de custo e fornecedores possuem cadastro por empresa, status e regras padrao.
+- A tabela de precos aceita varias linhas e importacao CSV idempotente por fornecedor.
+- Compras suportam varios itens, economia negociada, centro automatico, rateios e parcelas opcionais.
+- O dashboard e calculado a partir das compras e inclui gastos por categoria e departamento.
+- Os relatorios filtram compras por periodo, fornecedor, departamento, categoria e status, com exportacao CSV.
+- A sincronizacao com Google Sheets possui configuracao por empresa, previa persistida, conciliacao e aplicacao idempotente.
+- Notas em XML ou PDF passam por validacao, leitura estruturada ou OCR gratuito, revisao humana e conciliacao antes de criar compras.
+- A API possui prontidao do banco, identificadores de requisicao e logs estruturados.
+- O repositorio inclui teste de carga leve e rotinas de backup e verificacao para PostgreSQL.
 
 ## Estrutura
 
@@ -25,7 +34,7 @@ docs                 arquitetura, contexto, decisoes e roteiro
 ## Requisitos
 
 - Node.js 22 ou superior
-- pnpm 10
+- pnpm 11
 - PostgreSQL local opcional, ou projeto Supabase
 
 ## Primeira execucao
@@ -48,6 +57,11 @@ pnpm check
 
 Esse comando executa lint, verificacao de tipos, testes e build de todos os pacotes.
 
+Na versao `0.7.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
+importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets e
+automacao documental com revisao obrigatoria, relatorios filtrados, exportacao segura e
+prontidao operacional.
+
 ## Seguranca
 
 Nunca envie `.env`, chaves do Supabase, tokens do Google ou chaves da OpenAI ao GitHub. Consulte [SECURITY.md](SECURITY.md) antes de configurar ambientes compartilhados.
@@ -57,3 +71,8 @@ Nunca envie `.env`, chaves do Supabase, tokens do Google ou chaves da OpenAI ao 
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Roteiro de evolucao](docs/ROADMAP.md)
 - [Contexto e decisoes confirmadas](docs/PROJECT_CONTEXT.md)
+- [Integracao com Google Sheets](docs/GOOGLE_SHEETS_INTEGRATION.md)
+- [Automacao de documentos fiscais](docs/INVOICE_AUTOMATION.md)
+- [Relatorios operacionais](docs/REPORTS.md)
+- [Prontidao para producao](docs/PRODUCTION_READINESS.md)
+- [Recuperacao e backups](docs/RECOVERY_RUNBOOK.md)

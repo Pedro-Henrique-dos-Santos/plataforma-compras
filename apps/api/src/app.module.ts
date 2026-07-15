@@ -4,12 +4,17 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AccessModule } from './access/access.module.js';
+import { AutomationModule } from './automation/automation.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { HealthController } from './health/health.controller.js';
+import { InvoiceDocumentsModule } from './invoices/invoice-documents.module.js';
+import { MasterDataModule } from './master-data/master-data.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { validateEnvironment } from './config/environment.js';
 import { PersistenceModule } from './persistence/persistence.module.js';
+import { PurchasesModule } from './purchases/purchases.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 
 @Module({
   imports: [
@@ -24,7 +29,12 @@ import { PersistenceModule } from './persistence/persistence.module.js';
     OrganizationsModule,
     AuthModule,
     AccessModule,
+    AutomationModule,
+    InvoiceDocumentsModule,
     DashboardModule,
+    MasterDataModule,
+    PurchasesModule,
+    ReportsModule,
   ],
   controllers: [HealthController],
   providers: [

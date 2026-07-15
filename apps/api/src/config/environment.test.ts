@@ -8,6 +8,8 @@ describe('validateEnvironment', () => {
 
     expect(environment['DEMO_MODE']).toBe('true');
     expect(environment['REQUIRE_VERIFIED_EMAIL']).toBe('false');
+    expect(environment['INVOICE_STORAGE_BUCKET']).toBe('invoice-documents');
+    expect(environment['TRUST_PROXY']).toBe('false');
   });
 
   it('rejects an incomplete production environment', () => {
@@ -59,5 +61,47 @@ describe('validateEnvironment', () => {
         NODE_ENV: 'development',
       }),
     ).toThrow(/explicit HTTP or HTTPS origins/);
+  });
+
+  it('requires the application origin in CORS for production', () => {
+    expect(() =>
+      validateEnvironment({
+        APP_WEB_URL: 'https://compras.example.com',
+        CORS_ORIGIN: 'https://outro.example.com',
+        DATABASE_URL: 'postgresql://example',
+        DEMO_MODE: 'false',
+        NODE_ENV: 'production',
+        PLATFORM_OWNER_EMAILS: 'owner@example.com',
+        SUPABASE_ANON_KEY: 'anon-example',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-example',
+        SUPABASE_URL: 'https://project.supabase.co',
+      }),
+    ).toThrow(/must include APP_WEB_URL/);
+  });
+
+  it('rejects ambiguous or malformed Google service account configuration', () => {
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'development',
+        GOOGLE_SERVICE_ACCOUNT_JSON: '{}',
+        GOOGLE_SERVICE_ACCOUNT_JSON_BASE64: 'e30=',
+      }),
+    ).toThrow(/only one Google service account variable/);
+
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'development',
+        GOOGLE_SERVICE_ACCOUNT_JSON: '{"client_email":"invalid"}',
+      }),
+    ).toThrow(/credentials are invalid/);
+  });
+
+  it('rejects an unsafe invoice storage bucket name', () => {
+    expect(() =>
+      validateEnvironment({
+        INVOICE_STORAGE_BUCKET: '../public documents',
+        NODE_ENV: 'development',
+      }),
+    ).toThrow(/valid private bucket name/);
   });
 });

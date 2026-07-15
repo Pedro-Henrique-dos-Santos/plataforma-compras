@@ -21,6 +21,14 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
   environment['REQUIRE_VERIFIED_EMAIL'] = String(
     booleanValue(raw['REQUIRE_VERIFIED_EMAIL'], !demoMode),
   );
+  environment['TRUST_PROXY'] = String(booleanValue(raw['TRUST_PROXY'], false));
+
+  const invoiceStorageBucket =
+    textValue(raw['INVOICE_STORAGE_BUCKET']) || 'invoice-documents';
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(invoiceStorageBucket)) {
+    throw new Error('INVOICE_STORAGE_BUCKET must be a valid private bucket name.');
+  }
+  environment['INVOICE_STORAGE_BUCKET'] = invoiceStorageBucket;
 
   const corsOrigins = (textValue(raw['CORS_ORIGIN']) || 'http://localhost:5173')
     .split(',')
@@ -31,6 +39,22 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
     throw new Error('CORS_ORIGIN must contain explicit HTTP or HTTPS origins.');
   }
   environment['CORS_ORIGIN'] = normalizedCorsOrigins.join(',');
+
+  const googleCredentials = textValue(raw['GOOGLE_SERVICE_ACCOUNT_JSON']);
+  const encodedGoogleCredentials = textValue(raw['GOOGLE_SERVICE_ACCOUNT_JSON_BASE64']);
+  if (googleCredentials && encodedGoogleCredentials) {
+    throw new Error(
+      'Configure only one Google service account variable: JSON or JSON_BASE64.',
+    );
+  }
+  if (googleCredentials || encodedGoogleCredentials) {
+    const credentials = parseGoogleCredentials(
+      googleCredentials || Buffer.from(encodedGoogleCredentials, 'base64').toString('utf8'),
+    );
+    if (!credentials) {
+      throw new Error('Google service account credentials are invalid.');
+    }
+  }
 
   if (!demoMode) {
     const missing = requiredProductionKeys.filter((key) => !textValue(raw[key]));
@@ -43,6 +67,23 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
       throw new Error('APP_WEB_URL must be an explicit HTTP or HTTPS origin.');
     }
     environment['APP_WEB_URL'] = appWebOrigin;
+    if (nodeEnvironment === 'production' && !appWebOrigin.startsWith('https://')) {
+      throw new Error('APP_WEB_URL must use HTTPS in production.');
+    }
+    if (!normalizedCorsOrigins.includes(appWebOrigin)) {
+      throw new Error('CORS_ORIGIN must include APP_WEB_URL.');
+    }
+
+    const supabaseOrigin = normalizeHttpOrigin(textValue(raw['SUPABASE_URL']));
+    if (!supabaseOrigin?.startsWith('https://')) {
+      throw new Error('SUPABASE_URL must be a valid HTTPS origin.');
+    }
+    environment['SUPABASE_URL'] = supabaseOrigin;
+
+    const databaseUrl = textValue(raw['DATABASE_URL']);
+    if (!/^postgres(?:ql)?:\/\//i.test(databaseUrl)) {
+      throw new Error('DATABASE_URL must use the PostgreSQL protocol.');
+    }
 
     const ownerEmails = textValue(raw['PLATFORM_OWNER_EMAILS'])
       .split(',')
@@ -90,5 +131,21 @@ function normalizeHttpOrigin(value: string): string {
     return isHttp && isOriginOnly && !url.username && !url.password ? url.origin : '';
   } catch {
     return '';
+  }
+}
+
+function parseGoogleCredentials(value: string): {
+  client_email: string;
+  private_key: string;
+} | null {
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    const clientEmail = textValue(parsed['client_email']);
+    const privateKey = textValue(parsed['private_key']);
+    return isEmail(clientEmail) && privateKey.includes('PRIVATE KEY')
+      ? { client_email: clientEmail, private_key: privateKey }
+      : null;
+  } catch {
+    return null;
   }
 }

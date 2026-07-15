@@ -82,7 +82,7 @@ export function DashboardView({ loading, summary }: DashboardViewProps) {
         </span>
         <span className="data-status">
           <span aria-hidden="true" />
-          Dados de demonstracao
+          {summary.dataSource === 'DEMO' ? 'Dados de demonstracao' : 'Dados da empresa'}
         </span>
       </section>
 
@@ -182,6 +182,48 @@ export function DashboardView({ loading, summary }: DashboardViewProps) {
             </ul>
           </div> : <div className="empty-data-state">Nenhuma compra registrada por categoria</div>}
         </article>
+
+        <article className="panel chart-panel department-chart">
+          <header className="panel-header">
+            <span>
+              <h3>Gastos por departamento</h3>
+              <p>Distribuicao por centro de custo e rateios</p>
+            </span>
+          </header>
+          {summary.spendByDepartment.length ? <div className="pie-layout">
+            <div className="pie-frame" aria-label="Grafico de gastos por departamento">
+              <ResponsiveContainer height="100%" width="100%">
+                <PieChart>
+                  <Pie
+                    data={summary.spendByDepartment}
+                    dataKey="value"
+                    innerRadius={54}
+                    nameKey="department"
+                    outerRadius={82}
+                    paddingAngle={2}
+                    stroke="none"
+                  >
+                    {summary.spendByDepartment.map((entry) => (
+                      <Cell fill={entry.color} key={entry.department} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => currency.format(Number(value))} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <ul className="chart-legend">
+              {summary.spendByDepartment.map((entry) => (
+                <li key={entry.department}>
+                  <span className="legend-color" style={{ backgroundColor: entry.color }} />
+                  <span>
+                    <strong>{entry.department}</strong>
+                    <small>{currency.format(entry.value)}</small>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div> : <div className="empty-data-state">Nenhum gasto classificado por departamento</div>}
+        </article>
       </section>
 
       <section className="panel table-panel">
@@ -234,6 +276,7 @@ function DashboardSkeleton() {
         ))}
       </div>
       <div className="charts-grid">
+        <div className="skeleton chart-skeleton" />
         <div className="skeleton chart-skeleton" />
         <div className="skeleton chart-skeleton" />
       </div>

@@ -25,6 +25,9 @@
 - Use uma senha de banco exclusiva e rotacione qualquer segredo compartilhado indevidamente.
 - Aplique as migracoes antes de liberar o primeiro acesso.
 - Teste convite, recuperacao de senha, isolamento entre duas empresas e revogacao de usuario.
+- Configure `TRUST_PROXY=true` somente quando a API estiver atras de um proxy confiavel.
+- Monitore respostas `5xx` e preserve o `x-request-id` ao investigar incidentes.
+- Execute backup e restauracao de ensaio antes da primeira migracao de dados reais.
 
 ## Relato de vulnerabilidade
 

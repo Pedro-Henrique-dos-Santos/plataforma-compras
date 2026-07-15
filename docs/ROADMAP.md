@@ -17,24 +17,26 @@
 
 ## Fase 2: cadastros mestres
 
-- [Proximo] Migrar fornecedores e centros de custo.
-- [Proximo] Migrar tabela de precos e importacao em lote.
-- [Proximo] Criar conciliacao entre planilha e PostgreSQL.
+- [Concluido] Migrar fornecedores e centros de custo.
+- [Concluido] Migrar tabela de precos e importacao em lote.
+- [Concluido] Criar conciliacao entre planilha e PostgreSQL.
 
 ## Fase 3: operacao de compras
 
-- Migrar cadastro de compras, itens, rateios e parcelas.
-- Incorporar notas fiscais e documentos no fluxo externo.
-- Garantir idempotencia e rastreabilidade.
+- [Concluido] Migrar cadastro de compras, itens, rateios e parcelas.
+- [Concluido] Incorporar notas fiscais XML e PDF, OCR gratuito, revisao e conciliacao no fluxo externo.
+- [Concluido] Garantir idempotencia, isolamento por empresa e auditoria das gravacoes.
 
 ## Fase 4: inteligencia
 
-- Migrar dashboard e indicadores para consultas do banco.
-- Criar filtros multiempresa e exportacoes.
-- Consolidar economia negociada e comparativos historicos.
+- [Concluido] Migrar dashboard e indicadores para consultas do banco.
+- [Concluido] Criar filtros por empresa e exportacoes.
+- [Concluido] Consolidar economia negociada, comparativos mensais e gastos por departamento.
 
 ## Fase 5: producao
 
-- Testes de carga, seguranca e recuperacao.
-- Backups, observabilidade e alertas.
-- Implantacao controlada e desligamento gradual do Apps Script.
+- [Concluido no codigo] Testes de carga, seguranca e recuperacao.
+- [Concluido no codigo] Backups, prontidao, observabilidade e plano de alertas.
+- [Pendente externo] Criar e homologar a instancia Supabase.
+- [Pendente externo] Executar restauracao de ensaio em PostgreSQL descartavel.
+- [Pendente externo] Implantacao controlada e desligamento gradual do Apps Script.

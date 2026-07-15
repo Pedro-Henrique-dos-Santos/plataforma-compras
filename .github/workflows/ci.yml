@@ -34,6 +34,9 @@ jobs:
       - name: Generate database client
         run: pnpm db:generate
 
+      - name: Validate database schema
+        run: pnpm db:validate
+
       - name: Validate workspace
         run: pnpm check
 

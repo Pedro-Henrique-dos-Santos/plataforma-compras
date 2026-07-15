@@ -29,6 +29,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return this.client !== null;
   }
 
+  async ping(): Promise<void> {
+    if (!this.client) return;
+    await this.client.$queryRaw`SELECT 1`;
+  }
+
   async onModuleInit(): Promise<void> {
     await this.client?.$connect();
   }
