@@ -12,7 +12,7 @@ O codigo cobre identidade, multiempresa, papeis, cadastros, precos, compras, rat
 - Uma segunda previa da mesma fonte nao apresentou criacoes nem atualizacoes, comprovando idempotencia.
 - Dashboard, Excel resumido e Excel detalhado reconciliaram a mesma base operacional.
 - Todas as abas dos dois arquivos foram renderizadas; nao foram encontrados erros de formula ou defeitos graves de layout.
-- Um aceite autenticado descartavel validou perfil e aceite legal, isolamento multiempresa, cadastros mestres, precos em lote, compra, rateio, filtros, dashboard e exportacoes.
+- Um aceite autenticado descartavel validou o bloqueio da API antes do consentimento, a liberacao apos o aceite legal, isolamento multiempresa, cadastros mestres, precos em lote, compra, rateio, filtros, dashboard e exportacoes.
 - Os arquivos XLSX resumido e detalhado foram validados pela API como respostas binarias, e todos os dados sinteticos foram removidos do banco e do provedor de autenticacao ao final.
 - `pnpm audit --prod` nao encontrou vulnerabilidades conhecidas depois da atualizacao controlada da dependencia transitiva `uuid`.
 

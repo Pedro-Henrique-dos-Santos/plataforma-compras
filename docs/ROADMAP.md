@@ -11,7 +11,7 @@
 - [Concluido] Criar o Supabase Free de homologacao na regiao de Sao Paulo.
 - [Concluido] Aplicar as migracoes, habilitar RLS, bloquear tabelas operacionais e criar o bucket privado.
 - [Concluido] Implementar login, recuperacao e redefinicao de acesso.
-- [Concluido no codigo] Adicionar criacao de conta com nome exibido e aceite versionado dos Termos de uso e do Aviso de privacidade.
+- [Concluido em homologacao] Adicionar criacao de conta com nome exibido, aceite versionado dos Termos de uso e do Aviso de privacidade e bloqueio da API enquanto o consentimento estiver pendente ou desatualizado.
 - [Concluido] Criar organizacoes, convites, vinculos e troca de empresa ativa.
 - [Concluido no codigo] Permitir editar nome, CNPJ, contato e endereco da empresa.
 - [Concluido] Aplicar papeis e auditoria sem fluxo de aprovacao.

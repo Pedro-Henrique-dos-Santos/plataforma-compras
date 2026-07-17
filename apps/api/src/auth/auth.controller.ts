@@ -10,6 +10,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { AuthGuard } from './auth.guard.js';
 import { AuthService } from './auth.service.js';
 import { CurrentUser } from './current-user.decorator.js';
+import { AllowPendingLegalAcceptance } from './legal-acceptance.decorator.js';
 import type { AuthenticatedIdentity } from '../domain/identity.js';
 
 @Controller('auth')
@@ -23,12 +24,14 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(AuthGuard)
+  @AllowPendingLegalAcceptance()
   getMe(@CurrentUser() user: AuthenticatedIdentity) {
     return this.organizations.getUserContext(user);
   }
 
   @Patch('profile')
   @UseGuards(AuthGuard)
+  @AllowPendingLegalAcceptance()
   async updateProfile(
     @CurrentUser() user: AuthenticatedIdentity,
     @Body(new ZodValidationPipe(updateUserProfileInputSchema)) input: UpdateUserProfileInput,

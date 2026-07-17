@@ -30,7 +30,7 @@ Nenhuma liberacao pode prosseguir com teste, build, auditoria ou restauracao em 
 4. Confirmar que `PLATFORM_OWNER` nao pode ser concedido por um administrador de empresa.
 5. Validar os temas normal, escuro e branco e a barra lateral recolhivel.
 6. Criar uma conta informando o nome exibido e marcando separadamente Termos de uso e Aviso de privacidade.
-7. Confirmar que o primeiro acesso fica bloqueado ate o aceite versionado dos dois documentos.
+7. Confirmar pela interface e por chamada direta a API que o primeiro acesso fica bloqueado ate o aceite versionado dos dois documentos; somente consulta de identidade e gravacao do perfil permanecem disponiveis para concluir o consentimento.
 8. Alterar o nome exibido em Configuracoes e confirmar a atualizacao no cabecalho sem mudar o e-mail autenticado.
 9. Consultar em Configuracoes a versao e a data dos documentos aceitos.
 10. Editar a empresa ativa, preencher razao social, CNPJ, e-mail, telefone, CEP e endereco e recarregar a pagina para confirmar a persistencia.
