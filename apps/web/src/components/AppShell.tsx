@@ -64,7 +64,7 @@ const navigation: Array<{
   { id: 'cost-centers', label: 'Centros de custo', icon: Landmark },
   { id: 'invoice-documents', label: 'Notas fiscais', icon: FileScan },
   { id: 'integrations', label: 'Automacoes', icon: Workflow },
-  { id: 'organizations', label: 'Empresas', icon: Building2, visibility: 'platform-owner' },
+  { id: 'organizations', label: 'Empresas', icon: Building2, visibility: 'organization-admin' },
   { id: 'access', label: 'Acessos', icon: ShieldCheck, visibility: 'organization-admin' },
 ];
 
@@ -130,16 +130,7 @@ export function AppShell({
   view,
 }: AppShellProps) {
   const isPlatformOwner = user.platformRoles.includes('PLATFORM_OWNER');
-  const isOrganizationAdmin = activeOrganization.role === 'ORGANIZATION_ADMIN';
-  const visibleNavigation = navigation.filter((item) => {
-    if (item.visibility === 'platform-owner') {
-      return isPlatformOwner;
-    }
-    if (item.visibility === 'organization-admin') {
-      return isPlatformOwner || isOrganizationAdmin;
-    }
-    return true;
-  });
+  const visibleNavigation = getVisibleNavigation(user, activeOrganization);
   const title = viewTitles[view];
 
   function selectView(nextView: ViewId) {
@@ -275,6 +266,21 @@ export function AppShell({
       </div>
     </div>
   );
+}
+
+export function getVisibleNavigation(
+  user: Pick<UserContext, 'platformRoles'>,
+  activeOrganization: Pick<OrganizationSummary, 'role'>,
+) {
+  const isPlatformOwner = user.platformRoles.includes('PLATFORM_OWNER');
+  const isOrganizationAdmin = activeOrganization.role === 'ORGANIZATION_ADMIN';
+  return navigation.filter((item) => {
+    if (item.visibility === 'platform-owner') return isPlatformOwner;
+    if (item.visibility === 'organization-admin') {
+      return isPlatformOwner || isOrganizationAdmin;
+    }
+    return true;
+  });
 }
 
 function accountRole(isPlatformOwner: boolean, role: OrganizationSummary['role']): string {

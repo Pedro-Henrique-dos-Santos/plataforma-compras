@@ -1,6 +1,6 @@
 {
   "name": "plataforma-compras",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "description": "Plataforma multiempresa para gestao, inteligencia e controle de compras.",
   "packageManager": "pnpm@11.7.0",
@@ -13,7 +13,7 @@
     "dev:api": "pnpm --filter @compras/api dev",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test && node --test scripts/restore-drill.test.mjs scripts/supabase-bootstrap.test.mjs",
+    "test": "pnpm -r --if-present test && node --test scripts/restore-drill.test.mjs scripts/supabase-bootstrap.test.mjs scripts/ui-acceptance-fixture.test.mjs",
     "test:integration": "pnpm --filter @compras/api test:integration",
     "lint": "pnpm -r --if-present lint",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
@@ -27,6 +27,8 @@
     "db:backup:verify": "node scripts/verify-backup.mjs",
     "db:restore:drill": "node scripts/restore-drill.mjs",
     "supabase:bootstrap": "node scripts/supabase-bootstrap.mjs",
-    "load:smoke": "node scripts/load-smoke.mjs"
+    "load:smoke": "node scripts/load-smoke.mjs",
+    "ui:acceptance:provision": "node --env-file-if-exists=.env.staging.local scripts/ui-acceptance-fixture.mjs provision",
+    "ui:acceptance:cleanup": "node --env-file-if-exists=.env.staging.local scripts/ui-acceptance-fixture.mjs cleanup"
   }
 }

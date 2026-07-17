@@ -105,11 +105,13 @@ export function OrganizationsView({
     <div className="management-layout">
       <section className="section-heading">
         <span>
-          <p className="eyebrow">Administracao global</p>
+          <p className="eyebrow">{canCreate ? 'Administracao global' : 'Cadastro da empresa'}</p>
           <h2>Empresas cadastradas</h2>
         </span>
         <div className="heading-actions">
-          <span className="count-label">{organizations.length} ambientes</span>
+          <span className="count-label">
+            {organizations.length} {organizations.length === 1 ? 'ambiente' : 'ambientes'}
+          </span>
           {canCreate && (
             <button className="primary-button" onClick={() => setCreateOpen(true)} type="button">
               <Plus size={16} />

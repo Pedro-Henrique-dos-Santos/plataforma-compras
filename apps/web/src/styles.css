@@ -2899,6 +2899,12 @@ td {
   grid-column: 1 / -1;
 }
 
+@media (max-width: 1440px) {
+  .dashboard-filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 .data-warning {
   min-height: 50px;
   display: flex;

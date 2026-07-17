@@ -8,6 +8,7 @@ coverage/
 __pycache__/
 *.py[cod]
 .tools/
+.codex/
 
 # Local credentials and environment files
 .env

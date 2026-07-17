@@ -14,9 +14,11 @@ O codigo cobre identidade, multiempresa, papeis, cadastros, precos, compras, rat
 - Todas as abas dos dois arquivos foram renderizadas; nao foram encontrados erros de formula ou defeitos graves de layout.
 - Um aceite autenticado descartavel validou o bloqueio da API antes do consentimento, a liberacao apos o aceite legal, isolamento multiempresa, cadastros mestres, precos em lote, compra, rateio, filtros, dashboard e exportacoes.
 - Os arquivos XLSX resumido e detalhado foram validados pela API como respostas binarias, e todos os dados sinteticos foram removidos do banco e do provedor de autenticacao ao final.
+- O aceite visual autenticado percorreu todas as areas operacionais em desktop de 1280 por 720 pixels e dispositivo movel de 390 por 844 pixels, incluindo menu responsivo, temas, filtros, formularios, tabelas, graficos e documentos fiscais.
+- O aceite visual nao encontrou erros no console nem rolagem horizontal da pagina; os totais do dashboard e dos relatorios foram reconciliados, a fixture foi removida e uma segunda limpeza confirmou a idempotencia.
 - `pnpm audit --prod` nao encontrou vulnerabilidades conhecidas depois da atualizacao controlada da dependencia transitiva `uuid`.
 
-Ainda faltam o aceite visual completo da interface autenticada, a configuracao permanente do conector Google por conta de servico, a revisao juridica e a implantacao controlada.
+Ainda faltam a configuracao permanente do conector Google por conta de servico, a revisao juridica e a implantacao controlada.
 
 ## Verificacoes da API
 

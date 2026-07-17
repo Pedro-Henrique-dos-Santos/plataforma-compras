@@ -22,6 +22,27 @@ O GitHub Actions deve executar adicionalmente:
 
 Nenhuma liberacao pode prosseguir com teste, build, auditoria ou restauracao em falha.
 
+### Fixture descartavel do aceite visual
+
+O ambiente de homologacao pode receber uma identidade, empresa e base sintetica reservadas para o aceite visual. O provisionamento exige confirmacao explicita, e-mail no dominio `example.com` com o prefixo `codex-ui-acceptance` e senha temporaria forte:
+
+```powershell
+$env:UI_ACCEPTANCE_CONFIRM = "staging-only"
+$env:UI_ACCEPTANCE_EMAIL = "codex-ui-acceptance+<sufixo>@example.com"
+$env:UI_ACCEPTANCE_PASSWORD = "<senha-temporaria-forte>"
+pnpm ui:acceptance:provision
+```
+
+Ao terminar, remova a fixture usando o mesmo e-mail. A limpeza nao recebe nem exige a senha:
+
+```powershell
+$env:UI_ACCEPTANCE_CONFIRM = "staging-only"
+$env:UI_ACCEPTANCE_EMAIL = "codex-ui-acceptance+<sufixo>@example.com"
+pnpm ui:acceptance:cleanup
+```
+
+As credenciais do Supabase devem existir somente no ambiente local protegido ou no gerenciador de segredos. A limpeza precisa ser executada mesmo quando alguma etapa do aceite falhar.
+
 ## 2. Identidade e multiempresa
 
 1. Entrar no modo de demonstracao ou com uma identidade de homologacao.

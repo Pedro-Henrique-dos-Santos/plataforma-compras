@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.1 - 2026-07-16
+
+- Concluido o aceite visual autenticado em desktop de 1280 por 720 pixels e dispositivo movel de 390 por 844 pixels.
+- Adicionada fixture descartavel e protegida para provisionar e remover a identidade, empresa e dados sinteticos usados no aceite visual.
+- Corrigida a limpeza da fixture para remover rateios e compras antes das relacoes restritivas de centros de custo e fornecedores.
+- Corrigido o layout dos filtros do dashboard em 1280 pixels, eliminando corte de acoes e rolagem horizontal da pagina.
+- Liberado o cadastro da empresa para administradores da organizacao, sem permitir que criem empresas ou concedam o papel global `PLATFORM_OWNER`.
+- Corrigido o indicador da origem dos relatorios durante carregamento ou falha, evitando identificar dados reais como demonstrativos.
+- Adicionados testes da navegacao por papel, da origem do relatorio e das protecoes da fixture de homologacao.
+
 ## 0.8.0 - 2026-07-14
 
 - Criado e protegido o projeto Supabase Free de homologacao na regiao de Sao Paulo.

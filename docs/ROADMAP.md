@@ -52,5 +52,5 @@
 - [Concluido em homologacao] Criar o proprietario global independente e a primeira empresa cliente.
 - [Concluido em homologacao] Aplicar o primeiro lote real, reconciliar os totais e comprovar a idempotencia da importacao.
 - [Concluido em homologacao] Gerar e inspecionar os relatorios XLSX resumido e detalhado a partir do PostgreSQL.
-- [Pendente externo] Executar o aceite visual da interface autenticada em navegadores e dispositivos suportados.
+- [Concluido em homologacao] Executar o aceite visual autenticado em desktop de 1280 por 720 pixels e dispositivo movel de 390 por 844 pixels, sem erros de console ou rolagem horizontal da pagina.
 - [Pendente externo] Implantacao controlada e desligamento gradual do Apps Script.

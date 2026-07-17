@@ -164,7 +164,7 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
         </span>
         <span className="data-status">
           <span aria-hidden="true" />
-          {report?.dataSource === 'DATABASE' ? 'Dados da empresa' : 'Dados de demonstracao'}
+          {reportDataSourceLabel(report?.dataSource)}
         </span>
       </section>
 
@@ -407,6 +407,13 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
       )}
     </div>
   );
+}
+
+export function reportDataSourceLabel(
+  dataSource: ProcurementReport['dataSource'] | undefined,
+): string {
+  if (!dataSource) return 'Carregando dados';
+  return dataSource === 'DATABASE' ? 'Dados da empresa' : 'Dados de demonstracao';
 }
 
 function ReportMetric({
