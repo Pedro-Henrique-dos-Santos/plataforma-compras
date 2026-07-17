@@ -46,9 +46,11 @@
 - [Concluido no codigo] Backups, prontidao, observabilidade e plano de alertas.
 - [Concluido no CI] Aplicar migracoes em PostgreSQL descartavel e testar isolamento multiempresa e RLS.
 - [Concluido no CI] Executar backup, restauracao integral e reconciliacao em banco descartavel.
-- [Concluido local] Executar aceite funcional sintetico dos cadastros, compras, rateios, documentos e dashboard.
+- [Concluido em homologacao] Executar aceite autenticado descartavel de identidade, isolamento, cadastros, precos, compras, rateios, filtros, dashboard e exportacoes, com limpeza integral ao final.
+- [Concluido] Auditar dependencias de producao e eliminar vulnerabilidades conhecidas.
 - [Concluido] Executar migracoes e validar o Supabase de homologacao e o bucket privado.
 - [Concluido em homologacao] Criar o proprietario global independente e a primeira empresa cliente.
 - [Concluido em homologacao] Aplicar o primeiro lote real, reconciliar os totais e comprovar a idempotencia da importacao.
 - [Concluido em homologacao] Gerar e inspecionar os relatorios XLSX resumido e detalhado a partir do PostgreSQL.
+- [Pendente externo] Executar o aceite visual da interface autenticada em navegadores e dispositivos suportados.
 - [Pendente externo] Implantacao controlada e desligamento gradual do Apps Script.

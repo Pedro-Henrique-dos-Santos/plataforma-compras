@@ -12,8 +12,11 @@ O codigo cobre identidade, multiempresa, papeis, cadastros, precos, compras, rat
 - Uma segunda previa da mesma fonte nao apresentou criacoes nem atualizacoes, comprovando idempotencia.
 - Dashboard, Excel resumido e Excel detalhado reconciliaram a mesma base operacional.
 - Todas as abas dos dois arquivos foram renderizadas; nao foram encontrados erros de formula ou defeitos graves de layout.
+- Um aceite autenticado descartavel validou perfil e aceite legal, isolamento multiempresa, cadastros mestres, precos em lote, compra, rateio, filtros, dashboard e exportacoes.
+- Os arquivos XLSX resumido e detalhado foram validados pela API como respostas binarias, e todos os dados sinteticos foram removidos do banco e do provedor de autenticacao ao final.
+- `pnpm audit --prod` nao encontrou vulnerabilidades conhecidas depois da atualizacao controlada da dependencia transitiva `uuid`.
 
-Ainda faltam o aceite funcional completo da interface autenticada, a configuracao permanente do conector Google por conta de servico, a revisao juridica e a implantacao controlada.
+Ainda faltam o aceite visual completo da interface autenticada, a configuracao permanente do conector Google por conta de servico, a revisao juridica e a implantacao controlada.
 
 ## Verificacoes da API
 
@@ -22,6 +25,7 @@ Ainda faltam o aceite funcional completo da interface autenticada, a configuraca
 - Toda resposta recebe `x-request-id`.
 - Cada requisicao gera um log JSON com metodo, caminho sem query string, status, duracao e identificador.
 - A aplicacao encerra conexoes ao receber sinais de desligamento.
+- As rotas XLSX usam resposta de arquivo transmitido, evitando serializacao acidental do `Buffer` como JSON.
 
 O balanceador deve retirar a instancia do trafego quando `ready` retornar `503`, mas reiniciar o processo somente quando `live` falhar.
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Query, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject, Query, Res, StreamableFile, UseGuards } from '@nestjs/common';
 import {
   procurementReportFiltersSchema,
   type OrganizationSummary,
@@ -51,14 +51,12 @@ export class ReportsController {
     @ActiveOrganization() organization: OrganizationSummary,
     @Query(new ZodValidationPipe(procurementReportFiltersSchema))
     query: ProcurementReportFilters,
-    @Res({ passthrough: true }) response: Response,
   ) {
-    response.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    response.setHeader(
-      'Content-Disposition',
-      `attachment; filename="relatorio-compras-resumido-${organization.slug}-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+    const workbook = await this.reports.exportProcurementXlsx(organization.id, query);
+    return procurementWorkbookFile(
+      workbook,
+      `relatorio-compras-resumido-${organization.slug}-${new Date().toISOString().slice(0, 10)}.xlsx`,
     );
-    return this.reports.exportProcurementXlsx(organization.id, query);
   }
 
   @Get('procurement-detailed.xlsx')
@@ -67,13 +65,19 @@ export class ReportsController {
     @ActiveOrganization() organization: OrganizationSummary,
     @Query(new ZodValidationPipe(procurementReportFiltersSchema))
     query: ProcurementReportFilters,
-    @Res({ passthrough: true }) response: Response,
   ) {
-    response.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    response.setHeader(
-      'Content-Disposition',
-      `attachment; filename="relatorio-compras-detalhado-${organization.slug}-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+    const workbook = await this.reports.exportDetailedProcurementXlsx(organization.id, query);
+    return procurementWorkbookFile(
+      workbook,
+      `relatorio-compras-detalhado-${organization.slug}-${new Date().toISOString().slice(0, 10)}.xlsx`,
     );
-    return this.reports.exportDetailedProcurementXlsx(organization.id, query);
   }
+}
+
+function procurementWorkbookFile(workbook: Buffer, fileName: string): StreamableFile {
+  return new StreamableFile(workbook, {
+    disposition: `attachment; filename="${fileName}"`,
+    length: workbook.length,
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
 }
