@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { DashboardSummary } from '@compras/contracts';
+import type { DashboardFilters, DashboardSummary } from '@compras/contracts';
 
 import { ProcurementRepository } from '../procurement/procurement.repository.js';
 
@@ -10,7 +10,10 @@ export class DashboardService {
     private readonly repository: ProcurementRepository,
   ) {}
 
-  getSummary(organizationId: string): Promise<DashboardSummary> {
-    return this.repository.getDashboardSummary(organizationId);
+  getSummary(
+    organizationId: string,
+    filters: DashboardFilters,
+  ): Promise<DashboardSummary> {
+    return this.repository.getDashboardSummary(organizationId, filters);
   }
 }

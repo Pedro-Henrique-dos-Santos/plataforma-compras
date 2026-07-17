@@ -7,9 +7,9 @@ import type {
   AttachPurchaseInvoiceInput,
   CostCenter,
   CreateCostCenterInput,
-  CreatePurchaseInput,
   CreateSupplierInput,
   CreateSupplierPriceInput,
+  DashboardFilters,
   DashboardSummary,
   ImportSupplierPricesInput,
   PriceSource,
@@ -18,6 +18,7 @@ import type {
   PurchaseImportResult,
   PurchaseSource,
   PurchaseSummary,
+  ProcurementDetailedReport,
   ProcurementReport,
   ProcurementReportFilters,
   Supplier,
@@ -36,6 +37,7 @@ import { buildDashboardSummary } from './dashboard-summary.builder.js';
 import {
   ProcurementRepository,
   type CostCenterFilters,
+  type PersistPurchaseInput,
   type PurchaseFilters,
   type SupplierFilters,
   type SupplierPriceFilters,
@@ -60,9 +62,24 @@ const purchaseInclude = {
   },
 } satisfies Prisma.PurchaseInclude;
 
+const detailedPurchaseInclude = {
+  supplier: { include: { defaultCostCenter: true } },
+  items: {
+    include: {
+      costCenter: true,
+      allocations: { include: { costCenter: true } },
+    },
+  },
+  installments: { orderBy: { sequence: 'asc' } },
+  invoiceDocuments: { orderBy: { createdAt: 'asc' } },
+} satisfies Prisma.PurchaseInclude;
+
 type SupplierRecord = Prisma.SupplierGetPayload<{ include: typeof supplierInclude }>;
 type PriceRecord = Prisma.SupplierPriceGetPayload<{ include: typeof priceInclude }>;
 type PurchaseRecord = Prisma.PurchaseGetPayload<{ include: typeof purchaseInclude }>;
+type DetailedPurchaseRecord = Prisma.PurchaseGetPayload<{
+  include: typeof detailedPurchaseInclude;
+}>;
 
 export class PrismaProcurementRepository extends ProcurementRepository {
   constructor(private readonly prisma: PrismaClient) {
@@ -454,7 +471,7 @@ export class PrismaProcurementRepository extends ProcurementRepository {
         }),
       },
       include: purchaseInclude,
-      orderBy: [{ issuedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ issuedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
     });
     return purchases.map(toPurchaseSummary);
   }
@@ -462,7 +479,7 @@ export class PrismaProcurementRepository extends ProcurementRepository {
   async createPurchase(
     actor: AuthenticatedIdentity,
     organizationId: string,
-    input: CreatePurchaseInput,
+    input: PersistPurchaseInput,
   ): Promise<PurchaseSummary> {
     const supplier = await this.requireSupplier(organizationId, input.supplierId, true);
     await this.validatePurchaseCenters(organizationId, supplier, input);
@@ -482,7 +499,7 @@ export class PrismaProcurementRepository extends ProcurementRepository {
             supplierId: input.supplierId,
             number: input.number,
             invoiceNumber: input.invoiceNumber ?? null,
-            issuedAt: toDate(input.issuedAt) as Date,
+            issuedAt: toDate(input.issuedAt),
             status: 'REGISTERED',
             category: input.category ?? supplier.category,
             operationNature: input.operationNature ?? supplier.operationNature,
@@ -618,20 +635,21 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     }
   }
 
-  async getDashboardSummary(organizationId: string): Promise<DashboardSummary> {
-    const now = new Date();
-    const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
+  async getDashboardSummary(
+    organizationId: string,
+    filters: DashboardFilters,
+  ): Promise<DashboardSummary> {
     const [activeSuppliers, purchases] = await Promise.all([
       this.prisma.supplier.count({ where: { organizationId, status: 'ACTIVE' } }),
       this.prisma.purchase.findMany({
-        where: { organizationId, status: 'REGISTERED', issuedAt: { gte: from } },
+        where: dashboardWhere(organizationId, filters),
         include: purchaseInclude,
       }),
     ]);
     return buildDashboardSummary({
       activeSuppliers,
       dataSource: 'DATABASE',
-      now,
+      filters,
       purchases: purchases.map(toDashboardPurchase),
     });
   }
@@ -641,34 +659,9 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     filters: ProcurementReportFilters,
   ): Promise<ProcurementReport> {
     const purchases = await this.prisma.purchase.findMany({
-      where: {
-        organizationId,
-        status: filters.status,
-        ...(filters.dateFrom || filters.dateTo
-          ? {
-              issuedAt: {
-                ...(filters.dateFrom && { gte: requiredDate(filters.dateFrom) }),
-                ...(filters.dateTo && { lte: requiredDate(filters.dateTo) }),
-              },
-            }
-          : {}),
-        ...(filters.supplierId && { supplierId: filters.supplierId }),
-        ...(filters.category && {
-          category: { equals: filters.category, mode: 'insensitive' },
-        }),
-        ...(filters.costCenterId && {
-          items: {
-            some: {
-              OR: [
-                { costCenterId: filters.costCenterId },
-                { allocations: { some: { costCenterId: filters.costCenterId } } },
-              ],
-            },
-          },
-        }),
-      },
+      where: procurementReportWhere(organizationId, filters),
       include: purchaseInclude,
-      orderBy: [{ issuedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ issuedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
     });
 
     return buildProcurementReport({
@@ -676,6 +669,26 @@ export class PrismaProcurementRepository extends ProcurementRepository {
       filters,
       purchases: purchases.map(toReportPurchase),
     });
+  }
+
+  async getProcurementDetailedReport(
+    organizationId: string,
+    filters: ProcurementReportFilters,
+  ): Promise<ProcurementDetailedReport> {
+    const purchases = await this.prisma.purchase.findMany({
+      where: procurementReportWhere(organizationId, filters),
+      include: detailedPurchaseInclude,
+      orderBy: [{ issuedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+    });
+    const summary = buildProcurementReport({
+      dataSource: 'DATABASE',
+      filters,
+      purchases: purchases.map(toReportPurchase),
+    });
+    return {
+      summary,
+      purchases: purchases.map(toDetailedReportPurchase),
+    };
   }
 
   private async requireCostCenter(
@@ -739,7 +752,7 @@ export class PrismaProcurementRepository extends ProcurementRepository {
   private async validatePurchaseCenters(
     organizationId: string,
     supplier: SupplierRecord,
-    input: CreatePurchaseInput,
+    input: PersistPurchaseInput,
   ) {
     const ids = new Set<string>();
     for (const item of input.items) {
@@ -807,6 +820,72 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     }
     throw error;
   }
+}
+
+function procurementReportWhere(
+  organizationId: string,
+  filters: ProcurementReportFilters,
+): Prisma.PurchaseWhereInput {
+  return {
+    organizationId,
+    status: filters.status,
+    ...(filters.dateFrom || filters.dateTo
+      ? {
+          issuedAt: {
+            ...(filters.dateFrom && { gte: requiredDate(filters.dateFrom) }),
+            ...(filters.dateTo && { lte: requiredDate(filters.dateTo) }),
+          },
+        }
+      : {}),
+    ...(filters.supplierId && { supplierId: filters.supplierId }),
+    ...(filters.category && {
+      category: { equals: filters.category, mode: 'insensitive' },
+    }),
+    ...(filters.costCenterId && {
+      items: {
+        some: {
+          OR: [
+            { costCenterId: filters.costCenterId },
+            { allocations: { some: { costCenterId: filters.costCenterId } } },
+          ],
+        },
+      },
+    }),
+  };
+}
+
+function dashboardWhere(
+  organizationId: string,
+  filters: DashboardFilters,
+): Prisma.PurchaseWhereInput {
+  return {
+    organizationId,
+    status: 'REGISTERED',
+    ...(filters.dateFrom || filters.dateTo
+      ? {
+          issuedAt: {
+            ...(filters.dateFrom && { gte: requiredDate(filters.dateFrom) }),
+            ...(filters.dateTo && { lte: requiredDate(filters.dateTo) }),
+          },
+        }
+      : !filters.includeUndated
+        ? { issuedAt: { not: null } }
+        : {}),
+    ...(filters.supplierId && { supplierId: filters.supplierId }),
+    ...(filters.category && {
+      category: { equals: filters.category, mode: 'insensitive' },
+    }),
+    ...(filters.costCenterId && {
+      items: {
+        some: {
+          OR: [
+            { costCenterId: filters.costCenterId },
+            { allocations: { some: { costCenterId: filters.costCenterId } } },
+          ],
+        },
+      },
+    }),
+  };
 }
 
 function toCostCenter(center: {
@@ -885,7 +964,7 @@ function toPurchaseSummary(purchase: PurchaseRecord): PurchaseSummary {
     invoiceNumber: purchase.invoiceNumber,
     supplierId: purchase.supplierId,
     supplierName: purchase.supplier.tradeName ?? purchase.supplier.legalName,
-    issuedAt: toIsoDate(purchase.issuedAt) as string,
+    issuedAt: toIsoDate(purchase.issuedAt),
     status: purchase.status,
     category: purchase.category,
     paymentMethod: purchase.paymentMethod,
@@ -914,6 +993,7 @@ function toDashboardPurchase(purchase: PurchaseRecord) {
     id: purchase.number,
     supplier: purchase.supplier.tradeName ?? purchase.supplier.legalName,
     issuedAt: purchase.issuedAt,
+    createdAt: purchase.createdAt,
     total: Number(purchase.total),
     negotiatedSavings: Number(purchase.negotiatedSavings),
     category: purchase.category,
@@ -933,7 +1013,7 @@ function toReportPurchase(purchase: PurchaseRecord) {
     id: purchase.id,
     number: purchase.number,
     invoiceNumber: purchase.invoiceNumber,
-    issuedAt: toIsoDate(purchase.issuedAt) as string,
+    issuedAt: toIsoDate(purchase.issuedAt),
     supplierId: purchase.supplierId,
     supplierName: purchase.supplier.tradeName ?? purchase.supplier.legalName,
     category: purchase.category,
@@ -960,6 +1040,100 @@ function toReportPurchase(purchase: PurchaseRecord) {
   };
 }
 
+function toDetailedReportPurchase(purchase: DetailedPurchaseRecord) {
+  return {
+    id: purchase.id,
+    number: purchase.number,
+    invoiceNumber: purchase.invoiceNumber,
+    issuedAt: toIsoDate(purchase.issuedAt),
+    status: purchase.status,
+    category: purchase.category,
+    operationNature: purchase.operationNature,
+    paymentMethod: purchase.paymentMethod,
+    notes: purchase.notes,
+    source: parsePurchaseSource(purchase.source),
+    sourceReference: purchase.sourceReference,
+    total: Number(purchase.total),
+    negotiatedSavings: Number(purchase.negotiatedSavings),
+    createdAt: purchase.createdAt.toISOString(),
+    supplier: {
+      id: purchase.supplier.id,
+      legalName: purchase.supplier.legalName,
+      tradeName: purchase.supplier.tradeName,
+      document: purchase.supplier.document,
+      category: purchase.supplier.category,
+      operationNature: purchase.supplier.operationNature,
+      paymentMethod: purchase.supplier.paymentMethod,
+      email: purchase.supplier.email,
+      phone: purchase.supplier.phone,
+      defaultCostCenter: purchase.supplier.defaultCostCenter
+        ? {
+            id: purchase.supplier.defaultCostCenter.id,
+            code: purchase.supplier.defaultCostCenter.code,
+            name: purchase.supplier.defaultCostCenter.name,
+          }
+        : null,
+    },
+    items: purchase.items.map((item) => {
+      const unitPrice = Number(item.unitPrice);
+      const negotiatedPrice = item.negotiatedPrice === null ? null : Number(item.negotiatedPrice);
+      return {
+        id: item.id,
+        description: item.description,
+        quantity: Number(item.quantity),
+        unit: item.unit,
+        unitPrice,
+        negotiatedPrice,
+        total: Number(item.total),
+        negotiatedSavings: roundMoney(
+          Math.max(0, unitPrice - (negotiatedPrice ?? unitPrice)) * Number(item.quantity),
+        ),
+        costCenter: item.costCenter
+          ? {
+              id: item.costCenter.id,
+              code: item.costCenter.code,
+              name: item.costCenter.name,
+            }
+          : null,
+        allocations: item.allocations.map((allocation) => ({
+          costCenter: {
+            id: allocation.costCenter.id,
+            code: allocation.costCenter.code,
+            name: allocation.costCenter.name,
+          },
+          percentage: Number(allocation.percentage),
+          amount: Number(allocation.amount),
+        })),
+      };
+    }),
+    installments: purchase.installments.map((installment) => ({
+      sequence: installment.sequence,
+      dueDate: toIsoDate(installment.dueDate) as string,
+      amount: Number(installment.amount),
+      paidAt: toIsoDate(installment.paidAt),
+    })),
+    invoices: purchase.invoiceDocuments.map((invoice) => ({
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      accessKey: invoice.accessKey,
+      fileName: invoice.fileName,
+      kind: invoice.kind,
+      status: invoice.status,
+      parser: invoice.parser,
+      confidence: invoice.confidence === null ? null : Number(invoice.confidence),
+      warningCount: jsonArrayLength(invoice.warnings),
+      errorCount: jsonArrayLength(invoice.errors),
+      processedAt: invoice.processedAt?.toISOString() ?? null,
+      reviewedAt: invoice.reviewedAt?.toISOString() ?? null,
+      importedAt: invoice.importedAt?.toISOString() ?? null,
+    })),
+  };
+}
+
+function jsonArrayLength(value: Prisma.JsonValue): number {
+  return Array.isArray(value) ? value.length : 0;
+}
+
 function priceData(
   organizationId: string,
   supplierId: string,
@@ -982,7 +1156,7 @@ function priceData(
   };
 }
 
-function calculatePurchase(input: CreatePurchaseInput, supplierCenterId: string | null) {
+function calculatePurchase(input: PersistPurchaseInput, supplierCenterId: string | null) {
   const items = input.items.map((item) => {
     const finalPrice = item.negotiatedPrice ?? item.unitPrice;
     const total = roundMoney(item.quantity * finalPrice);

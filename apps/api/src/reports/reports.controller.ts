@@ -56,8 +56,24 @@ export class ReportsController {
     response.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     response.setHeader(
       'Content-Disposition',
-      `attachment; filename="relatorio-compras-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+      `attachment; filename="relatorio-compras-resumido-${organization.slug}-${new Date().toISOString().slice(0, 10)}.xlsx"`,
     );
     return this.reports.exportProcurementXlsx(organization.id, query);
+  }
+
+  @Get('procurement-detailed.xlsx')
+  @RequirePermission('report:export')
+  async exportDetailedProcurementWorkbook(
+    @ActiveOrganization() organization: OrganizationSummary,
+    @Query(new ZodValidationPipe(procurementReportFiltersSchema))
+    query: ProcurementReportFilters,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="relatorio-compras-detalhado-${organization.slug}-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+    );
+    return this.reports.exportDetailedProcurementXlsx(organization.id, query);
   }
 }

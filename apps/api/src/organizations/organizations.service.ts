@@ -10,6 +10,7 @@ import type {
   InviteOrganizationMemberInput,
   OrganizationMember,
   OrganizationSummary,
+  UpdateOrganizationInput,
   UpdateOrganizationMemberInput,
   UserContext,
 } from '@compras/contracts';
@@ -44,6 +45,10 @@ export class OrganizationsService {
       id: user.id,
       email: user.email,
       name: user.name,
+      termsAcceptedAt: user.termsAcceptedAt ?? null,
+      termsVersion: user.termsVersion ?? null,
+      privacyAcceptedAt: user.privacyAcceptedAt ?? null,
+      privacyVersion: user.privacyVersion ?? null,
       platformRoles: user.platformRoles,
       organizations: await this.listForUser(user),
     };
@@ -57,6 +62,18 @@ export class OrganizationsService {
       throw new ForbiddenException('Somente o proprietario global pode criar empresas.');
     }
     return this.repository.createOrganization(actor, input);
+  }
+
+  async updateOrganization(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: UpdateOrganizationInput,
+  ): Promise<OrganizationSummary> {
+    const organization = await this.assertAccessible(actor, organizationId);
+    if (!isPlatformOwner(actor.platformRoles) && organization.role !== 'ORGANIZATION_ADMIN') {
+      throw new ForbiddenException('Somente administradores podem alterar a empresa.');
+    }
+    return this.repository.updateOrganization(actor, organizationId, input);
   }
 
   async listMembers(

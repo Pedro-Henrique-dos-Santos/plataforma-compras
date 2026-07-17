@@ -3,6 +3,7 @@ import type {
   CreateOrganizationInput,
   OrganizationMember,
   OrganizationSummary,
+  UpdateOrganizationInput,
   UpdateOrganizationMemberInput,
 } from '@compras/contracts';
 import { Prisma, type PrismaClient } from '@compras/database';
@@ -27,14 +28,9 @@ export class PrismaOrganizationsRepository extends OrganizationsRepository {
         where: { active: true },
         orderBy: { name: 'asc' },
       });
-      return organizations.map((organization) => ({
-        id: organization.id,
-        name: organization.name,
-        document: organization.document,
-        slug: organization.slug,
-        role: 'ORGANIZATION_ADMIN',
-        active: organization.active,
-      }));
+      return organizations.map((organization) =>
+        toOrganizationSummary(organization, 'ORGANIZATION_ADMIN'),
+      );
     }
 
     const memberships = await this.prisma.organizationMembership.findMany({
@@ -46,14 +42,9 @@ export class PrismaOrganizationsRepository extends OrganizationsRepository {
       include: { organization: true },
       orderBy: { organization: { name: 'asc' } },
     });
-    return memberships.map(({ organization, role }) => ({
-      id: organization.id,
-      name: organization.name,
-      document: organization.document,
-      slug: organization.slug,
-      role,
-      active: organization.active,
-    }));
+    return memberships.map(({ organization, role }) =>
+      toOrganizationSummary(organization, role),
+    );
   }
 
   async findAccessible(
@@ -65,14 +56,7 @@ export class PrismaOrganizationsRepository extends OrganizationsRepository {
         where: { id: organizationId, active: true },
       });
       return organization
-        ? {
-            id: organization.id,
-            name: organization.name,
-            document: organization.document,
-            slug: organization.slug,
-            role: 'ORGANIZATION_ADMIN',
-            active: organization.active,
-          }
+        ? toOrganizationSummary(organization, 'ORGANIZATION_ADMIN')
         : undefined;
     }
 
@@ -86,14 +70,7 @@ export class PrismaOrganizationsRepository extends OrganizationsRepository {
       include: { organization: true },
     });
     return membership
-      ? {
-          id: membership.organization.id,
-          name: membership.organization.name,
-          document: membership.organization.document,
-          slug: membership.organization.slug,
-          role: membership.role,
-          active: membership.organization.active,
-        }
+      ? toOrganizationSummary(membership.organization, membership.role)
       : undefined;
   }
 
@@ -130,14 +107,42 @@ export class PrismaOrganizationsRepository extends OrganizationsRepository {
             metadata: { name: organization.name, document: organization.document },
           },
         });
-        return {
-          id: organization.id,
-          name: organization.name,
-          document: organization.document,
-          slug: organization.slug,
-          role: 'ORGANIZATION_ADMIN' as const,
-          active: organization.active,
-        };
+        return toOrganizationSummary(organization, 'ORGANIZATION_ADMIN');
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Ja existe uma empresa com este CNPJ ou identificador.');
+      }
+      throw error;
+    }
+  }
+
+  async updateOrganization(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: UpdateOrganizationInput,
+  ): Promise<OrganizationSummary> {
+    const current = await this.findAccessible(actor, organizationId);
+    if (!current) {
+      throw new NotFoundException('Empresa nao encontrada.');
+    }
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const organization = await transaction.organization.update({
+          where: { id: organizationId },
+          data: input,
+        });
+        await transaction.auditLog.create({
+          data: {
+            actorUserId: actor.id,
+            organizationId,
+            action: 'UPDATE',
+            resource: 'organization',
+            resourceId: organizationId,
+            metadata: input,
+          },
+        });
+        return toOrganizationSummary(organization, current.role);
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -306,4 +311,44 @@ export class PrismaOrganizationsRepository extends OrganizationsRepository {
       updatedAt: membership.updatedAt.toISOString(),
     };
   }
+}
+
+function toOrganizationSummary(
+  organization: {
+    id: string;
+    name: string;
+    legalName: string | null;
+    document: string | null;
+    email: string | null;
+    phone: string | null;
+    postalCode: string | null;
+    street: string | null;
+    addressNumber: string | null;
+    addressComplement: string | null;
+    district: string | null;
+    city: string | null;
+    state: string | null;
+    slug: string;
+    active: boolean;
+  },
+  role: OrganizationSummary['role'],
+): OrganizationSummary {
+  return {
+    id: organization.id,
+    name: organization.name,
+    legalName: organization.legalName,
+    document: organization.document,
+    email: organization.email,
+    phone: organization.phone,
+    postalCode: organization.postalCode,
+    street: organization.street,
+    addressNumber: organization.addressNumber,
+    addressComplement: organization.addressComplement,
+    district: organization.district,
+    city: organization.city,
+    state: organization.state,
+    slug: organization.slug,
+    role,
+    active: organization.active,
+  };
 }

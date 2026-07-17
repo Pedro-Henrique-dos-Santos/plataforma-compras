@@ -58,10 +58,16 @@ export function OrganizationSetupScreen({ canCreate, onCreate, onSignOut }: Orga
             </button>
           </form>
         ) : (
-          <button className="secondary-button login-submit" onClick={onSignOut} type="button">
-            <LogOut size={16} />
-            Sair
-          </button>
+          <>
+            <p className="form-subtitle setup-message">
+              Sua conta esta ativa, mas ainda nao foi vinculada a uma empresa. O administrador da
+              empresa precisa enviar o convite para este mesmo e-mail.
+            </p>
+            <button className="secondary-button login-submit" onClick={onSignOut} type="button">
+              <LogOut size={16} />
+              Sair
+            </button>
+          </>
         )}
       </section>
     </main>

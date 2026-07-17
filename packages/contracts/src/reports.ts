@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { invoiceDocumentKindSchema, invoiceDocumentStatusSchema } from './invoices.js';
 import { isoDateSchema, monetaryValueSchema } from './master-data.js';
 import { purchaseSourceSchema, purchaseStatusSchema } from './purchases.js';
 
@@ -36,7 +37,7 @@ export const procurementReportRowSchema = z.object({
   id: z.string().uuid(),
   number: z.string(),
   invoiceNumber: z.string().nullable(),
-  issuedAt: isoDateSchema,
+  issuedAt: isoDateSchema.nullable(),
   supplierId: z.string().uuid(),
   supplierName: z.string(),
   category: z.string().nullable(),
@@ -72,3 +73,99 @@ export const procurementReportSchema = z.object({
   purchases: z.array(procurementReportRowSchema),
 });
 export type ProcurementReport = z.infer<typeof procurementReportSchema>;
+
+const detailedCostCenterSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name: z.string(),
+});
+
+export const procurementDetailedSupplierSchema = z.object({
+  id: z.string().uuid(),
+  legalName: z.string(),
+  tradeName: z.string().nullable(),
+  document: z.string().nullable(),
+  category: z.string().nullable(),
+  operationNature: z.string().nullable(),
+  paymentMethod: z.string().nullable(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  defaultCostCenter: detailedCostCenterSchema.nullable(),
+});
+export type ProcurementDetailedSupplier = z.infer<typeof procurementDetailedSupplierSchema>;
+
+export const procurementDetailedAllocationSchema = z.object({
+  costCenter: detailedCostCenterSchema,
+  percentage: z.number().finite().nonnegative(),
+  amount: monetaryValueSchema,
+});
+export type ProcurementDetailedAllocation = z.infer<typeof procurementDetailedAllocationSchema>;
+
+export const procurementDetailedItemSchema = z.object({
+  id: z.string().uuid(),
+  description: z.string(),
+  quantity: z.number().finite().positive(),
+  unit: z.string().nullable(),
+  unitPrice: monetaryValueSchema,
+  negotiatedPrice: monetaryValueSchema.nullable(),
+  total: monetaryValueSchema,
+  negotiatedSavings: monetaryValueSchema,
+  costCenter: detailedCostCenterSchema.nullable(),
+  allocations: z.array(procurementDetailedAllocationSchema),
+});
+export type ProcurementDetailedItem = z.infer<typeof procurementDetailedItemSchema>;
+
+export const procurementDetailedInstallmentSchema = z.object({
+  sequence: z.number().int().positive(),
+  dueDate: isoDateSchema,
+  amount: monetaryValueSchema,
+  paidAt: isoDateSchema.nullable(),
+});
+export type ProcurementDetailedInstallment = z.infer<
+  typeof procurementDetailedInstallmentSchema
+>;
+
+export const procurementDetailedInvoiceSchema = z.object({
+  id: z.string().uuid(),
+  invoiceNumber: z.string().nullable(),
+  accessKey: z.string().nullable(),
+  fileName: z.string(),
+  kind: invoiceDocumentKindSchema,
+  status: invoiceDocumentStatusSchema,
+  parser: z.string().nullable(),
+  confidence: z.number().finite().min(0).max(1).nullable(),
+  warningCount: z.number().int().nonnegative(),
+  errorCount: z.number().int().nonnegative(),
+  processedAt: z.string().datetime().nullable(),
+  reviewedAt: z.string().datetime().nullable(),
+  importedAt: z.string().datetime().nullable(),
+});
+export type ProcurementDetailedInvoice = z.infer<typeof procurementDetailedInvoiceSchema>;
+
+export const procurementDetailedPurchaseSchema = z.object({
+  id: z.string().uuid(),
+  number: z.string(),
+  invoiceNumber: z.string().nullable(),
+  issuedAt: isoDateSchema.nullable(),
+  status: purchaseStatusSchema,
+  category: z.string().nullable(),
+  operationNature: z.string().nullable(),
+  paymentMethod: z.string().nullable(),
+  notes: z.string().nullable(),
+  source: purchaseSourceSchema,
+  sourceReference: z.string().nullable(),
+  total: monetaryValueSchema,
+  negotiatedSavings: monetaryValueSchema,
+  createdAt: z.string().datetime(),
+  supplier: procurementDetailedSupplierSchema,
+  items: z.array(procurementDetailedItemSchema),
+  installments: z.array(procurementDetailedInstallmentSchema),
+  invoices: z.array(procurementDetailedInvoiceSchema),
+});
+export type ProcurementDetailedPurchase = z.infer<typeof procurementDetailedPurchaseSchema>;
+
+export const procurementDetailedReportSchema = z.object({
+  summary: procurementReportSchema,
+  purchases: z.array(procurementDetailedPurchaseSchema),
+});
+export type ProcurementDetailedReport = z.infer<typeof procurementDetailedReportSchema>;

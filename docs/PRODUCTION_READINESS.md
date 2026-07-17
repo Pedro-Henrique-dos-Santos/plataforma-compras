@@ -36,6 +36,12 @@ Configurar alertas no provedor de hospedagem para:
 
 Os limites sao pontos de partida e devem ser recalibrados depois da homologacao.
 
+## Privacidade e documentos legais
+
+O produto registra versao e data do aceite dos Termos de uso e do Aviso de privacidade, com evento de auditoria. Esse mecanismo fornece rastreabilidade tecnica, mas nao representa por si so uma declaracao de conformidade integral com a LGPD.
+
+Antes da producao, a empresa responsavel deve revisar os textos com assessoria juridica ou encarregado de dados, definir controlador e operadores, canal para direitos dos titulares, bases legais, prazos de retencao, procedimento de incidentes e contratos com provedores. Cada alteracao material deve gerar uma nova versao e exigir novo aceite.
+
 ## Teste de carga leve
 
 ```bash
@@ -55,6 +61,7 @@ O padrao executa 100 requisicoes com concorrencia 10 e falha quando ocorre erro 
 7. Executar testes de login, troca de empresa, isolamento, escrita, relatorios e recuperacao de senha.
 8. Conciliar os totais da planilha e do PostgreSQL antes de alterar a fonte primaria.
 9. Confirmar o ensaio automatizado do CI e repetir a restauracao com um backup da homologacao.
-10. Liberar usuarios em grupos pequenos e manter o Apps Script disponivel durante a estabilizacao.
+10. Aprovar juridicamente os Termos de uso, o Aviso de privacidade e o processo de atendimento aos titulares.
+11. Liberar usuarios em grupos pequenos e manter o Apps Script disponivel durante a estabilizacao.
 
 Em implantacoes, use `pnpm db:deploy`. O comando `pnpm db:migrate` e reservado ao desenvolvimento local porque pode criar ou alterar migracoes interativamente.

@@ -141,7 +141,7 @@ describe('Prisma multi-company security', () => {
         repository.listSuppliers(organizationBId),
         repository.listPurchases(organizationAId),
         repository.listPurchases(organizationBId),
-        repository.getDashboardSummary(organizationAId),
+        repository.getDashboardSummary(organizationAId, { includeUndated: true }),
         repository.getProcurementReport(organizationAId, { status: 'REGISTERED' }),
         repository.getProcurementReport(organizationBId, { status: 'REGISTERED' }),
       ]);

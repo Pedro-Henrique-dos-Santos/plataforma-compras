@@ -15,7 +15,7 @@ Por padrao, cada empresa configura estas quatro abas:
 | `Itens do Pedido` | pedido, nota fiscal, fornecedor, itens, valores e centro de custo |
 | `Parcelas do Pedido` | pedido, vencimento e valor da parcela |
 
-Se a aba `valores negociados` estiver presente, ela e lida como historico legado. Linhas que ja possuem o mesmo pedido ou nota nas abas normalizadas sao classificadas como duplicadas. Compras historicas sem numero de pedido recebem uma chave deterministica; compras sem data de emissao ficam em revisao e nao sao gravadas.
+Se a aba `valores negociados` estiver presente, ela e lida como historico legado. Linhas que ja possuem o mesmo pedido ou nota nas abas normalizadas sao classificadas como duplicadas. Compras historicas sem numero de pedido recebem uma chave deterministica. A ausencia da data de emissao nao elimina a compra: ela e gravada com data nula, recebe uma observacao de origem e aparece como `Sem data` no sistema ate a correcao, sem inventar um mes.
 
 Os nomes podem ser alterados na tela `Automacoes`. Os cabecalhos sao normalizados sem depender de acentos ou caixa, mas colunas obrigatorias ausentes interrompem a previa.
 
@@ -44,6 +44,7 @@ O arquivo nao e um banco paralelo. Ele serve como uma fotografia para homologaca
 - Quando fornecedor e valor coincidem com uma unica compra sem NF, somente o numero da nota e completado.
 - Mais de uma correspondencia por fornecedor e valor exige revisao manual.
 - Metodo de pagamento pode ficar vazio.
+- Data de emissao ausente em uma compra historica gera pendencia, mas nao bloqueia o registro principal.
 - O centro de custo de uma compra historica pode ser herdado do cadastro do fornecedor.
 - Parcelas ausentes ou com total divergente sao ignoradas sem bloquear a compra.
 

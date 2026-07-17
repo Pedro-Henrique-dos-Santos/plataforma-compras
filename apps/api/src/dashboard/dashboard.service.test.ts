@@ -7,7 +7,7 @@ import { DashboardService } from './dashboard.service.js';
 describe('DashboardService', () => {
   it('returns an organization-scoped summary', async () => {
     const service = new DashboardService(new DemoProcurementRepository());
-    const summary = await service.getSummary(HUMAN_CLINIC_ID);
+    const summary = await service.getSummary(HUMAN_CLINIC_ID, { includeUndated: true });
 
     expect(summary.totalPurchased.value).toBeGreaterThan(0);
     expect(summary.recentPurchases.length).toBeGreaterThan(0);
@@ -16,7 +16,9 @@ describe('DashboardService', () => {
 
   it('returns an empty summary for a newly created organization', async () => {
     const service = new DashboardService(new DemoProcurementRepository());
-    const summary = await service.getSummary('99999999-9999-4999-8999-999999999999');
+    const summary = await service.getSummary('99999999-9999-4999-8999-999999999999', {
+      includeUndated: true,
+    });
 
     expect(summary.totalPurchased.value).toBe(0);
     expect(summary.recentPurchases).toEqual([]);

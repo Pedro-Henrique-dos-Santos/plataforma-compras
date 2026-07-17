@@ -107,7 +107,7 @@ export const purchaseSummarySchema = z.object({
   invoiceNumber: z.string().nullable(),
   supplierId: z.string().uuid(),
   supplierName: z.string(),
-  issuedAt: isoDateSchema,
+  issuedAt: isoDateSchema.nullable(),
   status: purchaseStatusSchema,
   category: z.string().nullable(),
   paymentMethod: z.string().nullable(),

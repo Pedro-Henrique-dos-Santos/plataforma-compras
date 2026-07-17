@@ -50,4 +50,29 @@ describe('OrganizationsService', () => {
       }),
     ).rejects.toThrow(/ao menos um administrador ativo/);
   });
+
+  it('allows company administrators and rejects buyers when updating company details', async () => {
+    const { service } = createService();
+    const organizationAdministrator: AuthenticatedIdentity = {
+      ...owner,
+      platformRoles: [],
+    };
+    const buyer: AuthenticatedIdentity = {
+      id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      authUserId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      email: 'buyer@example.com',
+      name: 'Comprador da empresa',
+      platformRoles: [],
+    };
+
+    await expect(
+      service.updateOrganization(organizationAdministrator, HUMAN_CLINIC_ID, {
+        city: 'Sao Paulo',
+        state: 'SP',
+      }),
+    ).resolves.toMatchObject({ city: 'Sao Paulo', state: 'SP' });
+    await expect(
+      service.updateOrganization(buyer, HUMAN_CLINIC_ID, { city: 'Outra cidade' }),
+    ).rejects.toThrow(/somente administradores/i);
+  });
 });

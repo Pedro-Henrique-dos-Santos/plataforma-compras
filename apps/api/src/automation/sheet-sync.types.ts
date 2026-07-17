@@ -72,7 +72,7 @@ export type ParsedSheetPurchase = {
   rowNumbers: number[];
   number: string;
   invoiceNumber: string | null;
-  issuedAt: string;
+  issuedAt: string | null;
   supplierName: string;
   supplierDocument: string | null;
   category: string | null;

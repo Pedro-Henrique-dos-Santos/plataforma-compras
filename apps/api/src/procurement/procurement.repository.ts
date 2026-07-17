@@ -5,11 +5,13 @@ import type {
   CreatePurchaseInput,
   CreateSupplierInput,
   CreateSupplierPriceInput,
+  DashboardFilters,
   DashboardSummary,
   ImportSupplierPricesInput,
   PurchaseImportInput,
   PurchaseImportResult,
   PurchaseSummary,
+  ProcurementDetailedReport,
   ProcurementReport,
   ProcurementReportFilters,
   Supplier,
@@ -43,6 +45,10 @@ export type PurchaseFilters = {
   dateTo?: string;
   search?: string;
   status?: 'DRAFT' | 'REGISTERED' | 'CANCELLED';
+};
+
+export type PersistPurchaseInput = Omit<CreatePurchaseInput, 'issuedAt'> & {
+  issuedAt: string | null;
 };
 
 export abstract class ProcurementRepository {
@@ -118,7 +124,7 @@ export abstract class ProcurementRepository {
   abstract createPurchase(
     actor: AuthenticatedIdentity,
     organizationId: string,
-    input: CreatePurchaseInput,
+    input: PersistPurchaseInput,
   ): Promise<PurchaseSummary>;
 
   abstract importPurchases(
@@ -134,10 +140,18 @@ export abstract class ProcurementRepository {
     input: AttachPurchaseInvoiceInput,
   ): Promise<PurchaseSummary>;
 
-  abstract getDashboardSummary(organizationId: string): Promise<DashboardSummary>;
+  abstract getDashboardSummary(
+    organizationId: string,
+    filters: DashboardFilters,
+  ): Promise<DashboardSummary>;
 
   abstract getProcurementReport(
     organizationId: string,
     filters: ProcurementReportFilters,
   ): Promise<ProcurementReport>;
+
+  abstract getProcurementDetailedReport(
+    organizationId: string,
+    filters: ProcurementReportFilters,
+  ): Promise<ProcurementDetailedReport>;
 }

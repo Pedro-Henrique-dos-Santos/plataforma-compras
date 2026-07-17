@@ -18,14 +18,21 @@ export async function buildProcurementWorkbook(report: ProcurementReport): Promi
   workbook.subject = `Relatorio de compras - ${report.period.label}`;
   workbook.title = 'Relatorio de compras';
 
+  addProcurementSummarySheets(workbook, report);
+
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+export function addProcurementSummarySheets(
+  workbook: Workbook,
+  report: ProcurementReport,
+): void {
   addSummarySheet(workbook, report);
   addPurchasesSheet(workbook, report.purchases);
   addBreakdownSheet(workbook, 'Departamentos', report.byDepartment);
   addBreakdownSheet(workbook, 'Fornecedores', report.bySupplier);
   addBreakdownSheet(workbook, 'Categorias', report.byCategory);
   addBreakdownSheet(workbook, 'Meses', report.byMonth);
-
-  return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
 function addSummarySheet(workbook: Workbook, report: ProcurementReport): void {
@@ -119,7 +126,7 @@ function addPurchasesSheet(workbook: Workbook, purchases: ProcurementReportRow[]
     const row = sheet.addRow({
       number: safeText(purchase.number),
       invoice: safeText(purchase.invoiceNumber ?? ''),
-      issuedAt: parseIsoDate(purchase.issuedAt),
+      issuedAt: purchase.issuedAt ? parseIsoDate(purchase.issuedAt) : 'Sem data',
       supplier: safeText(purchase.supplierName),
       category: safeText(purchase.category ?? ''),
       departments: safeText(purchase.departments.join(', ')),
@@ -208,8 +215,8 @@ function safeText(value: string): string {
   return /^[=+\-@]/.test(normalized) ? `'${normalized}` : normalized;
 }
 
-function parseIsoDate(value: string): Date {
-  return new Date(`${value}T00:00:00.000Z`);
+function parseIsoDate(value: string | null): Date | null {
+  return value ? new Date(`${value}T00:00:00.000Z`) : null;
 }
 
 function sourceLabel(source: ProcurementReportRow['source']): string {

@@ -1,16 +1,21 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type {
   CreateOrganizationInput,
+  DashboardFilters,
   DashboardSummary,
   InviteOrganizationMemberInput,
   OrganizationMember,
   OrganizationSummary,
+  UpdateOrganizationInput,
   UpdateOrganizationMemberInput,
+  UpdateUserProfileInput,
   UserContext,
 } from '@compras/contracts';
+import { hasCurrentLegalAcceptance } from '@compras/contracts';
 
 import logoMark from './assets/egestao-mark.svg';
 import { AppShell, type ViewId } from './components/AppShell';
+import { ConsentScreen } from './components/ConsentScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { OrganizationSetupScreen } from './components/OrganizationSetupScreen';
 import { PasswordResetScreen } from './components/PasswordResetScreen';
@@ -88,6 +93,9 @@ export default function App() {
   const [activeOrganizationId, setActiveOrganizationId] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>({
+    includeUndated: true,
+  });
   const [dataRevision, setDataRevision] = useState(0);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -184,7 +192,7 @@ export default function App() {
     const controller = new AbortController();
     setDashboardLoading(true);
     setError(null);
-    void apiGet<DashboardSummary>('/dashboard/summary', {
+    void apiGet<DashboardSummary>(`/dashboard/summary${dashboardQuery(dashboardFilters)}`, {
       token: accessToken,
       organizationId: activeOrganization.id,
       signal: controller.signal,
@@ -202,7 +210,7 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [accessToken, activeOrganization, dataRevision]);
+  }, [accessToken, activeOrganization, dashboardFilters, dataRevision]);
 
   useEffect(() => {
     if (!activeOrganization || view !== 'access') {
@@ -260,6 +268,7 @@ export default function App() {
     localStorage.setItem(ACTIVE_ORGANIZATION_KEY, organizationId);
     setActiveOrganizationId(organizationId);
     setMembers([]);
+    setDashboardFilters({ includeUndated: true });
     setError(null);
     setView('dashboard');
   }
@@ -281,6 +290,34 @@ export default function App() {
     localStorage.setItem(ACTIVE_ORGANIZATION_KEY, organization.id);
     setActiveOrganizationId(organization.id);
     setView('dashboard');
+  }
+
+  async function handleUpdateOrganization(input: UpdateOrganizationInput): Promise<void> {
+    if (!activeOrganization) {
+      throw new Error('Selecione uma empresa antes de alterar o cadastro.');
+    }
+    const updated = await apiPatch<OrganizationSummary>(
+      `/organizations/${activeOrganization.id}`,
+      input,
+      { token: accessToken, organizationId: activeOrganization.id },
+    );
+    setUser((current) =>
+      current
+        ? {
+            ...current,
+            organizations: current.organizations.map((organization) =>
+              organization.id === updated.id ? updated : organization,
+            ),
+          }
+        : current,
+    );
+  }
+
+  async function handleProfileUpdate(input: UpdateUserProfileInput): Promise<void> {
+    const updated = await apiPatch<UserContext>('/auth/profile', input, {
+      token: accessToken,
+    });
+    setUser(updated);
   }
 
   async function handleInviteMember(input: InviteOrganizationMemberInput): Promise<void> {
@@ -330,6 +367,14 @@ export default function App() {
       <FullPageLoading />
     );
   }
+  if (!hasCurrentLegalAcceptance(user)) {
+    return (
+      <ConsentScreen
+        onAccept={() => handleProfileUpdate({ acceptTerms: true, acceptPrivacy: true })}
+        onSignOut={() => void handleSignOut()}
+      />
+    );
+  }
   if (!activeOrganization) {
     return (
       <OrganizationSetupScreen
@@ -367,7 +412,14 @@ export default function App() {
       {error && <div className="inline-error">{error}</div>}
       <Suspense fallback={<ViewLoading />}>
         {view === 'dashboard' && (
-          <DashboardView loading={dashboardLoading} summary={dashboard} />
+          <DashboardView
+            accessToken={accessToken}
+            filters={dashboardFilters}
+            loading={dashboardLoading}
+            onFiltersChange={setDashboardFilters}
+            organizationId={activeOrganization.id}
+            summary={dashboard}
+          />
         )}
         {view === 'reports' && (
           <ReportsView
@@ -427,8 +479,11 @@ export default function App() {
         {view === 'organizations' && (
           <OrganizationsView
             activeOrganization={activeOrganization}
+            canCreate={user.platformRoles.includes('PLATFORM_OWNER')}
+            canManage={canConfigureOrganization}
             onCreate={handleCreateOrganization}
             onSelect={handleOrganizationChange}
+            onUpdate={handleUpdateOrganization}
             organizations={user.organizations}
           />
         )}
@@ -442,7 +497,14 @@ export default function App() {
             user={user}
           />
         )}
-        {view === 'settings' && <SettingsView onThemeChange={setTheme} theme={theme} />}
+        {view === 'settings' && (
+          <SettingsView
+            onProfileUpdate={handleProfileUpdate}
+            onThemeChange={setTheme}
+            theme={theme}
+            user={user}
+          />
+        )}
       </Suspense>
     </AppShell>
   );
@@ -483,6 +545,17 @@ function upsertMember(current: OrganizationMember[], next: OrganizationMember): 
 
 function sortMembers(members: OrganizationMember[]): OrganizationMember[] {
   return [...members].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
+}
+
+function dashboardQuery(filters: DashboardFilters): string {
+  const query = new URLSearchParams();
+  if (filters.dateFrom) query.set('dateFrom', filters.dateFrom);
+  if (filters.dateTo) query.set('dateTo', filters.dateTo);
+  if (filters.supplierId) query.set('supplierId', filters.supplierId);
+  if (filters.costCenterId) query.set('costCenterId', filters.costCenterId);
+  if (filters.category) query.set('category', filters.category);
+  query.set('includeUndated', String(filters.includeUndated));
+  return `?${query.toString()}`;
 }
 
 function errorMessage(error: unknown) {

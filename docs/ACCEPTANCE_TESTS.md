@@ -29,6 +29,12 @@ Nenhuma liberacao pode prosseguir com teste, build, auditoria ou restauracao em 
 3. Trocar a empresa ativa e confirmar a atualizacao dos dados da pagina.
 4. Confirmar que `PLATFORM_OWNER` nao pode ser concedido por um administrador de empresa.
 5. Validar os temas normal, escuro e branco e a barra lateral recolhivel.
+6. Criar uma conta informando o nome exibido e marcando separadamente Termos de uso e Aviso de privacidade.
+7. Confirmar que o primeiro acesso fica bloqueado ate o aceite versionado dos dois documentos.
+8. Alterar o nome exibido em Configuracoes e confirmar a atualizacao no cabecalho sem mudar o e-mail autenticado.
+9. Consultar em Configuracoes a versao e a data dos documentos aceitos.
+10. Editar a empresa ativa, preencher razao social, CNPJ, e-mail, telefone, CEP e endereco e recarregar a pagina para confirmar a persistencia.
+11. Confirmar que um usuario sem permissao administrativa nao consegue alterar outra empresa pela API.
 
 ## 3. Cadastros mestres
 
@@ -47,6 +53,8 @@ Nenhuma liberacao pode prosseguir com teste, build, auditoria ou restauracao em 
 4. Informar preco original e negociado e conferir a economia calculada.
 5. Salvar sem parcelas quando essa informacao nao existir.
 6. Confirmar a compra no dashboard e no relatorio filtrado.
+7. Importar uma compra historica sem data de emissao e confirmar que ela aparece como `Sem data`, sem data sintetica.
+8. Repetir a previa e a aplicacao da planilha e confirmar que nenhuma compra e duplicada.
 
 ## 5. Automacao documental
 
@@ -68,8 +76,15 @@ Use os arquivos sinteticos em `apps/api/src/invoices/__fixtures__/` e `legacy/sa
 1. Conferir comprado no periodo, economia, fornecedores e compras.
 2. Conferir evolucao mensal e distribuicao por categoria.
 3. Conferir o grafico de gastos por departamento contra os rateios das compras.
-4. Aplicar filtros de periodo, fornecedor, departamento, categoria e status.
-5. Exportar CSV e abrir no Excel sem execucao de formulas originadas dos dados.
+4. Abrir o dashboard sem periodo e confirmar que ele mostra todo o historico, incluindo compras sem data nos totais.
+5. Aplicar no dashboard filtros de periodo, fornecedor, departamento e categoria e conferir todos os indicadores e graficos.
+6. Desmarcar a inclusao de pedidos sem data e confirmar a alteracao da contagem e dos totais.
+7. Aplicar no relatorio filtros de periodo, fornecedor, departamento, categoria e status.
+8. Exportar CSV e abrir no Excel sem execucao de formulas originadas dos dados.
+9. Exportar o Excel resumido e conferir as seis abas gerenciais.
+10. Exportar o Excel detalhado e conferir compras, itens, rateios, parcelas, documentos e fornecedores.
+11. Na aba `Itens por mes`, reconciliar quantidade, numero de compras, fornecedores, gasto, economia e preco medio com os itens de origem.
+12. Confirmar que compras sem data aparecem no grupo `Sem data` e nao entram em um mes artificial.
 
 ## 7. Responsividade e acessibilidade
 

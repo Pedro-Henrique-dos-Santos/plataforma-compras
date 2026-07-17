@@ -4,6 +4,7 @@ import type {
   OrganizationMember,
   OrganizationRole,
   OrganizationSummary,
+  UpdateOrganizationInput,
   UpdateOrganizationMemberInput,
 } from '@compras/contracts';
 
@@ -35,6 +36,12 @@ export abstract class OrganizationsRepository {
   abstract createOrganization(
     actor: AuthenticatedIdentity,
     input: CreateOrganizationInput,
+  ): Promise<OrganizationSummary>;
+
+  abstract updateOrganization(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: UpdateOrganizationInput,
   ): Promise<OrganizationSummary>;
 
   abstract listMembers(organizationId: string): Promise<OrganizationMember[]>;

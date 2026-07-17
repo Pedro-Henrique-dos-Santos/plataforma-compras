@@ -41,6 +41,20 @@ describe('DemoOrganizationsRepository', () => {
     expect(member.email).toBe('consulta@example.com');
   });
 
+  it('updates the company profile without changing its tenant identity', async () => {
+    const repository = new DemoOrganizationsRepository();
+    const updated = await repository.updateOrganization(owner, HUMAN_CLINIC_ID, {
+      legalName: 'Human Clinic Servicos LTDA',
+      postalCode: '01310100',
+      city: 'Sao Paulo',
+      state: 'SP',
+    });
+
+    expect(updated.id).toBe(HUMAN_CLINIC_ID);
+    expect(updated.legalName).toBe('Human Clinic Servicos LTDA');
+    expect(updated.postalCode).toBe('01310100');
+  });
+
   it('creates stable URL slugs', () => {
     expect(organizationSlug('Gestao & Saude Sao Paulo')).toBe('gestao-saude-sao-paulo');
   });

@@ -11,7 +11,9 @@
 - [Concluido] Criar o Supabase Free de homologacao na regiao de Sao Paulo.
 - [Concluido] Aplicar as migracoes, habilitar RLS, bloquear tabelas operacionais e criar o bucket privado.
 - [Concluido] Implementar login, recuperacao e redefinicao de acesso.
+- [Concluido no codigo] Adicionar criacao de conta com nome exibido e aceite versionado dos Termos de uso e do Aviso de privacidade.
 - [Concluido] Criar organizacoes, convites, vinculos e troca de empresa ativa.
+- [Concluido no codigo] Permitir editar nome, CNPJ, contato e endereco da empresa.
 - [Concluido] Aplicar papeis e auditoria sem fluxo de aprovacao.
 - [Concluido] Criar identidade E-Gestao, tres temas e barra lateral recolhivel.
 - [Concluido] Bloquear acesso direto do navegador as tabelas operacionais.
@@ -22,6 +24,7 @@
 - [Concluido] Migrar tabela de precos e importacao em lote.
 - [Concluido] Criar conciliacao entre planilha e PostgreSQL.
 - [Concluido] Adicionar importacao XLSX com historico legado, previa e deduplicacao.
+- [Concluido no codigo] Preservar compras historicas sem data como pendencia, sem excluir o pedido nem inventar emissao.
 
 ## Fase 3: operacao de compras
 
@@ -34,6 +37,8 @@
 - [Concluido] Migrar dashboard e indicadores para consultas do banco.
 - [Concluido] Criar filtros por empresa e exportacoes CSV e XLSX.
 - [Concluido] Consolidar economia negociada, comparativos mensais e gastos por departamento.
+- [Concluido no codigo] Exibir todo o historico por padrao e filtrar dashboard por periodo, fornecedor, centro de custo e categoria.
+- [Concluido no codigo] Separar Excel resumido e detalhado, incluindo consolidacao mensal dos itens comprados.
 
 ## Fase 5: producao
 

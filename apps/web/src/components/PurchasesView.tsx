@@ -369,7 +369,8 @@ function normalize(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string | null): string {
+  if (!value) return 'Sem data';
   return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(`${value}T00:00:00.000Z`));
 }
 

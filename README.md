@@ -8,14 +8,15 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 - A nova aplicacao nao substitui a versao em producao automaticamente.
 - O modo demonstracao permite desenvolver sem credenciais do Supabase.
 - O Supabase Free de homologacao esta criado, migrado, protegido por RLS e com armazenamento privado.
-- A identidade, as empresas, os convites e os papeis ja possuem implementacao de API e persistencia.
+- A identidade possui nome exibido editavel, criacao de conta e aceite versionado dos documentos legais.
+- Empresas, convites e papeis possuem API e persistencia; administradores podem manter CNPJ, contato e endereco da empresa.
 - A interface inclui os temas Normal, Escuro e Branco e uma barra lateral recolhivel.
 - Centros de custo e fornecedores possuem cadastro por empresa, status e regras padrao.
 - A tabela de precos aceita varias linhas e importacao CSV idempotente por fornecedor.
 - Compras suportam varios itens, economia negociada, centro automatico, rateios e parcelas opcionais.
-- O dashboard e calculado a partir das compras e inclui gastos por categoria e departamento.
-- Os relatorios filtram compras por periodo, fornecedor, departamento, categoria e status, com exportacoes CSV e XLSX.
-- A sincronizacao com Google Sheets possui configuracao por empresa, importacao XLSX, leitura do historico legado, previa persistida, conciliacao e aplicacao idempotente.
+- O dashboard abre em todo o historico, filtra periodo, fornecedor, centro de custo e categoria e inclui gastos por categoria e departamento.
+- Os relatorios filtram compras por periodo, fornecedor, departamento, categoria e status, com CSV, Excel resumido e Excel detalhado com itens por mes.
+- A sincronizacao com Google Sheets possui configuracao por empresa, importacao XLSX, leitura do historico legado, previa persistida, conciliacao e aplicacao idempotente; compras sem data permanecem visiveis como pendencia.
 - Notas em XML ou PDF passam por validacao, leitura estruturada ou OCR gratuito, revisao humana e conciliacao antes de criar compras.
 - A API possui prontidao do banco, identificadores de requisicao e logs estruturados.
 - O repositorio inclui teste de carga leve, backup com restauracao integral e integracao multiempresa contra PostgreSQL real no CI.

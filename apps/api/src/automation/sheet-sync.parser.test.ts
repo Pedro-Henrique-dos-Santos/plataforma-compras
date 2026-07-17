@@ -128,10 +128,11 @@ describe('Google Sheets parser', () => {
     };
 
     const parsed = parseSheetWorkbook(source, integration);
-    const legacy = parsed.purchases.find((purchase) => purchase.number.startsWith('LEG-'));
+    const legacy = parsed.purchases.find((purchase) => purchase.invoiceNumber === '171');
+    const undated = parsed.purchases.find((purchase) => purchase.issuedAt === null);
 
     expect(parsed.sourceRows).toBe(8);
-    expect(parsed.purchases).toHaveLength(2);
+    expect(parsed.purchases).toHaveLength(3);
     expect(legacy).toMatchObject({
       invoiceNumber: '171',
       issuedAt: '2026-06-25',
@@ -143,11 +144,19 @@ describe('Google Sheets parser', () => {
       negotiatedPrice: 600,
       costCenterName: 'Farmacia',
     });
+    expect(undated).toMatchObject({
+      issuedAt: null,
+      supplierName: 'Be Life Clinica LTDA',
+      notes: expect.stringContaining('Data de emissao ausente'),
+    });
     expect(parsed.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ action: 'SKIP_DUPLICATE', rowNumbers: [3] }),
-        expect.objectContaining({ action: 'INVALID', rowNumbers: [4], amount: 250 }),
       ]),
+    );
+    expect(parsed.issues.some((issue) => issue.rowNumbers.includes(4))).toBe(false);
+    expect(parsed.warnings).toContain(
+      '1 compras historicas sem data serao preservadas e sinalizadas para revisao.',
     );
   });
 });

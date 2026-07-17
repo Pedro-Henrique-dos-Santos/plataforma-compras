@@ -7,6 +7,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  CURRENT_PRIVACY_VERSION,
+  CURRENT_TERMS_VERSION,
+  type UpdateUserProfileInput,
+} from '@compras/contracts';
 
 import { configuredEmailSet, isDemoMode, readBoolean } from '../config/runtime-mode.js';
 import { DatabaseService } from '../database/database.service.js';
@@ -46,6 +51,10 @@ export class AuthService {
       authUserId: DEMO_AUTH_USER_ID,
       email: demoUserContext.email,
       name: demoUserContext.name,
+      termsAcceptedAt: demoUserContext.termsAcceptedAt,
+      termsVersion: demoUserContext.termsVersion,
+      privacyAcceptedAt: demoUserContext.privacyAcceptedAt,
+      privacyVersion: demoUserContext.privacyVersion,
       platformRoles: demoUserContext.platformRoles,
     };
   }
@@ -69,19 +78,23 @@ export class AuthService {
 
     const email = data.user.email.toLowerCase();
     const emailName = email.split('@')[0] ?? email;
-    const displayName =
+    const metadataName =
       typeof data.user.user_metadata?.['name'] === 'string'
         ? data.user.user_metadata['name']
         : typeof data.user.user_metadata?.['full_name'] === 'string'
           ? data.user.user_metadata['full_name']
-          : emailName.length >= 2
-            ? emailName
-            : 'Usuario';
+          : '';
+    const displayName =
+      metadataName.trim().length >= 2
+        ? metadataName.trim()
+        : emailName.length >= 2
+          ? emailName
+          : 'Usuario';
 
     return this.resolveIdentity({
       authUserId: data.user.id,
       email,
-      name: displayName.trim().slice(0, 120),
+      name: displayName.slice(0, 120),
     });
   }
 
@@ -110,7 +123,6 @@ export class AuthService {
             data: {
               authUserId: input.authUserId,
               email: input.email,
-              name: input.name,
             },
           })
         : await transaction.user.create({ data: input });
@@ -145,8 +157,61 @@ export class AuthService {
         authUserId: user.authUserId,
         email: user.email,
         name: user.name,
+        termsAcceptedAt: user.termsAcceptedAt?.toISOString() ?? null,
+        termsVersion: user.termsVersion,
+        privacyAcceptedAt: user.privacyAcceptedAt?.toISOString() ?? null,
+        privacyVersion: user.privacyVersion,
         platformRoles: roles.map(({ role }) => role),
       };
     });
+  }
+
+  async updateProfile(
+    actor: AuthenticatedIdentity,
+    input: UpdateUserProfileInput,
+    request: { ipAddress: string | null; userAgent: string | null },
+  ): Promise<AuthenticatedIdentity> {
+    const now = new Date();
+    const user = await this.database.prisma.$transaction(async (transaction) => {
+      const updated = await transaction.user.update({
+        where: { id: actor.id },
+        data: {
+          ...(input.name !== undefined && { name: input.name }),
+          ...(input.acceptTerms && {
+            termsAcceptedAt: now,
+            termsVersion: CURRENT_TERMS_VERSION,
+          }),
+          ...(input.acceptPrivacy && {
+            privacyAcceptedAt: now,
+            privacyVersion: CURRENT_PRIVACY_VERSION,
+          }),
+        },
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorUserId: actor.id,
+          action: 'UPDATE',
+          resource: 'user_profile',
+          resourceId: actor.id,
+          ipAddress: request.ipAddress,
+          metadata: {
+            nameUpdated: input.name !== undefined,
+            ...(input.acceptTerms && { termsVersion: CURRENT_TERMS_VERSION }),
+            ...(input.acceptPrivacy && { privacyVersion: CURRENT_PRIVACY_VERSION }),
+            ...(request.userAgent && { userAgent: request.userAgent }),
+          },
+        },
+      });
+      return updated;
+    });
+
+    return {
+      ...actor,
+      name: user.name,
+      termsAcceptedAt: user.termsAcceptedAt?.toISOString() ?? null,
+      termsVersion: user.termsVersion,
+      privacyAcceptedAt: user.privacyAcceptedAt?.toISOString() ?? null,
+      privacyVersion: user.privacyVersion,
+    };
   }
 }

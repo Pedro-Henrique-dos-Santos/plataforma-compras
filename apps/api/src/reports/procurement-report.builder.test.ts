@@ -37,6 +37,19 @@ describe('procurement report builder', () => {
       expect.objectContaining({ key: 'unallocated', total: 100 }),
     );
   });
+
+  it('groups historical purchases without an issue date under a visible bucket', () => {
+    const report = buildProcurementReport({
+      dataSource: 'DATABASE',
+      filters: { status: 'REGISTERED' },
+      purchases: [{ ...purchase(), issuedAt: null }],
+    });
+
+    expect(report.byMonth).toContainEqual(
+      expect.objectContaining({ key: 'sem-data', label: 'Sem data', total: 100 }),
+    );
+    expect(report.purchases[0]?.issuedAt).toBeNull();
+  });
 });
 
 function purchase(): ReportPurchaseInput {

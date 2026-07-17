@@ -65,7 +65,9 @@ describe('DemoProcurementRepository', () => {
     expect(supplier && assist && laboratory).toBeTruthy();
     if (!supplier || !assist || !laboratory) return;
 
-    const before = await repository.getDashboardSummary(HUMAN_CLINIC_ID);
+    const before = await repository.getDashboardSummary(HUMAN_CLINIC_ID, {
+      includeUndated: true,
+    });
     const created = await repository.createPurchase(actor, HUMAN_CLINIC_ID, {
       number: 'TEST-RATEIO-001',
       supplierId: supplier.id,
@@ -92,13 +94,71 @@ describe('DemoProcurementRepository', () => {
       ],
       installments: [],
     });
-    const after = await repository.getDashboardSummary(HUMAN_CLINIC_ID);
+    const after = await repository.getDashboardSummary(HUMAN_CLINIC_ID, {
+      includeUndated: true,
+    });
 
     expect(created.total).toBe(100);
     expect(created.negotiatedSavings).toBe(20);
     expect(created.departments).toEqual(['Assistencial', 'Laboratorio']);
     expect(departmentValue(after, 'Assistencial') - departmentValue(before, 'Assistencial')).toBe(60);
     expect(departmentValue(after, 'Laboratorio') - departmentValue(before, 'Laboratorio')).toBe(40);
+  });
+
+  it('combines dashboard filters and controls undated historical purchases', async () => {
+    const supplier = (await repository.listSuppliers(HUMAN_CLINIC_ID))[0];
+    const center = (await repository.listCostCenters(HUMAN_CLINIC_ID))[0];
+    expect(supplier && center).toBeTruthy();
+    if (!supplier || !center) return;
+
+    await repository.createPurchase(actor, HUMAN_CLINIC_ID, {
+      number: 'LEG-FILTER-001',
+      supplierId: supplier.id,
+      issuedAt: null,
+      category: 'Categoria historica exclusiva',
+      operationNature: null,
+      paymentMethod: null,
+      notes: 'Data ausente na origem.',
+      source: 'GOOGLE_SHEETS',
+      sourceReference: 'LEG-FILTER-001',
+      items: [
+        {
+          description: 'Item historico',
+          quantity: 1,
+          unit: null,
+          unitPrice: 100,
+          negotiatedPrice: 80,
+          costCenterId: center.id,
+          allocations: [],
+        },
+      ],
+      installments: [],
+    });
+
+    const commonFilters = {
+      supplierId: supplier.id,
+      costCenterId: center.id,
+      category: 'Categoria historica exclusiva',
+    };
+    const included = await repository.getDashboardSummary(HUMAN_CLINIC_ID, {
+      ...commonFilters,
+      includeUndated: true,
+    });
+    const excluded = await repository.getDashboardSummary(HUMAN_CLINIC_ID, {
+      ...commonFilters,
+      includeUndated: false,
+    });
+    const datedPeriod = await repository.getDashboardSummary(HUMAN_CLINIC_ID, {
+      ...commonFilters,
+      dateFrom: '2026-01-01',
+      includeUndated: true,
+    });
+
+    expect(included.registeredPurchases).toBe(1);
+    expect(included.undatedPurchases).toBe(1);
+    expect(included.totalPurchased.value).toBe(80);
+    expect(excluded.registeredPurchases).toBe(0);
+    expect(datedPeriod.registeredPurchases).toBe(0);
   });
 
   it('rejects duplicate purchase numbers', async () => {

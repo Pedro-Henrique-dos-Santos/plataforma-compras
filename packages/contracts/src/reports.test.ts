@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { procurementReportFiltersSchema, procurementReportSchema } from './reports.js';
+import {
+  procurementDetailedReportSchema,
+  procurementReportFiltersSchema,
+  procurementReportSchema,
+} from './reports.js';
 
 describe('procurement report contracts', () => {
   it('defaults operational reports to registered purchases', () => {
@@ -37,5 +41,31 @@ describe('procurement report contracts', () => {
         purchases: [],
       }),
     ).toBeDefined();
+  });
+
+  it('accepts an empty detailed section alongside a valid summary', () => {
+    const summary = procurementReportSchema.parse({
+      dataSource: 'DATABASE',
+      generatedAt: '2026-07-14T12:00:00.000Z',
+      period: { dateFrom: null, dateTo: null, label: 'Todo o historico' },
+      totals: {
+        purchased: 0,
+        negotiatedSavings: 0,
+        savingsPercentage: 0,
+        averageTicket: 0,
+        purchaseCount: 0,
+        supplierCount: 0,
+      },
+      bySupplier: [],
+      byCategory: [],
+      byDepartment: [],
+      byMonth: [],
+      purchases: [],
+    });
+
+    expect(procurementDetailedReportSchema.parse({ summary, purchases: [] })).toEqual({
+      summary,
+      purchases: [],
+    });
   });
 });

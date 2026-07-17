@@ -58,4 +58,15 @@ describe('purchase contracts', () => {
       }),
     ).toThrow(/parcelas/);
   });
+
+  it('continues requiring an issue date for new manual purchases', () => {
+    expect(() =>
+      createPurchaseInputSchema.parse({
+        number: 'PC-004',
+        supplierId,
+        issuedAt: null,
+        items: [{ description: 'Servico', unitPrice: 100 }],
+      }),
+    ).toThrow();
+  });
 });

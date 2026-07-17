@@ -85,6 +85,10 @@ model User {
   email                    String                   @unique @db.VarChar(255)
   name                     String                   @db.VarChar(120)
   active                   Boolean                  @default(true)
+  termsAcceptedAt          DateTime?                @map("terms_accepted_at")
+  termsVersion             String?                  @map("terms_version") @db.VarChar(40)
+  privacyAcceptedAt        DateTime?                @map("privacy_accepted_at")
+  privacyVersion           String?                  @map("privacy_version") @db.VarChar(40)
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
   platformRoles            PlatformRoleAssignment[]
@@ -113,8 +117,18 @@ model PlatformRoleAssignment {
 model Organization {
   id                      String                   @id @default(uuid()) @db.Uuid
   name                    String                   @db.VarChar(120)
+  legalName               String?                  @map("legal_name") @db.VarChar(160)
   slug                    String                   @unique @db.VarChar(80)
   document                String?                  @unique @db.VarChar(18)
+  email                   String?                  @db.VarChar(255)
+  phone                   String?                  @db.VarChar(30)
+  postalCode              String?                  @map("postal_code") @db.VarChar(8)
+  street                  String?                  @db.VarChar(160)
+  addressNumber           String?                  @map("address_number") @db.VarChar(30)
+  addressComplement       String?                  @map("address_complement") @db.VarChar(100)
+  district                String?                  @db.VarChar(100)
+  city                    String?                  @db.VarChar(100)
+  state                   String?                  @db.Char(2)
   active                  Boolean                  @default(true)
   createdById             String?                  @map("created_by_id") @db.Uuid
   createdAt               DateTime                 @default(now()) @map("created_at")
@@ -225,7 +239,7 @@ model Purchase {
   supplierId        String            @map("supplier_id") @db.Uuid
   number            String            @db.VarChar(40)
   invoiceNumber     String?           @map("invoice_number") @db.VarChar(60)
-  issuedAt          DateTime          @map("issued_at") @db.Date
+  issuedAt          DateTime?         @map("issued_at") @db.Date
   status            PurchaseStatus    @default(REGISTERED)
   category          String?           @db.VarChar(100)
   operationNature   String?           @map("operation_nature") @db.VarChar(100)

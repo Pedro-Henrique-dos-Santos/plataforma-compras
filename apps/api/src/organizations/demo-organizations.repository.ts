@@ -7,6 +7,7 @@ import type {
   OrganizationMember,
   OrganizationRole,
   OrganizationSummary,
+  UpdateOrganizationInput,
   UpdateOrganizationMemberInput,
 } from '@compras/contracts';
 
@@ -148,7 +149,17 @@ export class DemoOrganizationsRepository extends OrganizationsRepository {
     const organization: DemoOrganization = {
       id: randomUUID(),
       name: input.name,
+      legalName: null,
       document: input.document ?? null,
+      email: null,
+      phone: null,
+      postalCode: null,
+      street: null,
+      addressNumber: null,
+      addressComplement: null,
+      district: null,
+      city: null,
+      state: null,
       slug,
       active: true,
     };
@@ -166,6 +177,31 @@ export class DemoOrganizationsRepository extends OrganizationsRepository {
     });
 
     return { ...organization, role: 'ORGANIZATION_ADMIN' };
+  }
+
+  async updateOrganization(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: UpdateOrganizationInput,
+  ): Promise<OrganizationSummary> {
+    const organization = this.organizations.find(
+      (candidate) => candidate.id === organizationId,
+    );
+    if (!organization) {
+      throw new NotFoundException('Empresa nao encontrada.');
+    }
+    if (
+      input.document &&
+      this.organizations.some(
+        (candidate) =>
+          candidate.id !== organizationId && candidate.document === input.document,
+      )
+    ) {
+      throw new ConflictException('Ja existe uma empresa cadastrada com este CNPJ.');
+    }
+    Object.assign(organization, input);
+    const role = (await this.findAccessible(actor, organizationId))?.role ?? 'ORGANIZATION_ADMIN';
+    return { ...organization, role };
   }
 
   async listMembers(organizationId: string): Promise<OrganizationMember[]> {

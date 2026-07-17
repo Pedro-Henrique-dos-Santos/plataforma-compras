@@ -43,25 +43,25 @@ const currency = new Intl.NumberFormat('pt-BR', {
 const integer = new Intl.NumberFormat('pt-BR');
 
 export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
-  const [filters, setFilters] = useState<ReportFilterForm>(currentMonthFilters);
-  const [appliedFilters, setAppliedFilters] = useState<ReportFilterForm>(currentMonthFilters);
+  const [filters, setFilters] = useState<ReportFilterForm>(emptyFilters);
+  const [appliedFilters, setAppliedFilters] = useState<ReportFilterForm>(emptyFilters);
   const [report, setReport] = useState<ProcurementReport | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [activeBreakdown, setActiveBreakdown] = useState<BreakdownTab>('department');
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState<'csv' | 'xlsx' | null>(null);
+  const [exporting, setExporting] = useState<'csv' | 'summary' | 'detailed' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     void Promise.all([
-      apiGet<Supplier[]>('/suppliers?status=ACTIVE', {
+      apiGet<Supplier[]>('/suppliers', {
         organizationId,
         signal: controller.signal,
         token: accessToken,
       }),
-      apiGet<CostCenter[]>('/cost-centers', {
+      apiGet<CostCenter[]>('/cost-centers?includeInactive=true', {
         organizationId,
         signal: controller.signal,
         token: accessToken,
@@ -118,18 +118,24 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
     setError(null);
   }
 
-  async function exportReport(format: 'csv' | 'xlsx') {
+  async function exportReport(format: 'csv' | 'summary' | 'detailed') {
+    const isCsv = format === 'csv';
+    const extension = isCsv ? 'csv' : 'xlsx';
+    const endpoint =
+      format === 'detailed' ? '/reports/procurement-detailed.xlsx' : `/reports/procurement.${extension}`;
     setExporting(format);
     setError(null);
     try {
       const result = await apiDownload(
-        `/reports/procurement.${format}?${reportQuery(appliedFilters)}`,
+        `${endpoint}?${reportQuery(appliedFilters)}`,
         {
           accept:
-            format === 'xlsx'
-              ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-              : 'text/csv',
-          fallbackFileName: `relatorio-compras.${format}`,
+            isCsv
+              ? 'text/csv'
+              : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          fallbackFileName: isCsv
+            ? 'relatorio-compras.csv'
+            : `relatorio-compras-${format}.xlsx`,
           organizationId,
           token: accessToken,
         },
@@ -191,6 +197,7 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
                 {suppliers.map((supplier) => (
                   <option key={supplier.id} value={supplier.id}>
                     {supplier.tradeName ?? supplier.legalName}
+                    {supplier.status === 'INACTIVE' ? ' (inativo)' : ''}
                   </option>
                 ))}
               </select>
@@ -205,6 +212,7 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
                 {costCenters.map((center) => (
                   <option key={center.id} value={center.id}>
                     {center.name}
+                    {!center.active ? ' (inativo)' : ''}
                   </option>
                 ))}
               </select>
@@ -329,13 +337,22 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
                   {exporting === 'csv' ? 'Exportando' : 'CSV'}
                 </button>
                 <button
-                  className="primary-button compact-button"
+                  className="secondary-button compact-button"
                   disabled={Boolean(exporting) || !report.purchases.length}
-                  onClick={() => void exportReport('xlsx')}
+                  onClick={() => void exportReport('summary')}
                   type="button"
                 >
                   <FileSpreadsheet size={16} />
-                  {exporting === 'xlsx' ? 'Gerando Excel' : 'Exportar Excel'}
+                  {exporting === 'summary' ? 'Gerando resumo' : 'Excel resumido'}
+                </button>
+                <button
+                  className="primary-button compact-button"
+                  disabled={Boolean(exporting) || !report.purchases.length}
+                  onClick={() => void exportReport('detailed')}
+                  type="button"
+                >
+                  <FileSpreadsheet size={16} />
+                  {exporting === 'detailed' ? 'Gerando detalhes' : 'Excel detalhado'}
                 </button>
               </div>
             </header>
@@ -488,21 +505,6 @@ function reportQuery(filters: ReportFilterForm): string {
   return query.toString();
 }
 
-function currentMonthFilters(): ReportFilterForm {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return {
-    category: '',
-    costCenterId: '',
-    dateFrom: `${year}-${month}-01`,
-    dateTo: `${year}-${month}-${day}`,
-    status: 'REGISTERED',
-    supplierId: '',
-  };
-}
-
 function emptyFilters(): ReportFilterForm {
   return {
     category: '',
@@ -518,7 +520,8 @@ function statusLabel(status: ProcurementReport['purchases'][number]['status']): 
   return { CANCELLED: 'Cancelada', DRAFT: 'Rascunho', REGISTERED: 'Registrada' }[status];
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string | null): string {
+  if (!value) return 'Sem data';
   return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(
     new Date(`${value}T00:00:00.000Z`),
   );

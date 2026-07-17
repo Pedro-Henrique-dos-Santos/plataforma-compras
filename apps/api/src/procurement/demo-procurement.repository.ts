@@ -5,9 +5,9 @@ import type {
   AttachPurchaseInvoiceInput,
   CostCenter,
   CreateCostCenterInput,
-  CreatePurchaseInput,
   CreateSupplierInput,
   CreateSupplierPriceInput,
+  DashboardFilters,
   DashboardSummary,
   ImportSupplierPricesInput,
   PurchaseImportInput,
@@ -15,6 +15,7 @@ import type {
   PurchaseSource,
   PurchaseStatus,
   PurchaseSummary,
+  ProcurementDetailedReport,
   ProcurementReport,
   ProcurementReportFilters,
   Supplier,
@@ -32,6 +33,7 @@ import { buildDashboardSummary } from './dashboard-summary.builder.js';
 import {
   ProcurementRepository,
   type CostCenterFilters,
+  type PersistPurchaseInput,
   type PurchaseFilters,
   type SupplierFilters,
   type SupplierPriceFilters,
@@ -46,6 +48,12 @@ type StoredPrice = Omit<SupplierPrice, 'savingsPercentage' | 'supplierName'> & {
   organizationId: string;
 };
 type StoredAllocation = { amount: number; costCenterId: string; percentage: number };
+type StoredInstallment = {
+  amount: number;
+  dueDate: string;
+  paidAt: string | null;
+  sequence: number;
+};
 type StoredPurchaseItem = {
   allocations: StoredAllocation[];
   costCenterId: string | null;
@@ -61,9 +69,11 @@ type StoredPurchase = {
   category: string | null;
   createdAt: string;
   id: string;
-  issuedAt: string;
+  issuedAt: string | null;
   items: StoredPurchaseItem[];
+  installments: StoredInstallment[];
   negotiatedSavings: number;
+  notes: string | null;
   number: string;
   invoiceNumber: string | null;
   operationNature: string | null;
@@ -341,20 +351,30 @@ export class DemoProcurementRepository extends ProcurementRepository {
     return this.purchases
       .filter((purchase) => purchase.organizationId === organizationId)
       .filter((purchase) => !filters.status || purchase.status === filters.status)
-      .filter((purchase) => !filters.dateFrom || purchase.issuedAt >= filters.dateFrom)
-      .filter((purchase) => !filters.dateTo || purchase.issuedAt <= filters.dateTo)
+      .filter(
+        (purchase) =>
+          !filters.dateFrom || (purchase.issuedAt !== null && purchase.issuedAt >= filters.dateFrom),
+      )
+      .filter(
+        (purchase) =>
+          !filters.dateTo || (purchase.issuedAt !== null && purchase.issuedAt <= filters.dateTo),
+      )
       .filter((purchase) => {
         const searchable = `${purchase.number} ${purchase.invoiceNumber ?? ''} ${purchase.sourceReference ?? ''} ${this.supplierName(purchase.supplierId)} ${purchase.category ?? ''}`;
         return !search || normalizeSearch(searchable).includes(search);
       })
-      .sort((left, right) => right.issuedAt.localeCompare(left.issuedAt))
+      .sort(
+        (left, right) =>
+          (right.issuedAt ?? '').localeCompare(left.issuedAt ?? '') ||
+          right.createdAt.localeCompare(left.createdAt),
+      )
       .map((purchase) => this.toPurchaseSummary(purchase));
   }
 
   async createPurchase(
     _actor: AuthenticatedIdentity,
     organizationId: string,
-    input: CreatePurchaseInput,
+    input: PersistPurchaseInput,
   ): Promise<PurchaseSummary> {
     const purchase = this.createStoredPurchase(organizationId, input);
     this.purchases.push(purchase);
@@ -405,16 +425,54 @@ export class DemoProcurementRepository extends ProcurementRepository {
     return this.toPurchaseSummary(purchase);
   }
 
-  async getDashboardSummary(organizationId: string): Promise<DashboardSummary> {
+  async getDashboardSummary(
+    organizationId: string,
+    filters: DashboardFilters,
+  ): Promise<DashboardSummary> {
     const purchases = this.purchases
       .filter(
         (purchase) =>
           purchase.organizationId === organizationId && purchase.status === 'REGISTERED',
       )
+      .filter(
+        (purchase) =>
+          !filters.dateFrom || (purchase.issuedAt !== null && purchase.issuedAt >= filters.dateFrom),
+      )
+      .filter(
+        (purchase) =>
+          !filters.dateTo || (purchase.issuedAt !== null && purchase.issuedAt <= filters.dateTo),
+      )
+      .filter(
+        (purchase) =>
+          filters.dateFrom !== undefined ||
+          filters.dateTo !== undefined ||
+          filters.includeUndated ||
+          purchase.issuedAt !== null,
+      )
+      .filter((purchase) => !filters.supplierId || purchase.supplierId === filters.supplierId)
+      .filter(
+        (purchase) =>
+          !filters.category ||
+          normalizeSearch(purchase.category ?? '') === normalizeSearch(filters.category),
+      )
+      .filter(
+        (purchase) =>
+          !filters.costCenterId ||
+          purchase.items.some(
+            (item) =>
+              item.costCenterId === filters.costCenterId ||
+              item.allocations.some(
+                (allocation) => allocation.costCenterId === filters.costCenterId,
+              ),
+          ),
+      )
       .map((purchase) => ({
         id: purchase.number,
         supplier: this.supplierName(purchase.supplierId),
-        issuedAt: new Date(`${purchase.issuedAt}T00:00:00.000Z`),
+        issuedAt: purchase.issuedAt
+          ? new Date(`${purchase.issuedAt}T00:00:00.000Z`)
+          : null,
+        createdAt: new Date(purchase.createdAt),
         total: purchase.total,
         negotiatedSavings: purchase.negotiatedSavings,
         category: purchase.category,
@@ -430,7 +488,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
     const activeSuppliers = this.suppliers.filter(
       (supplier) => supplier.organizationId === organizationId && supplier.status === 'ACTIVE',
     ).length;
-    return buildDashboardSummary({ activeSuppliers, dataSource: 'DEMO', purchases });
+    return buildDashboardSummary({ activeSuppliers, dataSource: 'DEMO', filters, purchases });
   }
 
   async getProcurementReport(
@@ -440,8 +498,14 @@ export class DemoProcurementRepository extends ProcurementRepository {
     const purchases = this.purchases
       .filter((purchase) => purchase.organizationId === organizationId)
       .filter((purchase) => purchase.status === filters.status)
-      .filter((purchase) => !filters.dateFrom || purchase.issuedAt >= filters.dateFrom)
-      .filter((purchase) => !filters.dateTo || purchase.issuedAt <= filters.dateTo)
+      .filter(
+        (purchase) =>
+          !filters.dateFrom || (purchase.issuedAt !== null && purchase.issuedAt >= filters.dateFrom),
+      )
+      .filter(
+        (purchase) =>
+          !filters.dateTo || (purchase.issuedAt !== null && purchase.issuedAt <= filters.dateTo),
+      )
       .filter((purchase) => !filters.supplierId || purchase.supplierId === filters.supplierId)
       .filter(
         (purchase) =>
@@ -494,9 +558,82 @@ export class DemoProcurementRepository extends ProcurementRepository {
     return buildProcurementReport({ dataSource: 'DEMO', filters, purchases });
   }
 
+  async getProcurementDetailedReport(
+    organizationId: string,
+    filters: ProcurementReportFilters,
+  ): Promise<ProcurementDetailedReport> {
+    const summary = await this.getProcurementReport(organizationId, filters);
+    const purchases = this.purchases
+      .filter((purchase) => summary.purchases.some((entry) => entry.id === purchase.id))
+      .map((purchase) => {
+        const supplier = this.suppliers.find(
+          (candidate) =>
+            candidate.organizationId === organizationId && candidate.id === purchase.supplierId,
+        );
+        if (!supplier) throw new NotFoundException('Fornecedor nao encontrado.');
+        return {
+          id: purchase.id,
+          number: purchase.number,
+          invoiceNumber: purchase.invoiceNumber,
+          issuedAt: purchase.issuedAt,
+          status: purchase.status,
+          category: purchase.category,
+          operationNature: purchase.operationNature,
+          paymentMethod: purchase.paymentMethod,
+          notes: purchase.notes,
+          source: purchase.source,
+          sourceReference: purchase.sourceReference,
+          total: purchase.total,
+          negotiatedSavings: purchase.negotiatedSavings,
+          createdAt: purchase.createdAt,
+          supplier: {
+            id: supplier.id,
+            legalName: supplier.legalName,
+            tradeName: supplier.tradeName,
+            document: supplier.document,
+            category: supplier.category,
+            operationNature: supplier.operationNature,
+            paymentMethod: supplier.paymentMethod,
+            email: supplier.email,
+            phone: supplier.phone,
+            defaultCostCenter: supplier.defaultCostCenterId
+              ? this.costCenterDetails(supplier.defaultCostCenterId)
+              : null,
+          },
+          items: purchase.items.map((item) => ({
+            id: item.id,
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unitPrice: item.unitPrice,
+            negotiatedPrice: item.negotiatedPrice,
+            total: item.total,
+            negotiatedSavings: roundMoney(
+              Math.max(0, item.unitPrice - (item.negotiatedPrice ?? item.unitPrice)) *
+                item.quantity,
+            ),
+            costCenter: item.costCenterId ? this.costCenterDetails(item.costCenterId) : null,
+            allocations: item.allocations.map((allocation) => ({
+              costCenter: this.costCenterDetails(allocation.costCenterId),
+              percentage: allocation.percentage,
+              amount: allocation.amount,
+            })),
+          })),
+          installments: purchase.installments.map((installment) => ({ ...installment })),
+          invoices: [],
+        };
+      })
+      .sort(
+        (left, right) =>
+          (right.issuedAt ?? '').localeCompare(left.issuedAt ?? '') ||
+          right.number.localeCompare(left.number),
+      );
+    return { summary, purchases };
+  }
+
   private createStoredPurchase(
     organizationId: string,
-    input: CreatePurchaseInput,
+    input: PersistPurchaseInput,
   ): StoredPurchase {
     const supplier = this.assertSupplierReference(organizationId, input.supplierId);
     if (this.isDuplicatePurchase(organizationId, input)) {
@@ -553,12 +690,19 @@ export class DemoProcurementRepository extends ProcurementRepository {
       negotiatedSavings,
       source: input.source,
       sourceReference: input.sourceReference,
+      notes: input.notes,
       createdAt: new Date().toISOString(),
       items,
+      installments: input.installments.map((installment, index) => ({
+        sequence: index + 1,
+        dueDate: installment.dueDate,
+        amount: installment.amount,
+        paidAt: null,
+      })),
     };
   }
 
-  private isDuplicatePurchase(organizationId: string, input: CreatePurchaseInput): boolean {
+  private isDuplicatePurchase(organizationId: string, input: PersistPurchaseInput): boolean {
     return this.purchases.some(
       (purchase) =>
         purchase.organizationId === organizationId &&
@@ -764,6 +908,12 @@ export class DemoProcurementRepository extends ProcurementRepository {
   private costCenterName(id: string): string {
     return this.costCenters.find((center) => center.id === id)?.name ?? 'Nao classificado';
   }
+
+  private costCenterDetails(id: string) {
+    const center = this.costCenters.find((candidate) => candidate.id === id);
+    if (!center) throw new NotFoundException('Centro de custo nao encontrado.');
+    return { id: center.id, code: center.code, name: center.name };
+  }
 }
 
 function allocateAmounts(
@@ -924,8 +1074,10 @@ function seededPurchase(
     negotiatedSavings,
     source: 'MANUAL',
     sourceReference: null,
+    notes: null,
     createdAt: `${issuedAt}T12:00:00.000Z`,
     items,
+    installments: [],
   };
 }
 

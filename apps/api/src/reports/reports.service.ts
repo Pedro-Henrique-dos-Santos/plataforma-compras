@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { ProcurementReport, ProcurementReportFilters } from '@compras/contracts';
 
 import { ProcurementRepository } from '../procurement/procurement.repository.js';
+import { buildDetailedProcurementWorkbook } from './procurement-detailed-workbook.js';
 import { buildProcurementWorkbook } from './procurement-workbook.js';
 
 @Injectable()
@@ -31,8 +32,18 @@ export class ReportsService {
   ): Promise<Buffer> {
     return buildProcurementWorkbook(await this.getProcurementReport(organizationId, filters));
   }
+
+  async exportDetailedProcurementXlsx(
+    organizationId: string,
+    filters: ProcurementReportFilters,
+  ): Promise<Buffer> {
+    return buildDetailedProcurementWorkbook(
+      await this.repository.getProcurementDetailedReport(organizationId, filters),
+    );
+  }
 }
 
+export { buildDetailedProcurementWorkbook as buildDetailedProcurementXlsx };
 export { buildProcurementWorkbook as buildProcurementXlsx };
 
 export function buildProcurementCsv(report: ProcurementReport): string {
@@ -75,7 +86,8 @@ function money(value: number): string {
   return value.toFixed(2).replace('.', ',');
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string | null): string {
+  if (!value) return 'Sem data';
   const [year, month, day] = value.split('-');
   return `${day}/${month}/${year}`;
 }

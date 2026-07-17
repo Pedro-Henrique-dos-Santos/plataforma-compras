@@ -10,7 +10,7 @@ export type ReportPurchaseInput = {
   id: string;
   number: string;
   invoiceNumber: string | null;
-  issuedAt: string;
+  issuedAt: string | null;
   supplierId: string;
   supplierName: string;
   category: string | null;
@@ -41,7 +41,8 @@ export function buildProcurementReport(input: {
   now?: Date;
 }): ProcurementReport {
   const purchases = [...input.purchases].sort((left, right) =>
-    right.issuedAt.localeCompare(left.issuedAt) || right.number.localeCompare(left.number),
+    (right.issuedAt ?? '').localeCompare(left.issuedAt ?? '') ||
+    right.number.localeCompare(left.number),
   );
   const purchased = roundMoney(purchases.reduce((sum, purchase) => sum + purchase.total, 0));
   const negotiatedSavings = roundMoney(
@@ -99,8 +100,8 @@ export function buildProcurementReport(input: {
     ),
     byMonth: aggregateBreakdown(
       purchases.map((purchase) => ({
-        key: purchase.issuedAt.slice(0, 7),
-        label: monthLabel(purchase.issuedAt.slice(0, 7)),
+        key: purchase.issuedAt?.slice(0, 7) ?? 'sem-data',
+        label: purchase.issuedAt ? monthLabel(purchase.issuedAt.slice(0, 7)) : 'Sem data',
         purchaseId: purchase.id,
         total: purchase.total,
         savings: purchase.negotiatedSavings,

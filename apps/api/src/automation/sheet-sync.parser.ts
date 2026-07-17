@@ -424,6 +424,7 @@ function parseLegacyPurchases(
   const sourceKeys = new Set<string>();
   const purchases: ParsedSheetPurchase[] = [];
   let sourceRows = 0;
+  let undatedPurchases = 0;
 
   for (const row of rows.data) {
     const supplierName = textCell(row, [
@@ -480,25 +481,14 @@ function parseLegacyPurchases(
       );
       continue;
     }
-    if (!issuedAt) {
-      issues.push({
-        ...invalidAction(
-          'PURCHASE',
-          row.rowNumber,
-          'Compra historica sem data de emissao. Preencha a data na planilha para liberar a importacao.',
-        ),
-        label: `${supplierName} | ${description}`,
-        amount: negotiatedPrice,
-      });
-      continue;
-    }
+    if (!issuedAt) undatedPurchases += 1;
 
     const stableNumber =
       number ??
       `LEG-${shortHash(
         [
           normalizeText(supplierName),
-          issuedAt,
+          issuedAt ?? 'sem-data',
           normalizeText(invoiceNumber ?? ''),
           normalizeText(description),
           negotiatedPrice.toFixed(4),
@@ -533,9 +523,12 @@ function parseLegacyPurchases(
       operationNature:
         textCell(row, ['natureza da operacao']) ?? supplier?.operationNature ?? null,
       paymentMethod: textCell(row, ['metodo de pagamento']),
-      notes: sourceUnit
-        ? `${description} Unidade de origem: ${sourceUnit}.`
-        : description,
+      notes: [
+        sourceUnit ? `${description} Unidade de origem: ${sourceUnit}.` : description,
+        !issuedAt ? 'Data de emissao ausente na planilha de origem.' : null,
+      ]
+        .filter(Boolean)
+        .join(' '),
       items: [
         {
           rowNumber: row.rowNumber,
@@ -554,6 +547,11 @@ function parseLegacyPurchases(
   if (purchases.length) {
     warnings.push(
       `${purchases.length} compras da aba historica foram convertidas com quantidade 1 e centro de custo herdado do fornecedor.`,
+    );
+  }
+  if (undatedPurchases) {
+    warnings.push(
+      `${undatedPurchases} compras historicas sem data serao preservadas e sinalizadas para revisao.`,
     );
   }
   return { purchases, sourceRows };
