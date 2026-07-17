@@ -24,7 +24,7 @@
 - [Concluido] Migrar tabela de precos e importacao em lote.
 - [Concluido] Criar conciliacao entre planilha e PostgreSQL.
 - [Concluido] Adicionar importacao XLSX com historico legado, previa e deduplicacao.
-- [Concluido no codigo] Preservar compras historicas sem data como pendencia, sem excluir o pedido nem inventar emissao.
+- [Concluido em homologacao] Preservar compras historicas sem data como pendencia, sem excluir o pedido nem inventar emissao.
 
 ## Fase 3: operacao de compras
 
@@ -37,8 +37,8 @@
 - [Concluido] Migrar dashboard e indicadores para consultas do banco.
 - [Concluido] Criar filtros por empresa e exportacoes CSV e XLSX.
 - [Concluido] Consolidar economia negociada, comparativos mensais e gastos por departamento.
-- [Concluido no codigo] Exibir todo o historico por padrao e filtrar dashboard por periodo, fornecedor, centro de custo e categoria.
-- [Concluido no codigo] Separar Excel resumido e detalhado, incluindo consolidacao mensal dos itens comprados.
+- [Concluido em homologacao] Exibir todo o historico por padrao e filtrar dashboard por periodo, fornecedor, centro de custo e categoria.
+- [Concluido em homologacao] Separar Excel resumido e detalhado, incluindo consolidacao mensal dos itens comprados.
 
 ## Fase 5: producao
 
@@ -48,7 +48,7 @@
 - [Concluido no CI] Executar backup, restauracao integral e reconciliacao em banco descartavel.
 - [Concluido local] Executar aceite funcional sintetico dos cadastros, compras, rateios, documentos e dashboard.
 - [Concluido] Executar migracoes e validar o Supabase de homologacao e o bucket privado.
-- [Em homologacao] Criar o proprietario global independente e a empresa Human Clinic.
-- [Em homologacao] Aplicar o primeiro lote real e reconciliar os totais com a planilha.
-- [Em homologacao] Gerar o primeiro relatorio XLSX a partir do PostgreSQL.
+- [Concluido em homologacao] Criar o proprietario global independente e a primeira empresa cliente.
+- [Concluido em homologacao] Aplicar o primeiro lote real, reconciliar os totais e comprovar a idempotencia da importacao.
+- [Concluido em homologacao] Gerar e inspecionar os relatorios XLSX resumido e detalhado a partir do PostgreSQL.
 - [Pendente externo] Implantacao controlada e desligamento gradual do Apps Script.

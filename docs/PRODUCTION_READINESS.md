@@ -4,6 +4,17 @@
 
 O codigo cobre identidade, multiempresa, papeis, cadastros, precos, compras, rateios, parcelas, conciliacao com Google Sheets, documentos fiscais, indicadores, relatorios e exportacao. A entrada em producao ainda depende da infraestrutura externa e da homologacao com dados reais.
 
+## Estado da homologacao
+
+- Todas as migracoes versionadas estao aplicadas no PostgreSQL de homologacao.
+- O teste de integracao confirmou RLS em todas as tabelas e isolamento entre empresas.
+- O primeiro lote real foi aplicado apos previa, reconciliacao e comparacao com o lote anterior.
+- Uma segunda previa da mesma fonte nao apresentou criacoes nem atualizacoes, comprovando idempotencia.
+- Dashboard, Excel resumido e Excel detalhado reconciliaram a mesma base operacional.
+- Todas as abas dos dois arquivos foram renderizadas; nao foram encontrados erros de formula ou defeitos graves de layout.
+
+Ainda faltam o aceite funcional completo da interface autenticada, a configuracao permanente do conector Google por conta de servico, a revisao juridica e a implantacao controlada.
+
 ## Verificacoes da API
 
 - `GET /api/health/live` confirma que o processo responde.
