@@ -1,7 +1,10 @@
+import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { PrismaClient } from '../packages/database/dist/index.js';
+const requireFromDatabasePackage = createRequire(
+  new URL('../packages/database/package.json', import.meta.url),
+);
 
 export function validateDatabaseSecuritySnapshot({ migrations, tableGrants, tables }) {
   if (!Array.isArray(migrations) || migrations.length === 0) {
@@ -86,6 +89,7 @@ async function main() {
   if (!process.env.DATABASE_URL?.trim()) {
     throw new Error('DATABASE_URL is required.');
   }
+  const { PrismaClient } = requireFromDatabasePackage('@prisma/client');
   const prisma = new PrismaClient();
   try {
     const result = await verifyDeployedDatabase(prisma);
