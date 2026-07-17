@@ -28,6 +28,10 @@
 - Configure `TRUST_PROXY=true` somente quando a API estiver atras de um proxy confiavel.
 - Monitore respostas `5xx` e preserve o `x-request-id` ao investigar incidentes.
 - Execute backup e restauracao de ensaio antes da primeira migracao de dados reais.
+- Execute os conteineres como usuarios nao privilegiados, com sistema de arquivos somente leitura e capacidades Linux removidas sempre que o provedor permitir.
+- Publique imagens somente por tags verificadas; nao reutilize uma tag para outro commit.
+- Restrinja criacao e exclusao de tags `v*` e publique somente commits contidos na branch `main`.
+- Exija aprovacao manual no ambiente `production` antes de executar migracoes ou provisionar armazenamento.
 
 ## Relato de vulnerabilidade
 

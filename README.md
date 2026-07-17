@@ -20,6 +20,8 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 - Notas em XML ou PDF passam por validacao, leitura estruturada ou OCR gratuito, revisao humana e conciliacao antes de criar compras.
 - A API possui prontidao do banco, identificadores de requisicao e logs estruturados.
 - O repositorio inclui teste de carga leve, backup com restauracao integral e integracao multiempresa contra PostgreSQL real no CI.
+- Web e API possuem imagens de producao separadas, executadas sem privilegios e validadas por smoke tests no GitHub Actions.
+- Tags de versao podem publicar imagens com SBOM e proveniencia no GitHub Container Registry.
 
 ## Estrutura
 
@@ -58,7 +60,7 @@ pnpm check
 
 Esse comando executa lint, verificacao de tipos, testes e build de todos os pacotes.
 
-Na versao `0.8.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
+Na versao `0.9.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
 importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets e
 automacao documental com revisao obrigatoria, relatorios filtrados, exportacao segura em CSV e XLSX e
 prontidao operacional. O CI aplica todas as migracoes em um PostgreSQL descartavel e executa
@@ -81,3 +83,4 @@ Nunca envie `.env`, chaves do Supabase, tokens do Google ou chaves da OpenAI ao 
 - [Relatorios operacionais](docs/REPORTS.md)
 - [Prontidao para producao](docs/PRODUCTION_READINESS.md)
 - [Recuperacao e backups](docs/RECOVERY_RUNBOOK.md)
+- [Implantacao e imagens](docs/DEPLOYMENT.md)

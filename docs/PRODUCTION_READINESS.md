@@ -4,6 +4,8 @@
 
 O codigo cobre identidade, multiempresa, papeis, cadastros, precos, compras, rateios, parcelas, conciliacao com Google Sheets, documentos fiscais, indicadores, relatorios e exportacao. A entrada em producao ainda depende da infraestrutura externa e da homologacao com dados reais.
 
+Web e API possuem imagens independentes, usuarios nao privilegiados, health checks e smoke tests com sistema de arquivos somente leitura. Tags semanticas coerentes podem publicar as imagens no GitHub Container Registry com SBOM e proveniencia. A migracao de producao permanece manual e exige ambiente protegido, tag imutavel, referencia de backup e confirmacao explicita.
+
 ## Estado da homologacao
 
 - Todas as migracoes versionadas estao aplicadas no PostgreSQL de homologacao.
@@ -34,6 +36,7 @@ O balanceador deve retirar a instancia do trafego quando `ready` retornar `503`,
 ## Verificacoes do banco no CI
 
 - Um PostgreSQL descartavel recebe todas as migracoes com `pnpm db:deploy`.
+- `pnpm db:verify:deployed` confirma migracoes concluidas, RLS em todas as tabelas da aplicacao e ausencia de privilegios para `PUBLIC`, `anon` e `authenticated`.
 - O catalogo e validado para garantir RLS em todas as tabelas da aplicacao.
 - Chaves de negocio iguais sao exercitadas em duas empresas sem conflito entre tenants.
 - Fornecedor e centro de custo de outra empresa sao rejeitados pelo repositorio.
@@ -80,5 +83,7 @@ O padrao executa 100 requisicoes com concorrencia 10 e falha quando ocorre erro 
 9. Confirmar o ensaio automatizado do CI e repetir a restauracao com um backup da homologacao.
 10. Aprovar juridicamente os Termos de uso, o Aviso de privacidade e o processo de atendimento aos titulares.
 11. Liberar usuarios em grupos pequenos e manter o Apps Script disponivel durante a estabilizacao.
+12. Configurar as variaveis publicas do build web, os segredos da API e os ambientes protegidos `staging` e `production` no GitHub.
+13. Publicar uma tag semantica somente depois do merge e validar as imagens geradas no GitHub Container Registry.
 
 Em implantacoes, use `pnpm db:deploy`. O comando `pnpm db:migrate` e reservado ao desenvolvimento local porque pode criar ou alterar migracoes interativamente.

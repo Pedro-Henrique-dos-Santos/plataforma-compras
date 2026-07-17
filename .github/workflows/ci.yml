@@ -57,6 +57,9 @@ jobs:
       - name: Apply database migrations
         run: pnpm db:deploy
 
+      - name: Verify deployed database protections
+        run: pnpm db:verify:deployed
+
       - name: Validate workspace
         run: pnpm check
 

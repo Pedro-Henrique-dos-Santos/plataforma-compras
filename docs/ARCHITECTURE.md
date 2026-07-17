@@ -13,7 +13,7 @@ Navegador
 
 O front-end nunca recebe a chave privilegiada do banco. A API valida o token do Supabase, a identidade local, a empresa ativa, o papel e a permissao antes de executar operacoes.
 
-O navegador nao acessa tabelas operacionais pelo cliente Supabase. O Row Level Security fica habilitado sem politicas para `anon` e `authenticated`, e os privilegios diretos desses papeis sao revogados. Somente a API usa a conexao PostgreSQL protegida. O CI consulta o catalogo do PostgreSQL e falha se uma tabela da aplicacao for criada sem RLS.
+O navegador nao acessa tabelas operacionais pelo cliente Supabase. O Row Level Security fica habilitado sem politicas para `anon` e `authenticated`, e os privilegios de `PUBLIC`, `anon` e `authenticated` sao revogados. Somente a API usa a conexao PostgreSQL protegida. O CI consulta o catalogo do PostgreSQL e falha se uma tabela da aplicacao for criada sem RLS.
 
 O cadastro de identidade separa o e-mail autenticado do nome exibido na plataforma. Os Termos de uso e o Aviso de privacidade possuem versoes independentes; a API grava a versao, a data, o endereco de rede disponivel e o agente do navegador em evento de auditoria. Uma nova versao volta a bloquear o acesso ate que os dois documentos sejam aceitos novamente.
 

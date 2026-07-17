@@ -53,4 +53,7 @@
 - [Concluido em homologacao] Aplicar o primeiro lote real, reconciliar os totais e comprovar a idempotencia da importacao.
 - [Concluido em homologacao] Gerar e inspecionar os relatorios XLSX resumido e detalhado a partir do PostgreSQL.
 - [Concluido em homologacao] Executar o aceite visual autenticado em desktop de 1280 por 720 pixels e dispositivo movel de 390 por 844 pixels, sem erros de console ou rolagem horizontal da pagina.
+- [Concluido no codigo] Empacotar web e API em imagens separadas, nao privilegiadas e com health checks.
+- [Concluido no codigo] Validar conteineres no CI e preparar publicacao versionada no GitHub Container Registry.
+- [Concluido no codigo] Proteger migracoes de producao com tag imutavel, referencia de backup, confirmacao explicita e verificacao de RLS.
 - [Pendente externo] Implantacao controlada e desligamento gradual do Apps Script.

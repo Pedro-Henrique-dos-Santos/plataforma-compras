@@ -65,6 +65,9 @@ jobs:
       - name: Apply staging migrations
         run: pnpm db:deploy
 
+      - name: Verify deployed database protections
+        run: pnpm db:verify:deployed
+
       - name: Validate staging tenant isolation
         run: pnpm test:integration
 

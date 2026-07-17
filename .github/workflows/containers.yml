@@ -1,0 +1,114 @@
+name: Containers
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "agent/**"
+
+permissions:
+  contents: read
+
+jobs:
+  api-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          load: true
+          push: false
+          tags: e-gestao-compras-api:ci
+          cache-from: type=gha,scope=api-container
+          cache-to: type=gha,mode=max,scope=api-container
+
+      - name: Confirm API runtime user
+        run: test "$(docker inspect --format='{{.Config.User}}' e-gestao-compras-api:ci)" = "node"
+
+      - name: Smoke test API image
+        run: |
+          docker run --detach --name e-gestao-api-ci \
+            --cap-drop=ALL \
+            --read-only \
+            --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --env DEMO_MODE=true \
+            --env NODE_ENV=production \
+            --publish 3333:3333 \
+            e-gestao-compras-api:ci
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:3333/api/health/ready; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs e-gestao-api-ci
+          exit 1
+
+      - name: Remove API smoke container
+        if: always()
+        run: docker rm --force e-gestao-api-ci || true
+
+  web-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          load: true
+          push: false
+          tags: e-gestao-compras-web:ci
+          build-args: |
+            VITE_API_URL=https://api.example.com/api
+            VITE_SUPABASE_URL=https://example.supabase.co
+            VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_container_ci
+            VITE_DEMO_MODE=false
+          cache-from: type=gha,scope=web-container
+          cache-to: type=gha,mode=max,scope=web-container
+
+      - name: Confirm web runtime user
+        run: test "$(docker inspect --format='{{.Config.User}}' e-gestao-compras-web:ci)" = "101:101"
+
+      - name: Smoke test web image
+        run: |
+          docker run --detach --name e-gestao-web-ci \
+            --cap-drop=ALL \
+            --read-only \
+            --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --tmpfs /var/cache/nginx:rw,noexec,nosuid,size=16m \
+            --tmpfs /var/run:rw,noexec,nosuid,size=4m \
+            --publish 8080:8080 \
+            e-gestao-compras-web:ci
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8080/healthz \
+              && curl --fail --silent --show-error http://127.0.0.1:8080/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs e-gestao-web-ci
+          exit 1
+
+      - name: Remove web smoke container
+        if: always()
+        run: docker rm --force e-gestao-web-ci || true

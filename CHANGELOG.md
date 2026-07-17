@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0 - 2026-07-16
+
+- Adicionadas imagens separadas e nao privilegiadas para a API e a interface web, com health checks e sistema de arquivos somente leitura nos smoke tests.
+- Adicionado Nginx dedicado para a SPA, com fallback de rotas, cache de ativos e cabecalhos defensivos.
+- Adicionado workflow que constroi e executa os dois conteineres em cada branch e pull request.
+- Adicionada publicacao versionada no GitHub Container Registry somente por tags coerentes com os pacotes e o changelog.
+- Adicionado fluxo manual de producao que exige tag imutavel, referencia de backup, confirmacao explicita e ambiente protegido.
+- Adicionada verificacao somente de leitura para migracoes, RLS e privilegios diretos dos papeis de navegador.
+
 ## 0.8.1 - 2026-07-16
 
 - Concluido o aceite visual autenticado em desktop de 1280 por 720 pixels e dispositivo movel de 390 por 844 pixels.
