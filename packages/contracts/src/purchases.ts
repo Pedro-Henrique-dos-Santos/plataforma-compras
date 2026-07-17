@@ -5,6 +5,9 @@ import { isoDateSchema, monetaryValueSchema } from './master-data.js';
 export const purchaseStatusSchema = z.enum(['DRAFT', 'REGISTERED', 'CANCELLED']);
 export type PurchaseStatus = z.infer<typeof purchaseStatusSchema>;
 
+export const purchaseLifecycleStatusSchema = z.enum(['REGISTERED', 'CANCELLED']);
+export type PurchaseLifecycleStatus = z.infer<typeof purchaseLifecycleStatusSchema>;
+
 export const purchaseSourceSchema = z.enum(['MANUAL', 'CSV', 'INVOICE', 'GOOGLE_SHEETS']);
 export type PurchaseSource = z.infer<typeof purchaseSourceSchema>;
 
@@ -79,27 +82,32 @@ export const createPurchaseInputSchema = z
     items: z.array(purchaseItemInputSchema).min(1).max(500),
     installments: z.array(installmentInputSchema).max(120).optional().default([]),
   })
-  .superRefine((value, context) => {
-    if (!value.installments.length) {
-      return;
-    }
-    const purchaseTotal = value.items.reduce(
-      (sum, item) => sum + item.quantity * (item.negotiatedPrice ?? item.unitPrice),
-      0,
-    );
-    const installmentTotal = value.installments.reduce(
-      (sum, installment) => sum + installment.amount,
-      0,
-    );
-    if (Math.abs(purchaseTotal - installmentTotal) > 0.01) {
-      context.addIssue({
-        code: 'custom',
-        message: 'A soma das parcelas deve ser igual ao total da compra.',
-        path: ['installments'],
-      });
-    }
-  });
+  .superRefine(validateInstallmentTotal);
 export type CreatePurchaseInput = z.infer<typeof createPurchaseInputSchema>;
+
+export const updatePurchaseInputSchema = z
+  .object({
+    expectedUpdatedAt: z.string().datetime(),
+    number: z.string().trim().min(1).max(40),
+    invoiceNumber: nullableText(60).optional(),
+    supplierId: z.string().uuid(),
+    issuedAt: isoDateSchema.nullable(),
+    category: nullableText(100),
+    operationNature: nullableText(100),
+    paymentMethod: nullableText(80),
+    notes: nullableText(2_000),
+    items: z.array(purchaseItemInputSchema).min(1).max(500),
+    installments: z.array(installmentInputSchema).max(120).optional().default([]),
+  })
+  .superRefine(validateInstallmentTotal);
+export type UpdatePurchaseInput = z.infer<typeof updatePurchaseInputSchema>;
+
+export const changePurchaseStatusInputSchema = z.object({
+  expectedUpdatedAt: z.string().datetime(),
+  status: purchaseLifecycleStatusSchema,
+  reason: z.string().trim().min(3).max(500),
+});
+export type ChangePurchaseStatusInput = z.infer<typeof changePurchaseStatusInputSchema>;
 
 export const purchaseSummarySchema = z.object({
   id: z.string().uuid(),
@@ -121,6 +129,45 @@ export const purchaseSummarySchema = z.object({
 });
 export type PurchaseSummary = z.infer<typeof purchaseSummarySchema>;
 
+export const purchaseAllocationDetailSchema = z.object({
+  costCenterId: z.string().uuid(),
+  costCenterName: z.string().trim().min(1).max(120),
+  percentage: z.number().finite().positive().max(100),
+  amount: monetaryValueSchema,
+});
+export type PurchaseAllocationDetail = z.infer<typeof purchaseAllocationDetailSchema>;
+
+export const purchaseItemDetailSchema = z.object({
+  id: z.string().uuid(),
+  description: z.string().trim().min(2).max(240),
+  quantity: z.number().finite().positive(),
+  unit: z.string().trim().max(30).nullable(),
+  unitPrice: monetaryValueSchema,
+  negotiatedPrice: monetaryValueSchema.nullable(),
+  total: monetaryValueSchema,
+  costCenterId: z.string().uuid().nullable(),
+  costCenterName: z.string().trim().min(1).max(120).nullable(),
+  allocations: z.array(purchaseAllocationDetailSchema),
+});
+export type PurchaseItemDetail = z.infer<typeof purchaseItemDetailSchema>;
+
+export const purchaseInstallmentDetailSchema = z.object({
+  sequence: z.number().int().positive(),
+  dueDate: isoDateSchema,
+  amount: monetaryValueSchema,
+  paidAt: isoDateSchema.nullable(),
+});
+export type PurchaseInstallmentDetail = z.infer<typeof purchaseInstallmentDetailSchema>;
+
+export const purchaseDetailSchema = purchaseSummarySchema.extend({
+  operationNature: z.string().trim().max(100).nullable(),
+  notes: z.string().max(2_000).nullable(),
+  items: z.array(purchaseItemDetailSchema).min(1),
+  installments: z.array(purchaseInstallmentDetailSchema),
+  updatedAt: z.string().datetime(),
+});
+export type PurchaseDetail = z.infer<typeof purchaseDetailSchema>;
+
 export const attachPurchaseInvoiceInputSchema = z.object({
   invoiceNumber: z.string().trim().min(1).max(60),
 });
@@ -137,3 +184,30 @@ export const purchaseImportResultSchema = z.object({
   duplicated: z.number().int().nonnegative(),
 });
 export type PurchaseImportResult = z.infer<typeof purchaseImportResultSchema>;
+
+function validateInstallmentTotal(
+  value: {
+    installments: Array<{ amount: number }>;
+    items: Array<{ negotiatedPrice: number | null; quantity: number; unitPrice: number }>;
+  },
+  context: z.RefinementCtx,
+) {
+  if (!value.installments.length) {
+    return;
+  }
+  const purchaseTotal = value.items.reduce(
+    (sum, item) => sum + item.quantity * (item.negotiatedPrice ?? item.unitPrice),
+    0,
+  );
+  const installmentTotal = value.installments.reduce(
+    (sum, installment) => sum + installment.amount,
+    0,
+  );
+  if (Math.abs(purchaseTotal - installmentTotal) > 0.01) {
+    context.addIssue({
+      code: 'custom',
+      message: 'A soma das parcelas deve ser igual ao total da compra.',
+      path: ['installments'],
+    });
+  }
+}

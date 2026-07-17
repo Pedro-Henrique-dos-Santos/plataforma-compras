@@ -58,6 +58,14 @@ A conciliacao resolve primeiro centros de custo e fornecedores, depois precos e 
 
 Durante a transicao, o fluxo de dados e intencionalmente unidirecional: Google Sheets ou XLSX para previa, previa confirmada para PostgreSQL e PostgreSQL para relatorios. Nao existe sincronizacao automatica bidirecional, pois edicoes concorrentes criariam conflitos e dupla contagem. Depois da homologacao, o PostgreSQL passa a ser a fonte oficial.
 
+## Operacao de compras
+
+A consulta detalhada de uma compra devolve itens, rateios, parcelas, observacoes e a referencia fiscal dentro do tenant ativo. A correcao substitui itens e parcelas em uma unica transacao, recalcula total e economia e preserva a origem e a referencia externa da importacao. Fornecedores ou centros de custo historicos que tenham sido inativados podem permanecer no registro existente, mas nao podem ser escolhidos para uma nova classificacao.
+
+Toda edicao exige o `updatedAt` lido pelo usuario. Se outra operacao alterar a compra antes da gravacao, a API rejeita a versao antiga e exige recarregamento. Parcelas pagas permanecem no banco e nao podem ter valor, vencimento, ordem ou existencia alterados pela edicao da compra.
+
+Cancelamento e reativacao exigem motivo, atualizam o estado sem apagar o historico e geram evento de auditoria. Compras canceladas permanecem consultaveis por filtro e nos relatorios de cancelamento, mas nao entram nos indicadores de compras registradas. Nao existe alcada de aprovacao neste ciclo.
+
 ## Indicadores
 
 O dashboard nao armazena totais derivados. Por padrao, a API agrega todo o historico de compras registradas e aceita filtros de periodo, fornecedor, centro de custo, categoria e inclusao de registros sem data. Quando um item possui rateio, somente os valores das alocacoes entram no grafico por departamento; o total direto do item nao e somado novamente. Compras sem data entram nos totais, categorias e departamentos, mas ficam fora da serie mensal ate a correcao da emissao.

@@ -1,5 +1,6 @@
 import type {
   AttachPurchaseInvoiceInput,
+  ChangePurchaseStatusInput,
   CostCenter,
   CreateCostCenterInput,
   CreatePurchaseInput,
@@ -10,6 +11,7 @@ import type {
   ImportSupplierPricesInput,
   PurchaseImportInput,
   PurchaseImportResult,
+  PurchaseDetail,
   PurchaseSummary,
   ProcurementDetailedReport,
   ProcurementReport,
@@ -18,6 +20,7 @@ import type {
   SupplierPrice,
   SupplierPriceImportResult,
   UpdateCostCenterInput,
+  UpdatePurchaseInput,
   UpdateSupplierInput,
   UpdateSupplierPriceInput,
 } from '@compras/contracts';
@@ -121,10 +124,26 @@ export abstract class ProcurementRepository {
     filters?: PurchaseFilters,
   ): Promise<PurchaseSummary[]>;
 
+  abstract getPurchase(organizationId: string, id: string): Promise<PurchaseDetail>;
+
   abstract createPurchase(
     actor: AuthenticatedIdentity,
     organizationId: string,
     input: PersistPurchaseInput,
+  ): Promise<PurchaseSummary>;
+
+  abstract updatePurchase(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    input: UpdatePurchaseInput,
+  ): Promise<PurchaseDetail>;
+
+  abstract changePurchaseStatus(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    input: ChangePurchaseStatusInput,
   ): Promise<PurchaseSummary>;
 
   abstract importPurchases(

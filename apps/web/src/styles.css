@@ -1013,6 +1013,27 @@ td {
   background: var(--success-soft);
 }
 
+.status-label.cancelled {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.order-id strong,
+.order-id small {
+  display: block;
+}
+
+.order-id small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.purchase-row-cancelled td {
+  color: var(--muted);
+}
+
 .organization-card-copy {
   margin: 24px 0;
 }
@@ -1662,6 +1683,47 @@ td {
   margin-top: 5px;
   font-size: 16px;
   font-variant-numeric: tabular-nums;
+}
+
+.lifecycle-purchase-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.lifecycle-purchase-summary span {
+  min-width: 0;
+  padding: 0 12px;
+  border-right: 1px solid var(--line);
+}
+
+.lifecycle-purchase-summary span:first-child {
+  padding-left: 0;
+}
+
+.lifecycle-purchase-summary span:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.lifecycle-purchase-summary small,
+.lifecycle-purchase-summary strong {
+  display: block;
+}
+
+.lifecycle-purchase-summary small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.lifecycle-purchase-summary strong {
+  overflow: hidden;
+  margin-top: 4px;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .table-loading {
@@ -3402,6 +3464,27 @@ td {
   .purchase-total-band span {
     min-width: 0;
     text-align: left;
+  }
+
+  .lifecycle-purchase-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .lifecycle-purchase-summary span,
+  .lifecycle-purchase-summary span:first-child,
+  .lifecycle-purchase-summary span:last-child {
+    padding: 8px 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .lifecycle-purchase-summary span:first-child {
+    padding-top: 0;
+  }
+
+  .lifecycle-purchase-summary span:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
   }
 
   .heading-actions .primary-button,

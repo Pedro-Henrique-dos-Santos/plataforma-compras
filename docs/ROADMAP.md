@@ -29,6 +29,7 @@
 ## Fase 3: operacao de compras
 
 - [Concluido] Migrar cadastro de compras, itens, rateios e parcelas.
+- [Concluido em homologacao] Adicionar detalhe, correcao transacional, cancelamento e reativacao auditados, com protecao das parcelas pagas.
 - [Concluido] Incorporar notas fiscais XML e PDF, OCR gratuito, revisao e conciliacao no fluxo externo.
 - [Concluido] Garantir idempotencia, isolamento por empresa e auditoria das gravacoes.
 

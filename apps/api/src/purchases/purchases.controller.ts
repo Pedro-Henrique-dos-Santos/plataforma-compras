@@ -3,11 +3,16 @@ import {
   Controller,
   Get,
   Inject,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import {
+  changePurchaseStatusInputSchema,
+  type ChangePurchaseStatusInput,
   createPurchaseInputSchema,
   type CreatePurchaseInput,
   isoDateSchema,
@@ -15,6 +20,8 @@ import {
   purchaseImportInputSchema,
   type PurchaseImportInput,
   purchaseStatusSchema,
+  updatePurchaseInputSchema,
+  type UpdatePurchaseInput,
 } from '@compras/contracts';
 import { z } from 'zod';
 
@@ -52,6 +59,15 @@ export class PurchasesController {
     return this.purchases.list(organization.id, query);
   }
 
+  @Get(':id')
+  @RequirePermission('purchase:read')
+  detail(
+    @ActiveOrganization() organization: OrganizationSummary,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.purchases.detail(organization.id, id);
+  }
+
   @Post()
   @RequirePermission('purchase:write')
   create(
@@ -60,6 +76,29 @@ export class PurchasesController {
     @Body(new ZodValidationPipe(createPurchaseInputSchema)) input: CreatePurchaseInput,
   ) {
     return this.purchases.create(actor, organization.id, input);
+  }
+
+  @Patch(':id')
+  @RequirePermission('purchase:write')
+  update(
+    @CurrentUser() actor: AuthenticatedIdentity,
+    @ActiveOrganization() organization: OrganizationSummary,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(updatePurchaseInputSchema)) input: UpdatePurchaseInput,
+  ) {
+    return this.purchases.update(actor, organization.id, id, input);
+  }
+
+  @Patch(':id/status')
+  @RequirePermission('purchase:write')
+  changeStatus(
+    @CurrentUser() actor: AuthenticatedIdentity,
+    @ActiveOrganization() organization: OrganizationSummary,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(changePurchaseStatusInputSchema))
+    input: ChangePurchaseStatusInput,
+  ) {
+    return this.purchases.changeStatus(actor, organization.id, id, input);
   }
 
   @Post('import')

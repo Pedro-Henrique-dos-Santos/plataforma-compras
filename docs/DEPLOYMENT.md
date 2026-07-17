@@ -78,8 +78,8 @@ pnpm release:verify
 Depois do merge aprovado na `main`, crie uma tag imutavel correspondente:
 
 ```bash
-git tag v0.9.0
-git push origin v0.9.0
+git tag v0.10.0
+git push origin v0.10.0
 ```
 
 O workflow `Publish Container Images` valida a tag e publica no GHCR:

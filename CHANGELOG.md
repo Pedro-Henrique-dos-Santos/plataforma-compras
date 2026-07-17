@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.0 - 2026-07-17
+
+- Adicionada consulta detalhada de compras com itens, rateios, parcelas, observacoes e dados fiscais.
+- Adicionada edicao transacional de compras com controle de concorrencia e preservacao da origem da importacao.
+- Adicionados cancelamento e reativacao com motivo obrigatorio, auditoria e atualizacao imediata dos indicadores.
+- Adicionados filtro de status, nota fiscal e acoes operacionais na lista de compras.
+- Protegidas parcelas pagas contra alteracao, reordenacao ou remocao durante a correcao da compra.
+- Reconciliados os precos original e negociado da massa demonstrativa para preservar a economia ao editar.
+- Alinhado o modo demonstrativo para manter apenas referencias inativas ja existentes, sem permitir novas classificacoes inativas.
+- Ampliados os testes multiempresa no Supabase para edicao, baixa preservada, conflito concorrente, cancelamento e reativacao.
+
 ## 0.9.0 - 2026-07-16
 
 - Adicionadas imagens separadas e nao privilegiadas para a API e a interface web, com health checks e sistema de arquivos somente leitura nos smoke tests.

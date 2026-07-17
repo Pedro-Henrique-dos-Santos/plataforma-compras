@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { createPurchaseInputSchema } from './purchases.js';
+import {
+  changePurchaseStatusInputSchema,
+  createPurchaseInputSchema,
+  updatePurchaseInputSchema,
+} from './purchases.js';
 
 const supplierId = '11111111-1111-4111-8111-111111111111';
 const firstCenter = '22222222-2222-4222-8222-222222222222';
@@ -66,6 +70,36 @@ describe('purchase contracts', () => {
         supplierId,
         issuedAt: null,
         items: [{ description: 'Servico', unitPrice: 100 }],
+      }),
+    ).toThrow();
+  });
+
+  it('allows an undated historical purchase to be corrected without inventing a date', () => {
+    const input = updatePurchaseInputSchema.parse({
+      expectedUpdatedAt: '2026-07-16T12:00:00.000Z',
+      number: 'LEG-001',
+      supplierId,
+      issuedAt: null,
+      items: [{ description: 'Servico historico', unitPrice: 100 }],
+    });
+
+    expect(input.issuedAt).toBeNull();
+    expect(input.installments).toEqual([]);
+  });
+
+  it('requires a reason and concurrency marker to change purchase status', () => {
+    expect(
+      changePurchaseStatusInputSchema.parse({
+        expectedUpdatedAt: '2026-07-16T12:00:00.000Z',
+        status: 'CANCELLED',
+        reason: 'Pedido emitido em duplicidade.',
+      }),
+    ).toMatchObject({ status: 'CANCELLED' });
+    expect(() =>
+      changePurchaseStatusInputSchema.parse({
+        expectedUpdatedAt: '2026-07-16T12:00:00.000Z',
+        status: 'CANCELLED',
+        reason: 'x',
       }),
     ).toThrow();
   });

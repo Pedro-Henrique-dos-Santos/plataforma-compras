@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import type {
   AttachPurchaseInvoiceInput,
+  ChangePurchaseStatusInput,
   CostCenter,
   CreateCostCenterInput,
   CreateSupplierInput,
@@ -12,6 +13,7 @@ import type {
   ImportSupplierPricesInput,
   PurchaseImportInput,
   PurchaseImportResult,
+  PurchaseDetail,
   PurchaseSource,
   PurchaseStatus,
   PurchaseSummary,
@@ -22,6 +24,7 @@ import type {
   SupplierPrice,
   SupplierPriceImportResult,
   UpdateCostCenterInput,
+  UpdatePurchaseInput,
   UpdateSupplierInput,
   UpdateSupplierPriceInput,
 } from '@compras/contracts';
@@ -84,6 +87,7 @@ type StoredPurchase = {
   status: PurchaseStatus;
   supplierId: string;
   total: number;
+  updatedAt: string;
 };
 
 const INITIAL_DATE = '2026-07-01T12:00:00.000Z';
@@ -371,6 +375,10 @@ export class DemoProcurementRepository extends ProcurementRepository {
       .map((purchase) => this.toPurchaseSummary(purchase));
   }
 
+  async getPurchase(organizationId: string, id: string): Promise<PurchaseDetail> {
+    return this.toPurchaseDetail(this.requireStoredPurchase(organizationId, id));
+  }
+
   async createPurchase(
     _actor: AuthenticatedIdentity,
     organizationId: string,
@@ -378,6 +386,61 @@ export class DemoProcurementRepository extends ProcurementRepository {
   ): Promise<PurchaseSummary> {
     const purchase = this.createStoredPurchase(organizationId, input);
     this.purchases.push(purchase);
+    return this.toPurchaseSummary(purchase);
+  }
+
+  async updatePurchase(
+    _actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    input: UpdatePurchaseInput,
+  ): Promise<PurchaseDetail> {
+    const purchase = this.requireStoredPurchase(organizationId, id);
+    if (purchase.status === 'CANCELLED') {
+      throw new BadRequestException('Reative a compra antes de altera-la.');
+    }
+    if (purchase.updatedAt !== input.expectedUpdatedAt) {
+      throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
+    }
+    const replacement = this.createStoredPurchase(
+      organizationId,
+      {
+        ...input,
+        source: purchase.source,
+        sourceReference: purchase.sourceReference,
+      },
+      {
+        allowedInactiveCenterIds: storedPurchaseCenterIds(purchase),
+        allowedInactiveSupplierId: purchase.supplierId,
+        ignoredPurchaseId: id,
+      },
+    );
+    preservePaidInstallments(purchase.installments, replacement.installments);
+    Object.assign(replacement, {
+      createdAt: purchase.createdAt,
+      id: purchase.id,
+      status: purchase.status,
+      updatedAt: nextTimestamp(purchase.updatedAt),
+    });
+    Object.assign(purchase, replacement);
+    return this.toPurchaseDetail(purchase);
+  }
+
+  async changePurchaseStatus(
+    _actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    input: ChangePurchaseStatusInput,
+  ): Promise<PurchaseSummary> {
+    const purchase = this.requireStoredPurchase(organizationId, id);
+    if (purchase.status === input.status) {
+      return this.toPurchaseSummary(purchase);
+    }
+    if (purchase.updatedAt !== input.expectedUpdatedAt) {
+      throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
+    }
+    purchase.status = input.status;
+    purchase.updatedAt = nextTimestamp(purchase.updatedAt);
     return this.toPurchaseSummary(purchase);
   }
 
@@ -422,6 +485,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
       throw new ConflictException('Esta nota fiscal ja esta vinculada a outra compra.');
     }
     purchase.invoiceNumber = input.invoiceNumber;
+    purchase.updatedAt = nextTimestamp(purchase.updatedAt);
     return this.toPurchaseSummary(purchase);
   }
 
@@ -634,9 +698,18 @@ export class DemoProcurementRepository extends ProcurementRepository {
   private createStoredPurchase(
     organizationId: string,
     input: PersistPurchaseInput,
+    options: {
+      allowedInactiveCenterIds?: ReadonlySet<string>;
+      allowedInactiveSupplierId?: string;
+      ignoredPurchaseId?: string;
+    } = {},
   ): StoredPurchase {
-    const supplier = this.assertSupplierReference(organizationId, input.supplierId);
-    if (this.isDuplicatePurchase(organizationId, input)) {
+    const supplier = this.assertSupplierReference(
+      organizationId,
+      input.supplierId,
+      options.allowedInactiveSupplierId === input.supplierId,
+    );
+    if (this.isDuplicatePurchase(organizationId, input, options.ignoredPurchaseId)) {
       throw new ConflictException('Esta compra ja foi registrada.');
     }
     const items = input.items.map((item) => {
@@ -644,10 +717,18 @@ export class DemoProcurementRepository extends ProcurementRepository {
       const total = roundMoney(item.quantity * finalUnitPrice);
       const fallbackCenter = item.costCenterId ?? supplier.defaultCostCenterId;
       if (fallbackCenter) {
-        this.assertCostCenterReference(organizationId, fallbackCenter);
+        this.assertCostCenterReference(
+          organizationId,
+          fallbackCenter,
+          options.allowedInactiveCenterIds?.has(fallbackCenter),
+        );
       }
       for (const allocation of item.allocations) {
-        this.assertCostCenterReference(organizationId, allocation.costCenterId);
+        this.assertCostCenterReference(
+          organizationId,
+          allocation.costCenterId,
+          options.allowedInactiveCenterIds?.has(allocation.costCenterId),
+        );
       }
       return {
         id: randomUUID(),
@@ -675,6 +756,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
     if (input.installments.length && Math.abs(total - installmentTotal) > 0.01) {
       throw new BadRequestException('A soma das parcelas deve ser igual ao total da compra.');
     }
+    const now = new Date().toISOString();
     return {
       id: randomUUID(),
       organizationId,
@@ -691,7 +773,8 @@ export class DemoProcurementRepository extends ProcurementRepository {
       source: input.source,
       sourceReference: input.sourceReference,
       notes: input.notes,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
       items,
       installments: input.installments.map((installment, index) => ({
         sequence: index + 1,
@@ -702,10 +785,15 @@ export class DemoProcurementRepository extends ProcurementRepository {
     };
   }
 
-  private isDuplicatePurchase(organizationId: string, input: PersistPurchaseInput): boolean {
+  private isDuplicatePurchase(
+    organizationId: string,
+    input: PersistPurchaseInput,
+    ignoredPurchaseId?: string,
+  ): boolean {
     return this.purchases.some(
       (purchase) =>
         purchase.organizationId === organizationId &&
+        purchase.id !== ignoredPurchaseId &&
         (purchase.number === input.number ||
           (input.invoiceNumber &&
             purchase.supplierId === input.supplierId &&
@@ -819,6 +907,33 @@ export class DemoProcurementRepository extends ProcurementRepository {
     };
   }
 
+  private toPurchaseDetail(purchase: StoredPurchase): PurchaseDetail {
+    return {
+      ...this.toPurchaseSummary(purchase),
+      operationNature: purchase.operationNature,
+      notes: purchase.notes,
+      items: purchase.items.map((item) => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        unit: item.unit,
+        unitPrice: item.unitPrice,
+        negotiatedPrice: item.negotiatedPrice,
+        total: item.total,
+        costCenterId: item.costCenterId,
+        costCenterName: item.costCenterId ? this.costCenterName(item.costCenterId) : null,
+        allocations: item.allocations.map((allocation) => ({
+          costCenterId: allocation.costCenterId,
+          costCenterName: this.costCenterName(allocation.costCenterId),
+          percentage: allocation.percentage,
+          amount: allocation.amount,
+        })),
+      })),
+      installments: purchase.installments.map((installment) => ({ ...installment })),
+      updatedAt: purchase.updatedAt,
+    };
+  }
+
   private withEffectivePriceStatus(price: StoredPrice): StoredPrice {
     if (
       price.status === 'ACTIVE' &&
@@ -864,6 +979,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
   private assertCostCenterReference(
     organizationId: string,
     costCenterId: string | null,
+    allowInactive = false,
   ): StoredCostCenter | null {
     if (!costCenterId) {
       return null;
@@ -872,7 +988,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
       (candidate) =>
         candidate.organizationId === organizationId &&
         candidate.id === costCenterId &&
-        candidate.active,
+        (allowInactive || candidate.active),
     );
     if (!center) {
       throw new BadRequestException('Centro de custo invalido ou inativo.');
@@ -880,17 +996,31 @@ export class DemoProcurementRepository extends ProcurementRepository {
     return center;
   }
 
-  private assertSupplierReference(organizationId: string, supplierId: string): StoredSupplier {
+  private assertSupplierReference(
+    organizationId: string,
+    supplierId: string,
+    allowInactive = false,
+  ): StoredSupplier {
     const supplier = this.suppliers.find(
       (candidate) =>
         candidate.organizationId === organizationId &&
         candidate.id === supplierId &&
-        candidate.status === 'ACTIVE',
+        (allowInactive || candidate.status === 'ACTIVE'),
     );
     if (!supplier) {
       throw new BadRequestException('Fornecedor invalido ou inativo.');
     }
     return supplier;
+  }
+
+  private requireStoredPurchase(organizationId: string, id: string): StoredPurchase {
+    const purchase = this.purchases.find(
+      (candidate) => candidate.organizationId === organizationId && candidate.id === id,
+    );
+    if (!purchase) {
+      throw new NotFoundException('Compra nao encontrada.');
+    }
+    return purchase;
   }
 
   private assertPriceValidity(validFrom: string | null, validUntil: string | null) {
@@ -916,6 +1046,35 @@ export class DemoProcurementRepository extends ProcurementRepository {
   }
 }
 
+function preservePaidInstallments(
+  currentInstallments: StoredInstallment[],
+  requestedInstallments: StoredInstallment[],
+) {
+  for (const current of currentInstallments) {
+    if (!current.paidAt) continue;
+    const requested = requestedInstallments[current.sequence - 1];
+    if (
+      !requested ||
+      requested.dueDate !== current.dueDate ||
+      Math.abs(requested.amount - current.amount) > 0.01
+    ) {
+      throw new BadRequestException(
+        'Parcelas pagas nao podem ser alteradas, reordenadas ou removidas.',
+      );
+    }
+    requested.paidAt = current.paidAt;
+  }
+}
+
+function storedPurchaseCenterIds(purchase: StoredPurchase): Set<string> {
+  return new Set(
+    purchase.items.flatMap((purchaseItem) => [
+      ...(purchaseItem.costCenterId ? [purchaseItem.costCenterId] : []),
+      ...purchaseItem.allocations.map((allocation) => allocation.costCenterId),
+    ]),
+  );
+}
+
 function allocateAmounts(
   total: number,
   allocations: Array<{ costCenterId: string; percentage: number }>,
@@ -937,6 +1096,10 @@ function normalizeSearch(value: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .toLowerCase();
+}
+
+function nextTimestamp(previous: string): string {
+  return new Date(Math.max(Date.now(), Date.parse(previous) + 1)).toISOString();
 }
 
 function roundMoney(value: number): number {
@@ -1059,6 +1222,20 @@ function seededPurchase(
   negotiatedSavings: number,
   items: StoredPurchaseItem[],
 ): StoredPurchase {
+  const timestamp = `${issuedAt}T12:00:00.000Z`;
+  let assignedSavings = 0;
+  const reconciledItems = items.map((purchaseItem, index) => {
+    const itemSavings =
+      index === items.length - 1
+        ? roundMoney(negotiatedSavings - assignedSavings)
+        : roundMoney(negotiatedSavings * (purchaseItem.total / total));
+    assignedSavings = roundMoney(assignedSavings + itemSavings);
+    return {
+      ...purchaseItem,
+      unitPrice: roundMoney((purchaseItem.total + itemSavings) / purchaseItem.quantity),
+      negotiatedPrice: roundMoney(purchaseItem.total / purchaseItem.quantity),
+    };
+  });
   return {
     id,
     organizationId,
@@ -1075,8 +1252,9 @@ function seededPurchase(
     source: 'MANUAL',
     sourceReference: null,
     notes: null,
-    createdAt: `${issuedAt}T12:00:00.000Z`,
-    items,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    items: reconciledItems,
     installments: [],
   };
 }

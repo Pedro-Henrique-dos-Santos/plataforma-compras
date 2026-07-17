@@ -16,6 +16,7 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 - Compras suportam varios itens, economia negociada, centro automatico, rateios e parcelas opcionais.
 - O dashboard abre em todo o historico, filtra periodo, fornecedor, centro de custo e categoria e inclui gastos por categoria e departamento.
 - Os relatorios filtram compras por periodo, fornecedor, departamento, categoria e status, com CSV, Excel resumido e Excel detalhado com itens por mes.
+- As compras possuem detalhe, correcao transacional, cancelamento e reativacao auditados; parcelas pagas permanecem protegidas.
 - A sincronizacao com Google Sheets possui configuracao por empresa, importacao XLSX, leitura do historico legado, previa persistida, conciliacao e aplicacao idempotente; compras sem data permanecem visiveis como pendencia.
 - Notas em XML ou PDF passam por validacao, leitura estruturada ou OCR gratuito, revisao humana e conciliacao antes de criar compras.
 - A API possui prontidao do banco, identificadores de requisicao e logs estruturados.
@@ -60,10 +61,10 @@ pnpm check
 
 Esse comando executa lint, verificacao de tipos, testes e build de todos os pacotes.
 
-Na versao `0.9.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
+Na versao `0.10.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
 importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets e
 automacao documental com revisao obrigatoria, relatorios filtrados, exportacao segura em CSV e XLSX e
-prontidao operacional. O CI aplica todas as migracoes em um PostgreSQL descartavel e executa
+edicao concorrente e ciclo auditado das compras, alem da prontidao operacional. O CI aplica todas as migracoes em um PostgreSQL descartavel e executa
 testes de isolamento dos repositorios, das protecoes RLS e de recuperacao completa do banco.
 Um workflow manual protegido prepara e valida o Supabase de homologacao sem armazenar segredos no codigo.
 

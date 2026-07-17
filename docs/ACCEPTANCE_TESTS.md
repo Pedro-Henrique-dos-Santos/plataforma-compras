@@ -76,6 +76,11 @@ As credenciais do Supabase devem existir somente no ambiente local protegido ou 
 6. Confirmar a compra no dashboard e no relatorio filtrado.
 7. Importar uma compra historica sem data de emissao e confirmar que ela aparece como `Sem data`, sem data sintetica.
 8. Repetir a previa e a aplicacao da planilha e confirmar que nenhuma compra e duplicada.
+9. Abrir o detalhe, corrigir nota, itens, rateios e parcelas e confirmar o novo total no dashboard.
+10. Tentar salvar uma versao antiga da compra e confirmar o aviso para recarregar os dados.
+11. Usar uma fixture de homologacao com parcela previamente paga e confirmar que valor, vencimento, ordem e remocao ficam protegidos.
+12. Cancelar com motivo e confirmar que a compra sai dos indicadores registrados sem ser apagada.
+13. Filtrar as canceladas, reativar com motivo e confirmar o retorno aos indicadores e os eventos de auditoria.
 
 ## 5. Automacao documental
 

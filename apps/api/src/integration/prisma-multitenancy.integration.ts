@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@compras/database';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -185,13 +185,170 @@ describe('Prisma multi-company security', () => {
     expect(auditA.map((event) => event.resourceId)).not.toContain(supplierB.id);
     expect(auditB.map((event) => event.resourceId)).not.toContain(supplierA.id);
   });
+
+  it('edits, cancels and restores a purchase with tenant and audit protection', async () => {
+    const center = await repository.createCostCenter(actor, organizationAId, {
+      code: 'LIFE',
+      name: 'Lifecycle Department',
+    });
+    const supplier = await repository.createSupplier(
+      actor,
+      organizationAId,
+      supplierInput('Lifecycle Supplier', center.id, '00000000000272'),
+    );
+    const created = await repository.createPurchase(
+      actor,
+      organizationAId,
+      purchaseInput('LIFECYCLE-001', supplier.id, center.id, 100, 80),
+    );
+    const detail = await repository.getPurchase(organizationAId, created.id);
+
+    await expect(repository.getPurchase(organizationBId, created.id)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+
+    const updated = await repository.updatePurchase(actor, organizationAId, created.id, {
+      expectedUpdatedAt: detail.updatedAt,
+      number: detail.number,
+      invoiceNumber: 'NF-LIFECYCLE-001',
+      supplierId: supplier.id,
+      issuedAt: null,
+      category: 'Lifecycle Category',
+      operationNature: 'Lifecycle Update',
+      paymentMethod: null,
+      notes: 'Historical date pending review.',
+      items: [
+        {
+          description: 'Updated integration item',
+          quantity: 1,
+          unit: 'UN',
+          unitPrice: 100,
+          negotiatedPrice: 75,
+          costCenterId: center.id,
+          allocations: [],
+        },
+      ],
+      installments: [{ dueDate: '2026-08-16', amount: 75 }],
+    });
+
+    expect(updated.total).toBe(75);
+    expect(updated.issuedAt).toBeNull();
+    expect(updated.installments).toHaveLength(1);
+    await prisma.installment.updateMany({
+      where: { organizationId: organizationAId, purchaseId: created.id, sequence: 1 },
+      data: { paidAt: new Date('2026-08-01T00:00:00.000Z') },
+    });
+    await expect(
+      repository.updatePurchase(actor, organizationAId, created.id, {
+        expectedUpdatedAt: updated.updatedAt,
+        number: updated.number,
+        invoiceNumber: updated.invoiceNumber,
+        supplierId: updated.supplierId,
+        issuedAt: updated.issuedAt,
+        category: updated.category,
+        operationNature: updated.operationNature,
+        paymentMethod: updated.paymentMethod,
+        notes: updated.notes,
+        items: updated.items,
+        installments: [{ dueDate: '2026-08-17', amount: 75 }],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    const corrected = await repository.updatePurchase(actor, organizationAId, created.id, {
+      expectedUpdatedAt: updated.updatedAt,
+      number: updated.number,
+      invoiceNumber: updated.invoiceNumber,
+      supplierId: updated.supplierId,
+      issuedAt: updated.issuedAt,
+      category: updated.category,
+      operationNature: updated.operationNature,
+      paymentMethod: updated.paymentMethod,
+      notes: 'Historical date reviewed without changing the paid installment.',
+      items: updated.items,
+      installments: updated.installments,
+    });
+
+    expect(corrected.installments[0]?.paidAt).toBe('2026-08-01');
+    await expect(
+      repository.updatePurchase(actor, organizationAId, created.id, {
+        expectedUpdatedAt: detail.updatedAt,
+        number: corrected.number,
+        invoiceNumber: corrected.invoiceNumber,
+        supplierId: corrected.supplierId,
+        issuedAt: corrected.issuedAt,
+        category: corrected.category,
+        operationNature: corrected.operationNature,
+        paymentMethod: corrected.paymentMethod,
+        notes: corrected.notes,
+        items: corrected.items,
+        installments: corrected.installments,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    const cancelled = await repository.changePurchaseStatus(
+      actor,
+      organizationAId,
+      created.id,
+      {
+        expectedUpdatedAt: corrected.updatedAt,
+        status: 'CANCELLED',
+        reason: 'Duplicate lifecycle test purchase.',
+      },
+    );
+    const excludedDashboard = await repository.getDashboardSummary(organizationAId, {
+      includeUndated: true,
+      supplierId: supplier.id,
+    });
+    const cancelledReport = await repository.getProcurementReport(organizationAId, {
+      status: 'CANCELLED',
+      supplierId: supplier.id,
+    });
+
+    expect(cancelled.status).toBe('CANCELLED');
+    expect(excludedDashboard.registeredPurchases).toBe(0);
+    expect(cancelledReport.totals.purchased).toBe(75);
+
+    const cancelledDetail = await repository.getPurchase(organizationAId, created.id);
+    const restored = await repository.changePurchaseStatus(
+      actor,
+      organizationAId,
+      created.id,
+      {
+        expectedUpdatedAt: cancelledDetail.updatedAt,
+        status: 'REGISTERED',
+        reason: 'Cancellation reviewed and reverted.',
+      },
+    );
+    const restoredDashboard = await repository.getDashboardSummary(organizationAId, {
+      includeUndated: true,
+      supplierId: supplier.id,
+    });
+    const purchaseAudit = await prisma.auditLog.findMany({
+      where: { organizationId: organizationAId, resourceId: created.id },
+      orderBy: { createdAt: 'asc' },
+      select: { action: true, metadata: true, resource: true },
+    });
+
+    expect(restored.status).toBe('REGISTERED');
+    expect(restoredDashboard.totalPurchased.value).toBe(75);
+    expect(purchaseAudit.map((event) => event.resource)).toEqual([
+      'purchase',
+      'purchase',
+      'purchase',
+      'purchase_status',
+      'purchase_status',
+    ]);
+  });
 });
 
-function supplierInput(legalName: string, defaultCostCenterId: string) {
+function supplierInput(
+  legalName: string,
+  defaultCostCenterId: string,
+  document = '00000000000191',
+) {
   return {
     legalName,
     tradeName: null,
-    document: '00000000000191',
+    document,
     category: 'Supplies',
     operationNature: 'Purchase',
     paymentMethod: null,

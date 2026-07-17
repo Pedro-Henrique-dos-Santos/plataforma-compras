@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import type {
   AttachPurchaseInvoiceInput,
+  ChangePurchaseStatusInput,
   CostCenter,
   CreateCostCenterInput,
   CreateSupplierInput,
@@ -16,6 +17,7 @@ import type {
   PriceStatus,
   PurchaseImportInput,
   PurchaseImportResult,
+  PurchaseDetail,
   PurchaseSource,
   PurchaseSummary,
   ProcurementDetailedReport,
@@ -25,6 +27,7 @@ import type {
   SupplierPrice,
   SupplierPriceImportResult,
   UpdateCostCenterInput,
+  UpdatePurchaseInput,
   UpdateSupplierInput,
   UpdateSupplierPriceInput,
 } from '@compras/contracts';
@@ -62,6 +65,17 @@ const purchaseInclude = {
   },
 } satisfies Prisma.PurchaseInclude;
 
+const purchaseDetailInclude = {
+  supplier: true,
+  items: {
+    include: {
+      costCenter: true,
+      allocations: { include: { costCenter: true } },
+    },
+  },
+  installments: { orderBy: { sequence: 'asc' } },
+} satisfies Prisma.PurchaseInclude;
+
 const detailedPurchaseInclude = {
   supplier: { include: { defaultCostCenter: true } },
   items: {
@@ -77,6 +91,9 @@ const detailedPurchaseInclude = {
 type SupplierRecord = Prisma.SupplierGetPayload<{ include: typeof supplierInclude }>;
 type PriceRecord = Prisma.SupplierPriceGetPayload<{ include: typeof priceInclude }>;
 type PurchaseRecord = Prisma.PurchaseGetPayload<{ include: typeof purchaseInclude }>;
+type PurchaseDetailRecord = Prisma.PurchaseGetPayload<{
+  include: typeof purchaseDetailInclude;
+}>;
 type DetailedPurchaseRecord = Prisma.PurchaseGetPayload<{
   include: typeof detailedPurchaseInclude;
 }>;
@@ -476,6 +493,10 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     return purchases.map(toPurchaseSummary);
   }
 
+  async getPurchase(organizationId: string, id: string): Promise<PurchaseDetail> {
+    return toPurchaseDetail(await this.requirePurchaseDetailRecord(organizationId, id));
+  }
+
   async createPurchase(
     actor: AuthenticatedIdentity,
     organizationId: string,
@@ -563,6 +584,167 @@ export class PrismaProcurementRepository extends ProcurementRepository {
       }
       throw error;
     }
+  }
+
+  async updatePurchase(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    input: UpdatePurchaseInput,
+  ): Promise<PurchaseDetail> {
+    const current = await this.requirePurchaseDetailRecord(organizationId, id);
+    if (current.status === 'CANCELLED') {
+      throw new BadRequestException('Reative a compra antes de altera-la.');
+    }
+    const supplier = await this.requireSupplier(
+      organizationId,
+      input.supplierId,
+      input.supplierId !== current.supplierId,
+    );
+    const persistedInput: PersistPurchaseInput = {
+      number: input.number,
+      invoiceNumber: input.invoiceNumber ?? null,
+      supplierId: input.supplierId,
+      issuedAt: input.issuedAt,
+      category: input.category,
+      operationNature: input.operationNature,
+      paymentMethod: input.paymentMethod,
+      notes: input.notes,
+      source: parsePurchaseSource(current.source),
+      sourceReference: current.sourceReference,
+      items: input.items,
+      installments: input.installments,
+    };
+    await this.validatePurchaseCenters(
+      organizationId,
+      supplier,
+      persistedInput,
+      purchaseCenterIds(current),
+    );
+    const calculated = calculatePurchase(persistedInput, supplier.defaultCostCenterId);
+    validateInstallmentTotal(calculated.total, persistedInput.installments);
+
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const updated = await transaction.purchase.updateMany({
+          where: {
+            id,
+            organizationId,
+            updatedAt: new Date(input.expectedUpdatedAt),
+          },
+          data: {
+            supplierId: input.supplierId,
+            number: input.number,
+            invoiceNumber: input.invoiceNumber ?? null,
+            issuedAt: toDate(input.issuedAt),
+            category: input.category ?? supplier.category,
+            operationNature: input.operationNature ?? supplier.operationNature,
+            paymentMethod: input.paymentMethod ?? supplier.paymentMethod,
+            total: calculated.total,
+            negotiatedSavings: calculated.negotiatedSavings,
+            notes: input.notes,
+          },
+        });
+        if (updated.count !== 1) {
+          throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
+        }
+        const currentInstallments = await transaction.installment.findMany({
+          where: { organizationId, purchaseId: id },
+          orderBy: { sequence: 'asc' },
+        });
+        validatePaidInstallmentsUnchanged(currentInstallments, persistedInput.installments);
+        await transaction.purchaseItem.deleteMany({
+          where: { organizationId, purchaseId: id },
+        });
+        await transaction.installment.deleteMany({
+          where: { organizationId, purchaseId: id, paidAt: null },
+        });
+        const purchase = await transaction.purchase.update({
+          where: { id },
+          data: {
+            items: { create: purchaseItemCreateData(organizationId, calculated.items) },
+            installments: {
+              create: installmentCreateData(
+                organizationId,
+                persistedInput.installments,
+                currentInstallments,
+              ),
+            },
+          },
+          include: purchaseDetailInclude,
+        });
+        await transaction.auditLog.create({
+          data: {
+            actorUserId: actor.id,
+            organizationId,
+            action: 'UPDATE',
+            resource: 'purchase',
+            resourceId: id,
+            metadata: {
+              before: {
+                number: current.number,
+                supplierId: current.supplierId,
+                total: Number(current.total),
+              },
+              after: {
+                number: input.number,
+                supplierId: input.supplierId,
+                total: calculated.total,
+              },
+            },
+          },
+        });
+        return toPurchaseDetail(purchase);
+      });
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('Ja existe uma compra com estes dados.');
+      }
+      throw error;
+    }
+  }
+
+  async changePurchaseStatus(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    input: ChangePurchaseStatusInput,
+  ): Promise<PurchaseSummary> {
+    const current = await this.requirePurchaseDetailRecord(organizationId, id);
+    if (current.status === input.status) {
+      return toPurchaseSummary(current);
+    }
+    await this.prisma.$transaction(async (transaction) => {
+      const updated = await transaction.purchase.updateMany({
+        where: {
+          id,
+          organizationId,
+          updatedAt: new Date(input.expectedUpdatedAt),
+        },
+        data: { status: input.status },
+      });
+      if (updated.count !== 1) {
+        throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
+      }
+      await transaction.auditLog.create({
+        data: {
+          actorUserId: actor.id,
+          organizationId,
+          action: 'UPDATE',
+          resource: 'purchase_status',
+          resourceId: id,
+          metadata: {
+            from: current.status,
+            reason: input.reason,
+            to: input.status,
+          },
+        },
+      });
+    });
+    return this.requirePurchase(organizationId, id);
   }
 
   async importPurchases(
@@ -749,10 +931,25 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     return toPurchaseSummary(purchase);
   }
 
+  private async requirePurchaseDetailRecord(
+    organizationId: string,
+    id: string,
+  ): Promise<PurchaseDetailRecord> {
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { id, organizationId },
+      include: purchaseDetailInclude,
+    });
+    if (!purchase) {
+      throw new NotFoundException('Compra nao encontrada.');
+    }
+    return purchase;
+  }
+
   private async validatePurchaseCenters(
     organizationId: string,
     supplier: SupplierRecord,
     input: PersistPurchaseInput,
+    allowedInactiveIds: ReadonlySet<string> = new Set(),
   ) {
     const ids = new Set<string>();
     for (const item of input.items) {
@@ -763,10 +960,14 @@ export class PrismaProcurementRepository extends ProcurementRepository {
       for (const allocation of item.allocations) ids.add(allocation.costCenterId);
     }
     if (!ids.size) return;
-    const count = await this.prisma.costCenter.count({
-      where: { organizationId, id: { in: [...ids] }, active: true },
+    const centers = await this.prisma.costCenter.findMany({
+      where: { organizationId, id: { in: [...ids] } },
+      select: { active: true, id: true },
     });
-    if (count !== ids.size) {
+    if (
+      centers.length !== ids.size ||
+      centers.some((center) => !center.active && !allowedInactiveIds.has(center.id))
+    ) {
       throw new BadRequestException('Um ou mais centros de custo sao invalidos ou inativos.');
     }
   }
@@ -1040,6 +1241,38 @@ function toReportPurchase(purchase: PurchaseRecord) {
   };
 }
 
+function toPurchaseDetail(purchase: PurchaseDetailRecord): PurchaseDetail {
+  return {
+    ...toPurchaseSummary(purchase),
+    operationNature: purchase.operationNature,
+    notes: purchase.notes,
+    items: purchase.items.map((item) => ({
+      id: item.id,
+      description: item.description,
+      quantity: Number(item.quantity),
+      unit: item.unit,
+      unitPrice: Number(item.unitPrice),
+      negotiatedPrice: item.negotiatedPrice === null ? null : Number(item.negotiatedPrice),
+      total: Number(item.total),
+      costCenterId: item.costCenterId,
+      costCenterName: item.costCenter?.name ?? null,
+      allocations: item.allocations.map((allocation) => ({
+        costCenterId: allocation.costCenterId,
+        costCenterName: allocation.costCenter.name,
+        percentage: Number(allocation.percentage),
+        amount: Number(allocation.amount),
+      })),
+    })),
+    installments: purchase.installments.map((installment) => ({
+      sequence: installment.sequence,
+      dueDate: toIsoDate(installment.dueDate) as string,
+      amount: Number(installment.amount),
+      paidAt: toIsoDate(installment.paidAt),
+    })),
+    updatedAt: purchase.updatedAt.toISOString(),
+  };
+}
+
 function toDetailedReportPurchase(purchase: DetailedPurchaseRecord) {
   return {
     id: purchase.id,
@@ -1182,6 +1415,98 @@ function calculatePurchase(input: PersistPurchaseInput, supplierCenterId: string
       ),
     ),
   };
+}
+
+function purchaseItemCreateData(
+  organizationId: string,
+  items: ReturnType<typeof calculatePurchase>['items'],
+) {
+  return items.map((item) => ({
+    organizationId,
+    description: item.description,
+    quantity: item.quantity,
+    unit: item.unit,
+    unitPrice: item.unitPrice,
+    negotiatedPrice: item.negotiatedPrice,
+    total: item.total,
+    costCenterId: item.costCenterId,
+    allocations: {
+      create: item.allocations.map((allocation) => ({
+        organizationId,
+        costCenterId: allocation.costCenterId,
+        percentage: allocation.percentage,
+        amount: allocation.amount,
+      })),
+    },
+  }));
+}
+
+function installmentCreateData(
+  organizationId: string,
+  installments: PersistPurchaseInput['installments'],
+  currentInstallments: Array<{ paidAt: Date | null; sequence: number }> = [],
+) {
+  const paidSequences = new Set(
+    currentInstallments
+      .filter((installment) => installment.paidAt !== null)
+      .map((installment) => installment.sequence),
+  );
+  return installments
+    .map((installment, index) => ({
+      organizationId,
+      sequence: index + 1,
+      dueDate: toDate(installment.dueDate) as Date,
+      amount: installment.amount,
+    }))
+    .filter((installment) => !paidSequences.has(installment.sequence));
+}
+
+function validatePaidInstallmentsUnchanged(
+  currentInstallments: Array<{
+    amount: Prisma.Decimal;
+    dueDate: Date;
+    paidAt: Date | null;
+    sequence: number;
+  }>,
+  requestedInstallments: PersistPurchaseInput['installments'],
+) {
+  for (const current of currentInstallments) {
+    if (!current.paidAt) continue;
+    const requested = requestedInstallments[current.sequence - 1];
+    if (
+      !requested ||
+      requested.dueDate !== toIsoDate(current.dueDate) ||
+      Math.abs(requested.amount - Number(current.amount)) > 0.01
+    ) {
+      throw new BadRequestException(
+        'Parcelas pagas nao podem ser alteradas, reordenadas ou removidas.',
+      );
+    }
+  }
+}
+
+function purchaseCenterIds(purchase: PurchaseDetailRecord): Set<string> {
+  return new Set(
+    purchase.items.flatMap((item) => [
+      ...(item.costCenterId ? [item.costCenterId] : []),
+      ...item.allocations.map((allocation) => allocation.costCenterId),
+    ]),
+  );
+}
+
+function validateInstallmentTotal(
+  purchaseTotal: number,
+  installments: PersistPurchaseInput['installments'],
+) {
+  if (!installments.length) {
+    return;
+  }
+  const installmentTotal = roundMoney(
+    installments.reduce((total, installment) => total + installment.amount, 0),
+  );
+  if (Math.abs(purchaseTotal - installmentTotal) > 0.01) {
+    throw new BadRequestException('A soma das parcelas deve ser igual ao total da compra.');
+  }
 }
 
 function allocateAmounts(
