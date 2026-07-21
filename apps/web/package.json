@@ -15,11 +15,11 @@
   },
   "dependencies": {
     "@compras/contracts": "workspace:*",
-    "@supabase/supabase-js": "^2.110.2",
-    "lucide-react": "^1.24.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "recharts": "^3.9.2"
+    "@supabase/supabase-js": "^2.110.8",
+    "lucide-react": "^1.25.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "recharts": "^3.10.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
@@ -27,7 +27,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "typescript": "^7.0.2",
-    "vite": "^8.1.4",
+    "vite": "^8.1.5",
     "vitest": "^4.1.10"
   }
 }
