@@ -48,6 +48,7 @@
 - [Concluido no codigo] Backups, prontidao, observabilidade e plano de alertas.
 - [Concluido no CI] Aplicar migracoes em PostgreSQL descartavel e testar isolamento multiempresa e RLS.
 - [Concluido no codigo e CI] Impedir no PostgreSQL relacoes cruzadas entre tenants com chaves estrangeiras compostas e verificacao automatizada.
+- [Concluido no codigo e testes] Cobrir os guardas de tenant e permissoes, incluindo UUID invalido, rota divergente e privilegio global.
 - [Concluido no CI] Executar backup, restauracao integral e reconciliacao em banco descartavel.
 - [Concluido em homologacao] Executar aceite autenticado descartavel de identidade, isolamento, cadastros, precos, compras, rateios, filtros, dashboard e exportacoes, com limpeza integral ao final.
 - [Concluido] Auditar dependencias de producao e eliminar vulnerabilidades conhecidas.

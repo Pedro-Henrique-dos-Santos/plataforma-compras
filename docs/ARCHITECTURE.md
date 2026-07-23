@@ -21,7 +21,7 @@ O cadastro de identidade separa o e-mail autenticado do nome exibido na platafor
 
 ## Multiempresa
 
-Um usuario pode participar de varias organizacoes por meio de `OrganizationMembership`. Cada requisicao autenticada possui uma empresa ativa. Todas as entidades operacionais carregam `organizationId` e sao filtradas por esse identificador.
+Um usuario pode participar de varias organizacoes por meio de `OrganizationMembership`. Cada requisicao autenticada possui uma empresa ativa. O cabecalho `x-organization-id` deve ser um UUID valido, precisa coincidir com o tenant presente na rota e somente e promovido ao contexto ativo depois da verificacao do vinculo. Todas as entidades operacionais carregam `organizationId` e sao filtradas por esse identificador.
 
 O papel global `PLATFORM_OWNER` fica separado dos papeis da organizacao. Isso impede que um administrador de cliente promova usuarios para administrar a plataforma inteira.
 
