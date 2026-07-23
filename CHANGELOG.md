@@ -12,6 +12,7 @@
 - Ampliados os testes multiempresa no Supabase para edicao, baixa preservada, conflito concorrente, cancelamento e reativacao.
 - Adicionada a matriz de conclusao com evidencias por requisito e gates externos de producao.
 - Restringida a migracao de producao a uma tag explicita cujo commit pertence a `main`.
+- Fixadas as dependencias dos workflows por SHA e protegidas por teste contra referencias moveis.
 
 ## 0.9.0 - 2026-07-16
 
