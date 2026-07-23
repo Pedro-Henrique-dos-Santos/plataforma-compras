@@ -199,6 +199,7 @@ model Supplier {
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
   organization        Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The migration uses PostgreSQL column-specific SET NULL for defaultCostCenterId.
   defaultCostCenter   CostCenter?     @relation(fields: [organizationId, defaultCostCenterId], references: [organizationId, id], onDelete: NoAction)
   prices              SupplierPrice[]
   purchases           Purchase[]
@@ -328,6 +329,7 @@ model PurchaseItem {
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   purchase        Purchase         @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  /// The migration uses PostgreSQL column-specific SET NULL for costCenterId.
   costCenter      CostCenter?      @relation(fields: [organizationId, costCenterId], references: [organizationId, id], onDelete: NoAction)
   allocations     CostAllocation[]
 
@@ -395,6 +397,7 @@ model InvoiceDocument {
   reviewedAt     DateTime?             @map("reviewed_at")
   importedAt     DateTime?             @map("imported_at")
   organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The migration uses PostgreSQL column-specific SET NULL for purchaseId.
   purchase       Purchase?             @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: NoAction)
   createdBy      User?                 @relation("InvoiceDocumentCreator", fields: [createdById], references: [id], onDelete: SetNull)
   reviewedBy     User?                 @relation("InvoiceDocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)

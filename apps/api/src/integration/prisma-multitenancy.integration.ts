@@ -300,13 +300,22 @@ describe('Prisma multi-company security', () => {
 
     const [suppliersA, suppliersB, purchasesA, purchasesB, dashboardA, reportA, reportB] =
       await Promise.all([
-        repository.listSuppliers(organizationAId),
-        repository.listSuppliers(organizationBId),
-        repository.listPurchases(organizationAId),
-        repository.listPurchases(organizationBId),
-        repository.getDashboardSummary(organizationAId, { includeUndated: true }),
-        repository.getProcurementReport(organizationAId, { status: 'REGISTERED' }),
-        repository.getProcurementReport(organizationBId, { status: 'REGISTERED' }),
+        repository.listSuppliers(organizationAId, { search: 'Supplier A' }),
+        repository.listSuppliers(organizationBId, { search: 'Supplier B' }),
+        repository.listPurchases(organizationAId, { search: 'SHARED-001' }),
+        repository.listPurchases(organizationBId, { search: 'SHARED-001' }),
+        repository.getDashboardSummary(organizationAId, {
+          includeUndated: true,
+          supplierId: supplierA.id,
+        }),
+        repository.getProcurementReport(organizationAId, {
+          status: 'REGISTERED',
+          supplierId: supplierA.id,
+        }),
+        repository.getProcurementReport(organizationBId, {
+          status: 'REGISTERED',
+          supplierId: supplierB.id,
+        }),
       ]);
 
     expect(suppliersA.map((supplier) => supplier.id)).toEqual([supplierA.id]);
@@ -335,11 +344,17 @@ describe('Prisma multi-company security', () => {
 
     const [auditA, auditB] = await Promise.all([
       prisma.auditLog.findMany({
-        where: { organizationId: organizationAId },
+        where: {
+          organizationId: organizationAId,
+          resourceId: { in: [centerA.id, supplierA.id, purchaseA.id] },
+        },
         select: { resourceId: true },
       }),
       prisma.auditLog.findMany({
-        where: { organizationId: organizationBId },
+        where: {
+          organizationId: organizationBId,
+          resourceId: { in: [centerB.id, supplierB.id, purchaseB.id] },
+        },
         select: { resourceId: true },
       }),
     ]);

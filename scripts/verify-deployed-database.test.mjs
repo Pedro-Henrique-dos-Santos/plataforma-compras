@@ -115,3 +115,21 @@ test('rejects a tenant foreign key with incomplete source columns', () => {
     /suppliers_organization_id_default_cost_center_id_fkey/,
   );
 });
+
+test('rejects a tenant foreign key that would null the tenant column', () => {
+  assert.throws(
+    () =>
+      validateDatabaseSecuritySnapshot({
+        ...validSnapshot,
+        tenantRelations: validSnapshot.tenantRelations.map((relation, index) =>
+          index === 0
+            ? {
+                ...relation,
+                deleteSetColumns: ['organization_id', 'default_cost_center_id'],
+              }
+            : relation,
+        ),
+      }),
+    /suppliers_organization_id_default_cost_center_id_fkey/,
+  );
+});

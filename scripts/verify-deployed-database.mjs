@@ -13,6 +13,8 @@ export const REQUIRED_TENANT_RELATIONS = [
     referencedTable: 'cost_centers',
     sourceColumns: ['organization_id', 'default_cost_center_id'],
     targetColumns: ['organization_id', 'id'],
+    deleteAction: 'SET NULL',
+    deleteSetColumns: ['default_cost_center_id'],
   },
   {
     name: 'supplier_prices_organization_id_supplier_id_fkey',
@@ -20,6 +22,8 @@ export const REQUIRED_TENANT_RELATIONS = [
     referencedTable: 'suppliers',
     sourceColumns: ['organization_id', 'supplier_id'],
     targetColumns: ['organization_id', 'id'],
+    deleteAction: 'CASCADE',
+    deleteSetColumns: [],
   },
   {
     name: 'purchases_organization_id_supplier_id_fkey',
@@ -27,6 +31,8 @@ export const REQUIRED_TENANT_RELATIONS = [
     referencedTable: 'suppliers',
     sourceColumns: ['organization_id', 'supplier_id'],
     targetColumns: ['organization_id', 'id'],
+    deleteAction: 'RESTRICT',
+    deleteSetColumns: [],
   },
   {
     name: 'sheet_sync_runs_organization_id_integration_id_fkey',
@@ -34,6 +40,8 @@ export const REQUIRED_TENANT_RELATIONS = [
     referencedTable: 'google_sheets_integrations',
     sourceColumns: ['organization_id', 'integration_id'],
     targetColumns: ['organization_id', 'id'],
+    deleteAction: 'CASCADE',
+    deleteSetColumns: [],
   },
   {
     name: 'purchase_items_organization_id_purchase_id_fkey',
@@ -41,6 +49,8 @@ export const REQUIRED_TENANT_RELATIONS = [
     referencedTable: 'purchases',
     sourceColumns: ['organization_id', 'purchase_id'],
     targetColumns: ['organization_id', 'id'],
+    deleteAction: 'CASCADE',
+    deleteSetColumns: [],
   },
   {
     name: 'purchase_items_organization_id_cost_center_id_fkey',
@@ -48,6 +58,8 @@ export const REQUIRED_TENANT_RELATIONS = [
     referencedTable: 'cost_centers',
     sourceColumns: ['organization_id', 'cost_center_id'],
     targetColumns: ['organization_id', 'id'],
+    deleteAction: 'SET NULL',
+    deleteSetColumns: ['cost_center_id'],
   },
   {
     name: 'cost_allocations_organization_id_purchase_item_id_fkey',
@@ -55,6 +67,8 @@ export const REQUIRED_TENANT_RELATIONS = [
     referencedTable: 'purchase_items',
     sourceColumns: ['organization_id', 'purchase_item_id'],
     targetColumns: ['organization_id', 'id'],
+    deleteAction: 'CASCADE',
+    deleteSetColumns: [],
   },
   {
     name: 'cost_allocations_organization_id_cost_center_id_fkey',
@@ -62,6 +76,8 @@ export const REQUIRED_TENANT_RELATIONS = [
     referencedTable: 'cost_centers',
     sourceColumns: ['organization_id', 'cost_center_id'],
     targetColumns: ['organization_id', 'id'],
+    deleteAction: 'RESTRICT',
+    deleteSetColumns: [],
   },
   {
     name: 'installments_organization_id_purchase_id_fkey',
@@ -69,6 +85,8 @@ export const REQUIRED_TENANT_RELATIONS = [
     referencedTable: 'purchases',
     sourceColumns: ['organization_id', 'purchase_id'],
     targetColumns: ['organization_id', 'id'],
+    deleteAction: 'CASCADE',
+    deleteSetColumns: [],
   },
   {
     name: 'invoice_documents_organization_id_purchase_id_fkey',
@@ -76,6 +94,8 @@ export const REQUIRED_TENANT_RELATIONS = [
     referencedTable: 'purchases',
     sourceColumns: ['organization_id', 'purchase_id'],
     targetColumns: ['organization_id', 'id'],
+    deleteAction: 'SET NULL',
+    deleteSetColumns: ['purchase_id'],
   },
 ];
 
@@ -131,7 +151,9 @@ export function validateDatabaseSecuritySnapshot({
       actual.tableName !== expected.tableName ||
       actual.referencedTable !== expected.referencedTable ||
       !sameColumns(actual.sourceColumns, expected.sourceColumns) ||
-      !sameColumns(actual.targetColumns, expected.targetColumns)
+      !sameColumns(actual.targetColumns, expected.targetColumns) ||
+      actual.deleteAction !== expected.deleteAction ||
+      !sameColumns(actual.deleteSetColumns, expected.deleteSetColumns)
     );
   });
   if (invalidRelations.length > 0) {
@@ -202,7 +224,27 @@ export async function verifyDeployedDatabase(prisma) {
             ON target_attribute.attrelid = constraint_record.confrelid
            AND target_attribute.attnum = target_key.attribute_number
           ORDER BY target_key.position
-        ) AS "targetColumns"
+        ) AS "targetColumns",
+        CASE constraint_record.confdeltype
+          WHEN 'a' THEN 'NO ACTION'
+          WHEN 'r' THEN 'RESTRICT'
+          WHEN 'c' THEN 'CASCADE'
+          WHEN 'n' THEN 'SET NULL'
+          WHEN 'd' THEN 'SET DEFAULT'
+        END AS "deleteAction",
+        ARRAY(
+          SELECT source_attribute.attname
+          FROM unnest(
+            COALESCE(
+              constraint_record.confdelsetcols,
+              ARRAY[]::smallint[]
+            )
+          ) WITH ORDINALITY AS delete_key(attribute_number, position)
+          JOIN pg_attribute source_attribute
+            ON source_attribute.attrelid = constraint_record.conrelid
+           AND source_attribute.attnum = delete_key.attribute_number
+          ORDER BY delete_key.position
+        ) AS "deleteSetColumns"
       FROM pg_constraint constraint_record
       JOIN pg_class source_table ON source_table.oid = constraint_record.conrelid
       JOIN pg_class target_table ON target_table.oid = constraint_record.confrelid

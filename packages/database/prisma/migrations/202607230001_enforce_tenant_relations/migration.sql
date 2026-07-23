@@ -15,7 +15,7 @@ ALTER TABLE "suppliers"
   ADD CONSTRAINT "suppliers_organization_id_default_cost_center_id_fkey"
     FOREIGN KEY ("organization_id", "default_cost_center_id")
     REFERENCES "cost_centers"("organization_id", "id")
-    ON DELETE NO ACTION ON UPDATE CASCADE;
+    ON DELETE SET NULL ("default_cost_center_id") ON UPDATE CASCADE;
 
 ALTER TABLE "supplier_prices"
   DROP CONSTRAINT "supplier_prices_supplier_id_fkey",
@@ -48,7 +48,7 @@ ALTER TABLE "purchase_items"
   ADD CONSTRAINT "purchase_items_organization_id_cost_center_id_fkey"
     FOREIGN KEY ("organization_id", "cost_center_id")
     REFERENCES "cost_centers"("organization_id", "id")
-    ON DELETE NO ACTION ON UPDATE CASCADE;
+    ON DELETE SET NULL ("cost_center_id") ON UPDATE CASCADE;
 
 ALTER TABLE "cost_allocations"
   DROP CONSTRAINT "cost_allocations_purchase_item_id_fkey",
@@ -74,4 +74,4 @@ ALTER TABLE "invoice_documents"
   ADD CONSTRAINT "invoice_documents_organization_id_purchase_id_fkey"
     FOREIGN KEY ("organization_id", "purchase_id")
     REFERENCES "purchases"("organization_id", "id")
-    ON DELETE NO ACTION ON UPDATE CASCADE;
+    ON DELETE SET NULL ("purchase_id") ON UPDATE CASCADE;
