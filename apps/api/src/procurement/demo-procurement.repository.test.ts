@@ -179,6 +179,69 @@ describe('DemoProcurementRepository', () => {
     expect(datedPeriod.registeredPurchases).toBe(0);
   });
 
+  it('compares a filtered dashboard range with the preceding range', async () => {
+    const supplier = (await repository.listSuppliers(HUMAN_CLINIC_ID))[0];
+    const center = (await repository.listCostCenters(HUMAN_CLINIC_ID))[0];
+    expect(supplier && center).toBeTruthy();
+    if (!supplier || !center) return;
+
+    const commonInput = {
+      supplierId: supplier.id,
+      category: 'Comparativo exclusivo',
+      operationNature: null,
+      paymentMethod: null,
+      notes: null,
+      source: 'MANUAL' as const,
+      sourceReference: null,
+      installments: [],
+    };
+    await repository.createPurchase(actor, HUMAN_CLINIC_ID, {
+      ...commonInput,
+      number: 'COMPARE-PREVIOUS-001',
+      issuedAt: '2026-06-15',
+      items: [
+        {
+          description: 'Base anterior',
+          quantity: 1,
+          unit: 'UN',
+          unitPrice: 150,
+          negotiatedPrice: 100,
+          costCenterId: center.id,
+          allocations: [],
+        },
+      ],
+    });
+    await repository.createPurchase(actor, HUMAN_CLINIC_ID, {
+      ...commonInput,
+      number: 'COMPARE-CURRENT-001',
+      issuedAt: '2026-07-15',
+      items: [
+        {
+          description: 'Periodo atual',
+          quantity: 1,
+          unit: 'UN',
+          unitPrice: 300,
+          negotiatedPrice: 200,
+          costCenterId: center.id,
+          allocations: [],
+        },
+      ],
+    });
+
+    const summary = await repository.getDashboardSummary(HUMAN_CLINIC_ID, {
+      dateFrom: '2026-07-01',
+      dateTo: '2026-07-31',
+      includeUndated: false,
+      supplierId: supplier.id,
+      costCenterId: center.id,
+      category: 'Comparativo exclusivo',
+    });
+
+    expect(summary.registeredPurchases).toBe(1);
+    expect(summary.totalPurchased).toEqual({ value: 200, variation: 100 });
+    expect(summary.negotiatedSavings).toEqual({ value: 100, variation: 100 });
+  });
+
   it('rejects duplicate purchase numbers', async () => {
     const supplier = (await repository.listSuppliers(HUMAN_CLINIC_ID))[0];
     expect(supplier).toBeDefined();

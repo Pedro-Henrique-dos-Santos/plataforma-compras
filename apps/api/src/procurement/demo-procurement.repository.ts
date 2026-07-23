@@ -32,7 +32,11 @@ import type {
 import { EXAMPLE_COMPANY_ID, HUMAN_CLINIC_ID } from '../demo/demo.data.js';
 import type { AuthenticatedIdentity } from '../domain/identity.js';
 import { buildProcurementReport } from '../reports/procurement-report.builder.js';
-import { buildDashboardSummary } from './dashboard-summary.builder.js';
+import {
+  buildDashboardSummary,
+  previousDashboardPeriodFilters,
+  type DashboardPurchase,
+} from './dashboard-summary.builder.js';
 import {
   ProcurementRepository,
   type CostCenterFilters,
@@ -493,7 +497,38 @@ export class DemoProcurementRepository extends ProcurementRepository {
     organizationId: string,
     filters: DashboardFilters,
   ): Promise<DashboardSummary> {
-    const purchases = this.purchases
+    const storedPurchases = this.filterDashboardPurchases(organizationId, filters);
+    const previousFilters = previousDashboardPeriodFilters(filters);
+    const previousPurchases = previousFilters
+      ? this.filterDashboardPurchases(organizationId, previousFilters)
+      : null;
+    const purchases = storedPurchases.map((purchase) => this.toDashboardPurchase(purchase));
+    const previousPeriodTotals = previousPurchases
+      ? {
+          purchased: previousPurchases.reduce((sum, purchase) => sum + purchase.total, 0),
+          negotiatedSavings: previousPurchases.reduce(
+            (sum, purchase) => sum + purchase.negotiatedSavings,
+            0,
+          ),
+        }
+      : null;
+    const activeSuppliers = this.suppliers.filter(
+      (supplier) => supplier.organizationId === organizationId && supplier.status === 'ACTIVE',
+    ).length;
+    return buildDashboardSummary({
+      activeSuppliers,
+      dataSource: 'DEMO',
+      filters,
+      previousPeriodTotals,
+      purchases,
+    });
+  }
+
+  private filterDashboardPurchases(
+    organizationId: string,
+    filters: DashboardFilters,
+  ): StoredPurchase[] {
+    return this.purchases
       .filter(
         (purchase) =>
           purchase.organizationId === organizationId && purchase.status === 'REGISTERED',
@@ -529,30 +564,29 @@ export class DemoProcurementRepository extends ProcurementRepository {
                 (allocation) => allocation.costCenterId === filters.costCenterId,
               ),
           ),
-      )
-      .map((purchase) => ({
-        id: purchase.number,
-        supplier: this.supplierName(purchase.supplierId),
-        issuedAt: purchase.issuedAt
-          ? new Date(`${purchase.issuedAt}T00:00:00.000Z`)
-          : null,
-        createdAt: new Date(purchase.createdAt),
-        total: purchase.total,
-        negotiatedSavings: purchase.negotiatedSavings,
-        category: purchase.category,
-        items: purchase.items.map((item) => ({
-          total: item.total,
-          costCenter: item.costCenterId ? this.costCenterName(item.costCenterId) : null,
-          allocations: item.allocations.map((allocation) => ({
-            costCenter: this.costCenterName(allocation.costCenterId),
-            amount: allocation.amount,
-          })),
+      );
+  }
+
+  private toDashboardPurchase(purchase: StoredPurchase): DashboardPurchase {
+    return {
+      id: purchase.number,
+      supplier: this.supplierName(purchase.supplierId),
+      issuedAt: purchase.issuedAt
+        ? new Date(`${purchase.issuedAt}T00:00:00.000Z`)
+        : null,
+      createdAt: new Date(purchase.createdAt),
+      total: purchase.total,
+      negotiatedSavings: purchase.negotiatedSavings,
+      category: purchase.category,
+      items: purchase.items.map((item) => ({
+        total: item.total,
+        costCenter: item.costCenterId ? this.costCenterName(item.costCenterId) : null,
+        allocations: item.allocations.map((allocation) => ({
+          costCenter: this.costCenterName(allocation.costCenterId),
+          amount: allocation.amount,
         })),
-      }));
-    const activeSuppliers = this.suppliers.filter(
-      (supplier) => supplier.organizationId === organizationId && supplier.status === 'ACTIVE',
-    ).length;
-    return buildDashboardSummary({ activeSuppliers, dataSource: 'DEMO', filters, purchases });
+      })),
+    };
   }
 
   async getProcurementReport(

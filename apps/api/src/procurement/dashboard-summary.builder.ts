@@ -17,15 +17,29 @@ export type DashboardPurchase = {
   }>;
 };
 
+export type DashboardPreviousPeriodTotals = {
+  negotiatedSavings: number;
+  purchased: number;
+};
+
 export function buildDashboardSummary(input: {
   activeSuppliers: number;
   dataSource: DashboardSummary['dataSource'];
   filters: DashboardFilters;
+  previousPeriodTotals?: DashboardPreviousPeriodTotals | null;
   purchases: DashboardPurchase[];
 }): DashboardSummary {
   const purchased = roundMoney(sum(input.purchases.map((purchase) => purchase.total)));
   const savings = roundMoney(
     sum(input.purchases.map((purchase) => purchase.negotiatedSavings)),
+  );
+  const purchasedVariation = variationFromPrevious(
+    purchased,
+    input.previousPeriodTotals?.purchased,
+  );
+  const savingsVariation = variationFromPrevious(
+    savings,
+    input.previousPeriodTotals?.negotiatedSavings,
   );
   const monthlySpend = aggregateMonths(input.purchases);
   const spendByCategory = aggregate(
@@ -59,8 +73,8 @@ export function buildDashboardSummary(input: {
   return {
     dataSource: input.dataSource,
     periodLabel: dashboardPeriodLabel(input.filters),
-    totalPurchased: { value: purchased, variation: null },
-    negotiatedSavings: { value: savings, variation: null },
+    totalPurchased: { value: purchased, variation: purchasedVariation },
+    negotiatedSavings: { value: savings, variation: savingsVariation },
     activeSuppliers: input.activeSuppliers,
     registeredPurchases: input.purchases.length,
     undatedPurchases: input.purchases.filter((purchase) => purchase.issuedAt === null).length,
@@ -77,6 +91,29 @@ export function buildDashboardSummary(input: {
         total: roundMoney(purchase.total),
         costCenter: purchaseDepartments(purchase).join(', ') || 'Nao classificado',
       })),
+  };
+}
+
+export function previousDashboardPeriodFilters(
+  filters: DashboardFilters,
+): DashboardFilters | null {
+  if (!filters.dateFrom || !filters.dateTo) {
+    return null;
+  }
+
+  const currentStart = isoDate(filters.dateFrom);
+  const currentEnd = isoDate(filters.dateTo);
+  const durationInDays = Math.round(
+    (currentEnd.getTime() - currentStart.getTime()) / millisecondsPerDay,
+  ) + 1;
+  const previousEnd = addUtcDays(currentStart, -1);
+  const previousStart = addUtcDays(previousEnd, -(durationInDays - 1));
+
+  return {
+    ...filters,
+    dateFrom: toIsoDate(previousStart),
+    dateTo: toIsoDate(previousEnd),
+    includeUndated: false,
   };
 }
 
@@ -153,6 +190,31 @@ function sum(values: number[]): number {
   return values.reduce((total, value) => total + value, 0);
 }
 
+function variationFromPrevious(current: number, previous: number | undefined): number | null {
+  if (previous === undefined || previous === 0) {
+    return previous === 0 && current === 0 ? 0 : null;
+  }
+  return roundPercentage(((current - previous) / previous) * 100);
+}
+
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function roundPercentage(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+function isoDate(value: string): Date {
+  return new Date(`${value}T00:00:00.000Z`);
+}
+
+function addUtcDays(value: Date, days: number): Date {
+  return new Date(value.getTime() + days * millisecondsPerDay);
+}
+
+function toIsoDate(value: Date): string {
+  return value.toISOString().slice(0, 10);
 }

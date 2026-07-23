@@ -36,7 +36,10 @@ import { Prisma, type PrismaClient } from '@compras/database';
 
 import type { AuthenticatedIdentity } from '../domain/identity.js';
 import { buildProcurementReport } from '../reports/procurement-report.builder.js';
-import { buildDashboardSummary } from './dashboard-summary.builder.js';
+import {
+  buildDashboardSummary,
+  previousDashboardPeriodFilters,
+} from './dashboard-summary.builder.js';
 import {
   ProcurementRepository,
   type CostCenterFilters,
@@ -821,17 +824,33 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     organizationId: string,
     filters: DashboardFilters,
   ): Promise<DashboardSummary> {
-    const [activeSuppliers, purchases] = await Promise.all([
+    const previousFilters = previousDashboardPeriodFilters(filters);
+    const [activeSuppliers, purchases, previousAggregate] = await Promise.all([
       this.prisma.supplier.count({ where: { organizationId, status: 'ACTIVE' } }),
       this.prisma.purchase.findMany({
         where: dashboardWhere(organizationId, filters),
         include: purchaseInclude,
       }),
+      previousFilters
+        ? this.prisma.purchase.aggregate({
+            where: dashboardWhere(organizationId, previousFilters),
+            _sum: {
+              total: true,
+              negotiatedSavings: true,
+            },
+          })
+        : Promise.resolve(null),
     ]);
     return buildDashboardSummary({
       activeSuppliers,
       dataSource: 'DATABASE',
       filters,
+      previousPeriodTotals: previousAggregate
+        ? {
+            purchased: Number(previousAggregate._sum.total ?? 0),
+            negotiatedSavings: Number(previousAggregate._sum.negotiatedSavings ?? 0),
+          }
+        : null,
       purchases: purchases.map(toDashboardPurchase),
     });
   }
