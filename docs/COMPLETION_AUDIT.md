@@ -22,7 +22,7 @@ A auditoria deriva os requisitos de `PROJECT_CONTEXT.md`, `ARCHITECTURE.md` e `R
 | Base versionada e legado preservado | `legacy/`, monorepositorio, `README.md`, modo demonstrativo e workflows | Comprovado |
 | React, TypeScript, NestJS e PostgreSQL | `apps/web`, `apps/api`, `packages/contracts`, `packages/database` e ADR 0001 | Comprovado |
 | Identidade, perfil, LGPD e recuperacao de acesso | Modulo `auth`, contratos de acesso, telas de login, perfil, consentimento e documentos legais | Comprovado no codigo e em homologacao |
-| Multiempresa e papeis sem alcada de aprovacao | Guardas de organizacao e permissao, contrato transversal de controllers, `OrganizationMembership`, papel global separado e ADR 0002 | Comprovado |
+| Multiempresa e papeis sem alcada de aprovacao | Matriz compartilhada entre API e interface, guardas de organizacao e permissao, contrato transversal de controllers, `OrganizationMembership`, papel global separado e ADR 0002 | Comprovado |
 | Cadastro e edicao da empresa | Contratos de organizacao, repositorios, API e `OrganizationsView` | Comprovado no codigo e em homologacao |
 | Fornecedores e centros de custo | Controllers de dados mestres, repositorios Prisma e demo, telas e testes | Comprovado |
 | Tabela de precos e importacao em lote | `supplier-prices`, contratos de importacao, `PricesView` e testes por linha | Comprovado |
@@ -63,8 +63,9 @@ Na atualizacao de 2026-07-23:
 - cinco testes de integracao PostgreSQL passaram a validar gravacoes cruzadas, ciclo operacional, limpeza, seed, backup e restauracao;
 - os guardas de tenant e permissoes receberam cobertura direta para UUID invalido, rota divergente, empresa inacessivel, papeis e proprietario global;
 - todos os `12` controllers passaram a ser inventariados por teste, e cada rota operacional precisa declarar autenticacao, tenant, guarda de permissao e permissao;
+- menu e controles de escrita da interface passaram a usar a mesma matriz de permissoes da API, incluindo comprador sem `integration:write` e leitor somente leitura;
 - a inicializacao de producao passou a rejeitar modo demonstracao, identidade sem e-mail verificado e qualquer origem CORS sem HTTPS;
-- a suite ampliada registrou `30` testes de contratos, `102` da API, `11` da interface e `41` verificadores de infraestrutura e release;
+- a suite ampliada registrou `32` testes de contratos, `102` da API, `15` da interface e `41` verificadores de infraestrutura e release;
 - `pnpm audit --prod --audit-level high` nao encontrou vulnerabilidades conhecidas;
 - os workflows `CI` e `Containers` permanecem obrigatorios para o commit de cabeca do pull request antes de qualquer merge.
 

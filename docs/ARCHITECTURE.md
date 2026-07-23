@@ -29,6 +29,8 @@ O papel global `PLATFORM_OWNER` fica separado dos papeis da organizacao. Isso im
 
 Os e-mails autorizados a receber o papel global ficam em `PLATFORM_OWNER_EMAILS`, configurado somente no back-end. Contas como `compras@humanclinic.com.br` permanecem vinculadas apenas a empresa cliente.
 
+API e interface consomem a mesma matriz compartilhada de permissoes. O menu usa permissoes de leitura, e cada tela recebe capacidades especificas de escrita; por exemplo, o comprador opera compras e cadastros, mas nao recebe controles de sincronizacao porque nao possui `integration:write`. O leitor de relatorios permanece somente leitura, enquanto o proprietario global recebe todas as capacidades sem depender do papel na empresa ativa.
+
 ## Papeis iniciais
 
 | Papel | Escopo | Uso |

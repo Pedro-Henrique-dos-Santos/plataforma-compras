@@ -15,6 +15,7 @@
 - [Concluido] Criar organizacoes, convites, vinculos e troca de empresa ativa.
 - [Concluido no codigo] Permitir editar nome, CNPJ, contato e endereco da empresa.
 - [Concluido] Aplicar papeis e auditoria sem fluxo de aprovacao.
+- [Concluido no codigo e testes] Derivar menu e controles de escrita da interface pela mesma matriz de permissoes usada na API.
 - [Concluido] Criar identidade E-Gestao, tres temas e barra lateral recolhivel.
 - [Concluido] Bloquear acesso direto do navegador as tabelas operacionais.
 

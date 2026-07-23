@@ -6,6 +6,7 @@
 - Ampliada a verificacao do banco e o teste PostgreSQL para comprovar dez vinculos operacionais protegidos por `organization_id`.
 - Validado o cabecalho `x-organization-id` como UUID antes de consultar o banco, com testes diretos dos guardas de tenant e permissoes.
 - Adicionado contrato transversal que classifica todos os controllers e rejeita novas rotas operacionais sem autenticacao, tenant e permissao explicita.
+- Alinhados menu e controles de escrita da interface a mesma matriz de permissoes usada pela API, sem expor sincronizacao a compradores sem `integration:write`.
 - Impedida a inicializacao da API em producao com modo demonstracao, e-mail nao verificado ou qualquer origem CORS sem HTTPS.
 - Empacotado o modelo OCR em portugues na API, com validacao offline no container e sobrescrita opcional verificada na inicializacao.
 - Atualizado o parser XML fiscal para corrigir a vulnerabilidade de expansao por declaracoes `DOCTYPE` repetidas.

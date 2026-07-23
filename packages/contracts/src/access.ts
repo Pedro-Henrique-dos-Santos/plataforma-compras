@@ -84,3 +84,15 @@ export function hasOrganizationPermission(
   return organizationRolePermissions[role].includes(permission);
 }
 
+export function hasAccessPermission(
+  platformRoles: readonly PlatformRole[],
+  organizationRole: OrganizationRole | undefined,
+  permission: Permission,
+): boolean {
+  return (
+    platformRoles.includes('PLATFORM_OWNER') ||
+    (organizationRole !== undefined &&
+      hasOrganizationPermission(organizationRole, permission))
+  );
+}
+

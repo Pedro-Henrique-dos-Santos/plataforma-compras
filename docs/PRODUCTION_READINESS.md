@@ -29,6 +29,7 @@ Ainda faltam a configuracao permanente do conector Google por conta de servico, 
 - Toda resposta recebe `x-request-id`.
 - O cabecalho de empresa e validado como UUID antes do acesso ao banco e deve coincidir com o tenant presente na rota.
 - Um teste transversal classifica todos os controllers e exige autenticacao, tenant, guarda de permissao e permissao declarada em cada rota operacional.
+- A interface deriva menu e controles de escrita da mesma matriz de permissoes usada pela API, com testes para administrador, comprador, leitor e proprietario global.
 - A inicializacao em producao falha se o modo demonstracao estiver ativo, se o e-mail verificado nao for obrigatorio ou se alguma origem CORS nao usar HTTPS.
 - Respostas operacionais usam `Cache-Control: no-store` e nao geram `ETag`.
 - Cada requisicao gera um log JSON com metodo, caminho sem query string, status, duracao e identificador.

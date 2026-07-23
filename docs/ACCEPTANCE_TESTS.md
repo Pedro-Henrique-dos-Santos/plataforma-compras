@@ -60,6 +60,8 @@ As credenciais do Supabase devem existir somente no ambiente local protegido ou 
 9. Consultar em Configuracoes a versao e a data dos documentos aceitos.
 10. Editar a empresa ativa, preencher razao social, CNPJ, e-mail, telefone, CEP e endereco e recarregar a pagina para confirmar a persistencia.
 11. Confirmar que um usuario sem permissao administrativa nao consegue alterar outra empresa pela API.
+12. Entrar como comprador e confirmar escrita em compras, fornecedores, precos, centros de custo e notas, mantendo as acoes de sincronizacao ocultas.
+13. Entrar como leitor de relatorios e confirmar navegacao de consulta sem controles de criacao, edicao, importacao ou aplicacao.
 
 ## 3. Cadastros mestres
 

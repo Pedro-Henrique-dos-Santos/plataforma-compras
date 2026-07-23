@@ -11,7 +11,10 @@ import type {
   UpdateUserProfileInput,
   UserContext,
 } from '@compras/contracts';
-import { hasCurrentLegalAcceptance } from '@compras/contracts';
+import {
+  hasAccessPermission,
+  hasCurrentLegalAcceptance,
+} from '@compras/contracts';
 
 import logoMark from './assets/egestao-mark.svg';
 import { AppShell, type ViewId } from './components/AppShell';
@@ -20,6 +23,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { OrganizationSetupScreen } from './components/OrganizationSetupScreen';
 import { PasswordResetScreen } from './components/PasswordResetScreen';
 import { apiGet, apiPatch, apiPost } from './lib/api';
+import { getOrganizationCapabilities } from './lib/access';
 import { demoMode, supabase } from './lib/auth';
 import { resolveInitialOrganization } from './lib/organizations';
 import { parseThemeMode, type ThemeMode } from './lib/theme';
@@ -213,7 +217,16 @@ export default function App() {
   }, [accessToken, activeOrganization, dashboardFilters, dataRevision]);
 
   useEffect(() => {
-    if (!activeOrganization || view !== 'access') {
+    if (
+      !activeOrganization ||
+      !user ||
+      view !== 'access' ||
+      !hasAccessPermission(
+        user.platformRoles,
+        activeOrganization.role,
+        'member:manage',
+      )
+    ) {
       return;
     }
 
@@ -241,7 +254,7 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [accessToken, activeOrganization, view]);
+  }, [accessToken, activeOrganization, user, view]);
 
   function handleAuthenticated(token: string | null) {
     setAccessToken(token);
@@ -378,19 +391,18 @@ export default function App() {
   if (!activeOrganization) {
     return (
       <OrganizationSetupScreen
-        canCreate={user.platformRoles.includes('PLATFORM_OWNER')}
+        canCreate={hasAccessPermission(
+          user.platformRoles,
+          undefined,
+          'platform:manage',
+        )}
         onCreate={handleCreateOrganization}
         onSignOut={() => void handleSignOut()}
       />
     );
   }
 
-  const canWriteOperationalData =
-    user.platformRoles.includes('PLATFORM_OWNER') ||
-    activeOrganization.role !== 'REPORT_VIEWER';
-  const canConfigureOrganization =
-    user.platformRoles.includes('PLATFORM_OWNER') ||
-    activeOrganization.role === 'ORGANIZATION_ADMIN';
+  const capabilities = getOrganizationCapabilities(user, activeOrganization);
 
   return (
     <AppShell
@@ -430,7 +442,7 @@ export default function App() {
         {view === 'purchases' && (
           <PurchasesView
             accessToken={accessToken}
-            canWrite={canWriteOperationalData}
+            canWrite={capabilities.canWritePurchases}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}
           />
@@ -438,7 +450,7 @@ export default function App() {
         {view === 'suppliers' && (
           <SuppliersView
             accessToken={accessToken}
-            canWrite={canWriteOperationalData}
+            canWrite={capabilities.canWriteSuppliers}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}
           />
@@ -446,7 +458,7 @@ export default function App() {
         {view === 'prices' && (
           <PricesView
             accessToken={accessToken}
-            canWrite={canWriteOperationalData}
+            canWrite={capabilities.canWritePrices}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}
           />
@@ -454,7 +466,7 @@ export default function App() {
         {view === 'cost-centers' && (
           <CostCentersView
             accessToken={accessToken}
-            canWrite={canWriteOperationalData}
+            canWrite={capabilities.canWriteCostCenters}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}
           />
@@ -462,8 +474,8 @@ export default function App() {
         {view === 'integrations' && (
           <IntegrationsView
             accessToken={accessToken}
-            canConfigure={canConfigureOrganization}
-            canWrite={canWriteOperationalData}
+            canConfigure={capabilities.canManageOrganization}
+            canWrite={capabilities.canWriteIntegrations}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}
           />
@@ -471,23 +483,23 @@ export default function App() {
         {view === 'invoice-documents' && (
           <InvoiceDocumentsView
             accessToken={accessToken}
-            canWrite={canWriteOperationalData}
+            canWrite={capabilities.canWriteInvoices}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}
           />
         )}
-        {view === 'organizations' && (
+        {view === 'organizations' && capabilities.canManageOrganization && (
           <OrganizationsView
             activeOrganization={activeOrganization}
-            canCreate={user.platformRoles.includes('PLATFORM_OWNER')}
-            canManage={canConfigureOrganization}
+            canCreate={capabilities.canManagePlatform}
+            canManage={capabilities.canManageOrganization}
             onCreate={handleCreateOrganization}
             onSelect={handleOrganizationChange}
             onUpdate={handleUpdateOrganization}
             organizations={user.organizations}
           />
         )}
-        {view === 'access' && (
+        {view === 'access' && capabilities.canManageMembers && (
           <AccessView
             activeOrganization={activeOrganization}
             loading={membersLoading}
