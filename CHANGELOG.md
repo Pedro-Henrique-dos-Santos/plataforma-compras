@@ -2,6 +2,8 @@
 
 ## Nao publicado
 
+- Empacotado o modelo OCR em portugues na API, com validacao offline no container e sobrescrita opcional verificada na inicializacao.
+- Atualizado o parser XML fiscal para corrigir a vulnerabilidade de expansao por declaracoes `DOCTYPE` repetidas.
 - Adicionada comparacao dos indicadores de compras e economia com o intervalo anterior de mesma duracao quando o dashboard usa periodo fechado.
 - Adicionada verificacao autenticada de credencial, compartilhamento e mapeamento das abas do Google Sheets antes da previa.
 - Reduzido o escopo da conta de servico Google para `spreadsheets.readonly`.

@@ -64,8 +64,11 @@ Configure os seguintes valores no gerenciador de segredos da hospedagem:
 | `REQUIRE_VERIFIED_EMAIL` | `true` |
 | `TRUST_PROXY` | `true` apenas atras de proxy confiavel |
 | `INVOICE_STORAGE_BUCKET` | bucket privado, por padrao `invoice-documents` |
+| `OCR_LANGUAGE_DATA_PATH` | sobrescrita opcional; a imagem ja inclui o modelo portugues |
 
 Para Google Sheets, configure somente uma das variaveis `GOOGLE_SERVICE_ACCOUNT_JSON` ou `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64`. O JSON nunca deve ser montado na interface web ou gravado no banco.
+
+O modelo Tesseract em portugues e uma dependencia de producao da API. O container valida o arquivo com a rede desativada antes do smoke test, portanto a leitura de PDFs digitalizados nao depende de download em tempo de execucao.
 
 ## Publicacao versionada
 

@@ -18,7 +18,7 @@ Web e API possuem imagens independentes, usuarios nao privilegiados, health chec
 - Os arquivos XLSX resumido e detalhado foram validados pela API como respostas binarias, e todos os dados sinteticos foram removidos do banco e do provedor de autenticacao ao final.
 - O aceite visual autenticado percorreu todas as areas operacionais em desktop de 1280 por 720 pixels e dispositivo movel de 390 por 844 pixels, incluindo menu responsivo, temas, filtros, formularios, tabelas, graficos e documentos fiscais.
 - O aceite visual nao encontrou erros no console nem rolagem horizontal da pagina; os totais do dashboard e dos relatorios foram reconciliados, a fixture foi removida e uma segunda limpeza confirmou a idempotencia.
-- `pnpm audit --prod` nao encontrou vulnerabilidades conhecidas depois da atualizacao controlada da dependencia transitiva `uuid`.
+- `pnpm audit --prod` nao encontrou vulnerabilidades conhecidas depois das atualizacoes controladas de `uuid` e `fast-xml-parser`.
 
 Ainda faltam a configuracao permanente do conector Google por conta de servico, a revisao juridica e a implantacao controlada.
 

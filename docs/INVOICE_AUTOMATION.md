@@ -36,7 +36,11 @@ Quando fornecedor e valor ja existem em uma unica compra sem nota, o sistema com
 
 ## OCR gratuito
 
-O fallback usa Tesseract.js com o modelo `por`. O documento e processado no servidor da aplicacao; nao e enviado para a OpenAI. Para impedir qualquer download de modelo durante a execucao, instale previamente os dados de idioma em um diretorio interno e configure:
+O fallback usa Tesseract.js com o modelo oficial `por` de maior precisao disponivel no pacote. O documento e processado no servidor da aplicacao e nao e enviado para a OpenAI.
+
+A imagem da API inclui o modelo em portugues e usa o cache em modo somente leitura. Assim, o primeiro documento digitalizado nao depende de acesso a internet nem tenta gravar arquivos no sistema somente leitura do container. O workflow de containers comprova essa disponibilidade executando a verificacao com a rede desativada.
+
+`OCR_LANGUAGE_DATA_PATH` e apenas uma sobrescrita opcional para ambientes que administram o proprio modelo. O diretorio deve conter `por.traineddata.gz` ou `por.traineddata`; um caminho invalido interrompe a inicializacao da API:
 
 ```env
 OCR_LANGUAGE_DATA_PATH=/app/tessdata

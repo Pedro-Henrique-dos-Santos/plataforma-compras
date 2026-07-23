@@ -2,16 +2,30 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createWorker, OEM } from 'tesseract.js';
 
+import {
+  resolvePortugueseOcrLanguageData,
+  type PortugueseOcrLanguageData,
+} from './ocr-language-data.js';
+
 @Injectable()
 export class OcrEngine {
-  constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
+  private readonly languageData: PortugueseOcrLanguageData;
+
+  constructor(@Inject(ConfigService) config: ConfigService) {
+    this.languageData = resolvePortugueseOcrLanguageData(
+      config.get<string>('OCR_LANGUAGE_DATA_PATH'),
+    );
+  }
 
   async recognize(images: Buffer[]): Promise<string> {
-    const languageDataPath = this.config.get<string>('OCR_LANGUAGE_DATA_PATH');
     const worker = await createWorker(
       'por',
       OEM.LSTM_ONLY,
-      languageDataPath ? { langPath: languageDataPath } : undefined,
+      {
+        cacheMethod: 'readOnly',
+        gzip: this.languageData.gzip,
+        langPath: this.languageData.langPath,
+      },
     );
     try {
       const pages: string[] = [];

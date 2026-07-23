@@ -31,6 +31,7 @@
 - [Concluido] Migrar cadastro de compras, itens, rateios e parcelas.
 - [Concluido em homologacao] Adicionar detalhe, correcao transacional, cancelamento e reativacao auditados, com protecao das parcelas pagas.
 - [Concluido] Incorporar notas fiscais XML e PDF, OCR gratuito, revisao e conciliacao no fluxo externo.
+- [Concluido no codigo e CI] Empacotar o modelo OCR em portugues e eliminar downloads durante a execucao.
 - [Concluido] Garantir idempotencia, isolamento por empresa e auditoria das gravacoes.
 
 ## Fase 4: inteligencia
