@@ -16,7 +16,7 @@ A primeira versao foi criada em Google Sheets e Google Apps Script. Ela possui p
 - PostgreSQL como banco relacional.
 - Supabase Free para desenvolvimento e homologacao inicial.
 - Arquitetura multiempresa desde o primeiro schema.
-- Sem alçada de aprovacao no escopo inicial.
+- Sem alcada de aprovacao no escopo inicial.
 - O proprietario global e independente das contas das empresas atendidas.
 - `compras@humanclinic.com.br` pertence somente ao contexto Human Clinic e nao sera proprietario global.
 - O nome do produto e E-Gestao Compras; o nome da empresa ativa continua variavel.

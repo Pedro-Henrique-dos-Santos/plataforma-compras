@@ -57,4 +57,9 @@
 - [Concluido no codigo] Empacotar web e API em imagens separadas, nao privilegiadas e com health checks.
 - [Concluido no codigo] Validar conteineres no CI e preparar publicacao versionada no GitHub Container Registry.
 - [Concluido no codigo] Proteger migracoes de producao com tag imutavel, referencia de backup, confirmacao explicita e verificacao de RLS.
-- [Pendente externo] Implantacao controlada e desligamento gradual do Apps Script.
+- [Pendente externo] Aprovar e mesclar o pull request na `main`.
+- [Pendente externo] Configurar a conta de servico permanente do Google e validar a sincronizacao autenticada.
+- [Pendente externo] Aprovar juridicamente os Termos de uso, o Aviso de privacidade e o processo LGPD.
+- [Pendente externo] Configurar hospedagem, dominios HTTPS, ambientes protegidos, segredos e alertas de producao.
+- [Pendente externo] Criar backup de corte, publicar a tag imutavel e executar a implantacao controlada.
+- [Pendente externo] Liberar o piloto, reconciliar os totais finais e desligar gradualmente o Apps Script.

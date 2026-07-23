@@ -77,6 +77,7 @@ Nunca envie `.env`, chaves do Supabase, tokens do Google ou chaves da OpenAI ao 
 ## Planejamento
 
 - [Arquitetura](docs/ARCHITECTURE.md)
+- [Auditoria de conclusao](docs/COMPLETION_AUDIT.md)
 - [Roteiro de evolucao](docs/ROADMAP.md)
 - [Contexto e decisoes confirmadas](docs/PROJECT_CONTEXT.md)
 - [Integracao com Google Sheets](docs/GOOGLE_SHEETS_INTEGRATION.md)

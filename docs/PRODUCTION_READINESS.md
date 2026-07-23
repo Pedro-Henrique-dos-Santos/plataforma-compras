@@ -2,7 +2,7 @@
 
 ## Estado do codigo
 
-O codigo cobre identidade, multiempresa, papeis, cadastros, precos, compras, rateios, parcelas, conciliacao com Google Sheets, documentos fiscais, indicadores, relatorios e exportacao. A entrada em producao ainda depende da infraestrutura externa e da homologacao com dados reais.
+O codigo cobre identidade, multiempresa, papeis, cadastros, precos, compras, rateios, parcelas, conciliacao com Google Sheets, documentos fiscais, indicadores, relatorios e exportacao. A homologacao funcional e a reconciliacao do primeiro lote real foram concluidas. A entrada em producao ainda depende da configuracao externa, da revisao juridica e do corte controlado.
 
 Web e API possuem imagens independentes, usuarios nao privilegiados, health checks e smoke tests com sistema de arquivos somente leitura. Tags semanticas coerentes podem publicar as imagens no GitHub Container Registry com SBOM e proveniencia. A migracao de producao permanece manual e exige ambiente protegido, tag imutavel, referencia de backup e confirmacao explicita.
 

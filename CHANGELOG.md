@@ -10,6 +10,7 @@
 - Reconciliados os precos original e negociado da massa demonstrativa para preservar a economia ao editar.
 - Alinhado o modo demonstrativo para manter apenas referencias inativas ja existentes, sem permitir novas classificacoes inativas.
 - Ampliados os testes multiempresa no Supabase para edicao, baixa preservada, conflito concorrente, cancelamento e reativacao.
+- Adicionada a matriz de conclusao com evidencias por requisito e gates externos de producao.
 
 ## 0.9.0 - 2026-07-16
 
