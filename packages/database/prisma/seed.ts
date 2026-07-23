@@ -89,8 +89,15 @@ async function main() {
       negotiatedSavings: 20,
     },
     create: {
-      organizationId: organization.id,
-      supplierId: supplier.id,
+      organization: { connect: { id: organization.id } },
+      supplier: {
+        connect: {
+          organizationId_id: {
+            organizationId: organization.id,
+            id: supplier.id,
+          },
+        },
+      },
       number: 'DEMO-001',
       issuedAt: new Date('2026-01-15T00:00:00.000Z'),
       category: 'Materiais de escritorio',
@@ -101,7 +108,6 @@ async function main() {
       sourceReference: 'development-seed-demo-001',
       items: {
         create: {
-          organizationId: organization.id,
           description: 'Item demonstrativo',
           quantity: 1,
           unit: 'UN',
@@ -110,17 +116,22 @@ async function main() {
           total: 80,
           allocations: {
             create: {
-              organizationId: organization.id,
-              costCenterId: costCenter.id,
               percentage: 100,
               amount: 80,
+              costCenter: {
+                connect: {
+                  organizationId_id: {
+                    organizationId: organization.id,
+                    id: costCenter.id,
+                  },
+                },
+              },
             },
           },
         },
       },
       installments: {
         create: {
-          organizationId: organization.id,
           sequence: 1,
           dueDate: new Date('2026-02-15T00:00:00.000Z'),
           amount: 80,
