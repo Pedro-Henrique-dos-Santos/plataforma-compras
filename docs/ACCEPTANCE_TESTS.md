@@ -106,6 +106,7 @@ Use os arquivos sinteticos em `apps/api/src/invoices/__fixtures__/` e `legacy/sa
 8. Confirmar a criacao ou vinculacao do fornecedor e a classificacao por centro de custo.
 9. Repetir a importacao e confirmar `A nota ja foi importada.` sem criar outra compra.
 10. Para fornecedor e valor ja existentes, confirmar o complemento da nota na compra encontrada.
+11. Confirmar no workflow `Containers` que o modelo portugues e localizado com a rede desativada e sistema de arquivos somente leitura.
 
 ## 6. Dashboard e relatorios
 

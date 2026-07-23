@@ -7,6 +7,7 @@ const [
   webDockerfile,
   nginxConfig,
   dockerIgnore,
+  containersWorkflow,
   publishWorkflow,
   productionWorkflow,
 ] = await Promise.all([
@@ -14,6 +15,7 @@ const [
   readFile(new URL('../apps/web/Dockerfile', import.meta.url), 'utf8'),
   readFile(new URL('../apps/web/nginx.conf', import.meta.url), 'utf8'),
   readFile(new URL('../.dockerignore', import.meta.url), 'utf8'),
+  readFile(new URL('../.github/workflows/containers.yml', import.meta.url), 'utf8'),
   readFile(new URL('../.github/workflows/publish-images.yml', import.meta.url), 'utf8'),
   readFile(new URL('../.github/workflows/supabase-production.yml', import.meta.url), 'utf8'),
 ]);
@@ -31,6 +33,12 @@ test('keeps privileged API credentials out of image instructions', () => {
     apiDockerfile,
     /DATABASE_URL|GOOGLE_SERVICE_ACCOUNT|SUPABASE_SECRET|SUPABASE_SERVICE_ROLE/,
   );
+});
+
+test('verifies bundled Portuguese OCR data without network access', () => {
+  assert.match(containersWorkflow, /Confirm offline Portuguese OCR data/);
+  assert.match(containersWorkflow, /--network none/);
+  assert.match(containersWorkflow, /resolvePortugueseOcrLanguageData/);
 });
 
 test('serves the SPA from an unprivileged web image with stable navigation', () => {

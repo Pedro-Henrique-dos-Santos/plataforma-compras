@@ -62,6 +62,12 @@ A conciliacao resolve primeiro centros de custo e fornecedores, depois precos e 
 
 Durante a transicao, o fluxo de dados e intencionalmente unidirecional: Google Sheets ou XLSX para previa, previa confirmada para PostgreSQL e PostgreSQL para relatorios. Nao existe sincronizacao automatica bidirecional, pois edicoes concorrentes criariam conflitos e dupla contagem. Depois da homologacao, o PostgreSQL passa a ser a fonte oficial.
 
+## Documentos fiscais
+
+XML fiscal passa por validacao de assinatura, bloqueio de DTD e entidades externas e parser estruturado atualizado. PDFs pesquisaveis usam a camada de texto; documentos digitalizados usam Tesseract.js com o modelo portugues de maior precisao empacotado como dependencia da API.
+
+O modelo OCR e resolvido e validado na inicializacao, usa cache somente leitura e nao depende de download durante o processamento. O container confirma essa disponibilidade com a rede desativada antes do smoke test. A extracao permanece em revisao humana e nunca grava uma compra diretamente.
+
 ## Operacao de compras
 
 A consulta detalhada de uma compra devolve itens, rateios, parcelas, observacoes e a referencia fiscal dentro do tenant ativo. A correcao substitui itens e parcelas em uma unica transacao, recalcula total e economia e preserva a origem e a referencia externa da importacao. Fornecedores ou centros de custo historicos que tenham sido inativados podem permanecer no registro existente, mas nao podem ser escolhidos para uma nova classificacao.

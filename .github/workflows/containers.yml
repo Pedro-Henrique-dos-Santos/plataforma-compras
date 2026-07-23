@@ -35,6 +35,16 @@ jobs:
       - name: Confirm API runtime user
         run: test "$(docker inspect --format='{{.Config.User}}' e-gestao-compras-api:ci)" = "node"
 
+      - name: Confirm offline Portuguese OCR data
+        run: |
+          docker run --rm \
+            --network none \
+            --read-only \
+            --entrypoint node \
+            e-gestao-compras-api:ci \
+            --input-type=module \
+            --eval "const data = (await import('./dist/invoices/ocr-language-data.js')).resolvePortugueseOcrLanguageData(); if (data.source !== 'BUNDLED') throw new Error('Bundled OCR data was not selected.');"
+
       - name: Smoke test API image
         run: |
           docker run --detach --name e-gestao-api-ci \
