@@ -5,6 +5,7 @@
 - Adicionadas chaves estrangeiras compostas que impedem relacionamentos entre empresas diferentes mesmo em gravacoes que contornem a API.
 - Ampliada a verificacao do banco e o teste PostgreSQL para comprovar dez vinculos operacionais protegidos por `organization_id`.
 - Validado o cabecalho `x-organization-id` como UUID antes de consultar o banco, com testes diretos dos guardas de tenant e permissoes.
+- Impedida a inicializacao da API em producao com modo demonstracao, e-mail nao verificado ou qualquer origem CORS sem HTTPS.
 - Empacotado o modelo OCR em portugues na API, com validacao offline no container e sobrescrita opcional verificada na inicializacao.
 - Atualizado o parser XML fiscal para corrigir a vulnerabilidade de expansao por declaracoes `DOCTYPE` repetidas.
 - Adicionada comparacao dos indicadores de compras e economia com o intervalo anterior de mesma duracao quando o dashboard usa periodo fechado.

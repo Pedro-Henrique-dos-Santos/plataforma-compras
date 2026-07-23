@@ -21,6 +21,22 @@ describe('validateEnvironment', () => {
     ).toThrow(/Missing production environment variables/);
   });
 
+  it('rejects demo mode and unverified identities in production', () => {
+    expect(() =>
+      validateEnvironment({
+        DEMO_MODE: 'true',
+        NODE_ENV: 'production',
+      }),
+    ).toThrow(/DEMO_MODE must be false/);
+
+    expect(() =>
+      validateEnvironment({
+        ...productionEnvironment(),
+        REQUIRE_VERIFIED_EMAIL: 'false',
+      }),
+    ).toThrow(/REQUIRE_VERIFIED_EMAIL must be true/);
+  });
+
   it('accepts separate Supabase credentials and an independent owner account', () => {
     const environment = validateEnvironment({
       APP_WEB_URL: 'https://compras.example.com',
@@ -58,7 +74,8 @@ describe('validateEnvironment', () => {
   it('normalizes trailing slashes from configured origins', () => {
     const environment = validateEnvironment({
       APP_WEB_URL: 'https://compras.example.com/',
-      CORS_ORIGIN: 'https://compras.example.com/,http://localhost:5173/',
+      CORS_ORIGIN:
+        'https://compras.example.com/,https://internal.example.com/',
       DATABASE_URL: 'postgresql://example',
       DEMO_MODE: 'false',
       NODE_ENV: 'production',
@@ -70,7 +87,7 @@ describe('validateEnvironment', () => {
 
     expect(environment['APP_WEB_URL']).toBe('https://compras.example.com');
     expect(environment['CORS_ORIGIN']).toBe(
-      'https://compras.example.com,http://localhost:5173',
+      'https://compras.example.com,https://internal.example.com',
     );
   });
 
@@ -99,6 +116,16 @@ describe('validateEnvironment', () => {
     ).toThrow(/must include APP_WEB_URL/);
   });
 
+  it('rejects every insecure CORS origin in production', () => {
+    expect(() =>
+      validateEnvironment({
+        ...productionEnvironment(),
+        CORS_ORIGIN:
+          'https://compras.example.com,http://internal.example.com',
+      }),
+    ).toThrow(/Every CORS_ORIGIN must use HTTPS/);
+  });
+
   it('rejects ambiguous or malformed Google service account configuration', () => {
     expect(() =>
       validateEnvironment({
@@ -125,3 +152,17 @@ describe('validateEnvironment', () => {
     ).toThrow(/valid private bucket name/);
   });
 });
+
+function productionEnvironment() {
+  return {
+    APP_WEB_URL: 'https://compras.example.com',
+    CORS_ORIGIN: 'https://compras.example.com',
+    DATABASE_URL: 'postgresql://example',
+    DEMO_MODE: 'false',
+    NODE_ENV: 'production',
+    PLATFORM_OWNER_EMAILS: 'owner@example.com',
+    SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_example',
+    SUPABASE_SECRET_KEY: 'sb_secret_example',
+    SUPABASE_URL: 'https://project.supabase.co',
+  };
+}
