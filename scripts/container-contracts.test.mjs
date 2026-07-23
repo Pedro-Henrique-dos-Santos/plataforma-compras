@@ -2,12 +2,20 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [apiDockerfile, webDockerfile, nginxConfig, dockerIgnore, publishWorkflow] = await Promise.all([
+const [
+  apiDockerfile,
+  webDockerfile,
+  nginxConfig,
+  dockerIgnore,
+  publishWorkflow,
+  productionWorkflow,
+] = await Promise.all([
   readFile(new URL('../apps/api/Dockerfile', import.meta.url), 'utf8'),
   readFile(new URL('../apps/web/Dockerfile', import.meta.url), 'utf8'),
   readFile(new URL('../apps/web/nginx.conf', import.meta.url), 'utf8'),
   readFile(new URL('../.dockerignore', import.meta.url), 'utf8'),
   readFile(new URL('../.github/workflows/publish-images.yml', import.meta.url), 'utf8'),
+  readFile(new URL('../.github/workflows/supabase-production.yml', import.meta.url), 'utf8'),
 ]);
 
 test('runs the API image as an unprivileged user with a health check', () => {
@@ -42,6 +50,19 @@ test('excludes credentials and generated workspace content from Docker contexts'
 test('normalizes the GitHub owner before publishing GHCR image names', () => {
   assert.match(publishWorkflow, /\$\{GITHUB_REPOSITORY_OWNER,,\}/);
   assert.doesNotMatch(publishWorkflow, /ghcr\.io\/\$\{\{ github\.repository_owner \}\}/);
+});
+
+test('runs production migrations only from an explicit immutable tag', () => {
+  assert.match(
+    productionWorkflow,
+    /ref: refs\/tags\/\$\{\{ inputs\.release_tag \}\}/,
+  );
+  assert.match(
+    productionWorkflow,
+    /git show-ref --verify --quiet "refs\/tags\/\$RELEASE_TAG"/,
+  );
+  assert.match(productionWorkflow, /test "\$\(git rev-parse HEAD\)" = "\$tag_commit"/);
+  assert.match(productionWorkflow, /git merge-base --is-ancestor HEAD origin\/main/);
 });
 
 function escapeRegularExpression(value) {

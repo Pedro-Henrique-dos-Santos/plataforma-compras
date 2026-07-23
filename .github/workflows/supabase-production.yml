@@ -56,10 +56,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ inputs.release_tag }}
+          ref: refs/tags/${{ inputs.release_tag }}
 
-      - name: Confirm release commit belongs to main
-        run: git merge-base --is-ancestor HEAD origin/main
+      - name: Confirm immutable release tag belongs to main
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+          tag_commit="$(git rev-list -n 1 "refs/tags/$RELEASE_TAG")"
+          test "$(git rev-parse HEAD)" = "$tag_commit"
+          git merge-base --is-ancestor HEAD origin/main
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
