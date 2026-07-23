@@ -15,6 +15,7 @@
 - [Concluido] Criar organizacoes, convites, vinculos e troca de empresa ativa.
 - [Concluido no codigo] Permitir editar nome, CNPJ, contato e endereco da empresa.
 - [Concluido] Aplicar papeis e auditoria sem fluxo de aprovacao.
+- [Concluido no codigo e testes] Derivar menu e controles de escrita da interface pela mesma matriz de permissoes usada na API.
 - [Concluido] Criar identidade E-Gestao, tres temas e barra lateral recolhivel.
 - [Concluido] Bloquear acesso direto do navegador as tabelas operacionais.
 
@@ -47,6 +48,10 @@
 - [Concluido no codigo] Testes de carga, seguranca e recuperacao.
 - [Concluido no codigo] Backups, prontidao, observabilidade e plano de alertas.
 - [Concluido no CI] Aplicar migracoes em PostgreSQL descartavel e testar isolamento multiempresa e RLS.
+- [Concluido no codigo e CI] Impedir no PostgreSQL relacoes cruzadas entre tenants com chaves estrangeiras compostas e verificacao automatizada.
+- [Concluido no codigo e testes] Cobrir os guardas de tenant e permissoes, incluindo UUID invalido, rota divergente e privilegio global.
+- [Concluido no codigo e testes] Inventariar todos os controllers e impedir novas rotas operacionais sem autenticacao, tenant e permissao explicita.
+- [Concluido no codigo e testes] Recusar a inicializacao de producao com modo demonstracao, identidade sem e-mail verificado ou origem CORS sem HTTPS.
 - [Concluido no CI] Executar backup, restauracao integral e reconciliacao em banco descartavel.
 - [Concluido em homologacao] Executar aceite autenticado descartavel de identidade, isolamento, cadastros, precos, compras, rateios, filtros, dashboard e exportacoes, com limpeza integral ao final.
 - [Concluido] Auditar dependencias de producao e eliminar vulnerabilidades conhecidas.

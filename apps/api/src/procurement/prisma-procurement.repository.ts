@@ -519,8 +519,15 @@ export class PrismaProcurementRepository extends ProcurementRepository {
       const id = await this.prisma.$transaction(async (transaction) => {
         const purchase = await transaction.purchase.create({
           data: {
-            organizationId,
-            supplierId: input.supplierId,
+            organization: { connect: { id: organizationId } },
+            supplier: {
+              connect: {
+                organizationId_id: {
+                  organizationId,
+                  id: input.supplierId,
+                },
+              },
+            },
             number: input.number,
             invoiceNumber: input.invoiceNumber ?? null,
             issuedAt: toDate(input.issuedAt),
@@ -534,32 +541,10 @@ export class PrismaProcurementRepository extends ProcurementRepository {
             sourceReference: input.sourceReference,
             notes: input.notes,
             items: {
-              create: calculated.items.map((item) => ({
-                organizationId,
-                description: item.description,
-                quantity: item.quantity,
-                unit: item.unit,
-                unitPrice: item.unitPrice,
-                negotiatedPrice: item.negotiatedPrice,
-                total: item.total,
-                costCenterId: item.costCenterId,
-                allocations: {
-                  create: item.allocations.map((allocation) => ({
-                    organizationId,
-                    costCenterId: allocation.costCenterId,
-                    percentage: allocation.percentage,
-                    amount: allocation.amount,
-                  })),
-                },
-              })),
+              create: purchaseItemCreateData(organizationId, calculated.items),
             },
             installments: {
-              create: input.installments.map((installment, index) => ({
-                organizationId,
-                sequence: index + 1,
-                dueDate: toDate(installment.dueDate) as Date,
-                amount: installment.amount,
-              })),
+              create: installmentCreateData(input.installments),
             },
           },
         });
@@ -663,12 +648,11 @@ export class PrismaProcurementRepository extends ProcurementRepository {
           where: { organizationId, purchaseId: id, paidAt: null },
         });
         const purchase = await transaction.purchase.update({
-          where: { id },
+          where: { organizationId_id: { organizationId, id } },
           data: {
             items: { create: purchaseItemCreateData(organizationId, calculated.items) },
             installments: {
               create: installmentCreateData(
-                organizationId,
                 persistedInput.installments,
                 currentInstallments,
               ),
@@ -1441,27 +1425,40 @@ function purchaseItemCreateData(
   items: ReturnType<typeof calculatePurchase>['items'],
 ) {
   return items.map((item) => ({
-    organizationId,
     description: item.description,
     quantity: item.quantity,
     unit: item.unit,
     unitPrice: item.unitPrice,
     negotiatedPrice: item.negotiatedPrice,
     total: item.total,
-    costCenterId: item.costCenterId,
+    ...(item.costCenterId && {
+      costCenter: {
+        connect: {
+          organizationId_id: {
+            organizationId,
+            id: item.costCenterId,
+          },
+        },
+      },
+    }),
     allocations: {
       create: item.allocations.map((allocation) => ({
-        organizationId,
-        costCenterId: allocation.costCenterId,
         percentage: allocation.percentage,
         amount: allocation.amount,
+        costCenter: {
+          connect: {
+            organizationId_id: {
+              organizationId,
+              id: allocation.costCenterId,
+            },
+          },
+        },
       })),
     },
   }));
 }
 
 function installmentCreateData(
-  organizationId: string,
   installments: PersistPurchaseInput['installments'],
   currentInstallments: Array<{ paidAt: Date | null; sequence: number }> = [],
 ) {
@@ -1472,7 +1469,6 @@ function installmentCreateData(
   );
   return installments
     .map((installment, index) => ({
-      organizationId,
       sequence: index + 1,
       dueDate: toDate(installment.dueDate) as Date,
       amount: installment.amount,

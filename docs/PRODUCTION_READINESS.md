@@ -27,6 +27,10 @@ Ainda faltam a configuracao permanente do conector Google por conta de servico, 
 - `GET /api/health/live` confirma que o processo responde.
 - `GET /api/health/ready` confirma o acesso ao PostgreSQL fora do modo demonstrativo.
 - Toda resposta recebe `x-request-id`.
+- O cabecalho de empresa e validado como UUID antes do acesso ao banco e deve coincidir com o tenant presente na rota.
+- Um teste transversal classifica todos os controllers e exige autenticacao, tenant, guarda de permissao e permissao declarada em cada rota operacional.
+- A interface deriva menu e controles de escrita da mesma matriz de permissoes usada pela API, com testes para administrador, comprador, leitor e proprietario global.
+- A inicializacao em producao falha se o modo demonstracao estiver ativo, se o e-mail verificado nao for obrigatorio ou se alguma origem CORS nao usar HTTPS.
 - Respostas operacionais usam `Cache-Control: no-store` e nao geram `ETag`.
 - Cada requisicao gera um log JSON com metodo, caminho sem query string, status, duracao e identificador.
 - A aplicacao encerra conexoes ao receber sinais de desligamento.
@@ -40,6 +44,7 @@ O balanceador deve retirar a instancia do trafego quando `ready` retornar `503`,
 - `pnpm db:verify:deployed` confirma migracoes concluidas, RLS em todas as tabelas da aplicacao e ausencia de privilegios para `PUBLIC`, `anon` e `authenticated`.
 - O catalogo e validado para garantir RLS em todas as tabelas da aplicacao.
 - Chaves de negocio iguais sao exercitadas em duas empresas sem conflito entre tenants.
+- Dez relacoes operacionais usam chaves estrangeiras compostas e rejeitam referencias cujo registro pai pertence a outra empresa.
 - Fornecedor e centro de custo de outra empresa sao rejeitados pelo repositorio.
 - Dashboard, relatorio, compras, fornecedores e auditoria sao conferidos por organizacao.
 - Um backup customizado e restaurado em outro banco, com reconciliacao de migracoes, RLS, contagens e totais.

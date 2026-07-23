@@ -7,6 +7,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { activeOrganizationSchema } from '@compras/contracts';
 
 import type { RequestWithIdentity } from '../domain/identity.js';
 import { OrganizationsRepository } from '../organizations/organizations.repository.js';
@@ -28,15 +29,20 @@ export class OrganizationAccessGuard implements CanActivate {
     if (typeof organizationId !== 'string' || !organizationId) {
       throw new BadRequestException('x-organization-id header is required.');
     }
+    const parsedOrganization = activeOrganizationSchema.safeParse({ organizationId });
+    if (!parsedOrganization.success) {
+      throw new BadRequestException('x-organization-id header must be a valid UUID.');
+    }
+    const activeOrganizationId = parsedOrganization.data.organizationId;
 
     const routeOrganizationId = request.params['organizationId'];
-    if (routeOrganizationId && routeOrganizationId !== organizationId) {
+    if (routeOrganizationId && routeOrganizationId !== activeOrganizationId) {
       throw new BadRequestException('Organization header and route must match.');
     }
 
     const organization = await this.organizations.findAccessible(
       request.user,
-      organizationId,
+      activeOrganizationId,
     );
     if (!organization) {
       throw new ForbiddenException('Organization is not available to this user.');

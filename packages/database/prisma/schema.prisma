@@ -177,6 +177,7 @@ model CostCenter {
   allocations    CostAllocation[]
 
   @@unique([organizationId, code])
+  @@unique([organizationId, id])
   @@index([organizationId, active])
   @@map("cost_centers")
 }
@@ -198,11 +199,13 @@ model Supplier {
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
   organization        Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  defaultCostCenter   CostCenter?     @relation(fields: [defaultCostCenterId], references: [id], onDelete: SetNull)
+  /// The migration uses PostgreSQL column-specific SET NULL for defaultCostCenterId.
+  defaultCostCenter   CostCenter?     @relation(fields: [organizationId, defaultCostCenterId], references: [organizationId, id], onDelete: NoAction)
   prices              SupplierPrice[]
   purchases           Purchase[]
 
   @@unique([organizationId, document])
+  @@unique([organizationId, id])
   @@index([organizationId, status, legalName])
   @@map("suppliers")
 }
@@ -225,7 +228,7 @@ model SupplierPrice {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier        Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplier        Supplier     @relation(fields: [organizationId, supplierId], references: [organizationId, id], onDelete: Cascade)
 
   @@unique([organizationId, supplierId, itemCode])
   @@index([organizationId, supplierId, status])
@@ -252,12 +255,13 @@ model Purchase {
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
   organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier          Supplier          @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  supplier          Supplier          @relation(fields: [organizationId, supplierId], references: [organizationId, id], onDelete: Restrict)
   items             PurchaseItem[]
   installments      Installment[]
   invoiceDocuments  InvoiceDocument[]
 
   @@unique([organizationId, number])
+  @@unique([organizationId, id])
   @@unique([organizationId, supplierId, invoiceNumber])
   @@unique([organizationId, source, sourceReference])
   @@index([organizationId, issuedAt])
@@ -284,6 +288,7 @@ model GoogleSheetsIntegration {
   organization          Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   syncRuns              SheetSyncRun[]
 
+  @@unique([organizationId, id])
   @@map("google_sheets_integrations")
 }
 
@@ -302,7 +307,7 @@ model SheetSyncRun {
   createdAt      DateTime                @default(now()) @map("created_at")
   appliedAt      DateTime?               @map("applied_at")
   organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  integration    GoogleSheetsIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  integration    GoogleSheetsIntegration @relation(fields: [organizationId, integrationId], references: [organizationId, id], onDelete: Cascade)
   createdBy      User?                   @relation("SheetSyncRunCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt])
@@ -323,10 +328,12 @@ model PurchaseItem {
   total           Decimal          @db.Decimal(14, 2)
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
-  purchase        Purchase         @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  costCenter      CostCenter?      @relation(fields: [costCenterId], references: [id], onDelete: SetNull)
+  purchase        Purchase         @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  /// The migration uses PostgreSQL column-specific SET NULL for costCenterId.
+  costCenter      CostCenter?      @relation(fields: [organizationId, costCenterId], references: [organizationId, id], onDelete: NoAction)
   allocations     CostAllocation[]
 
+  @@unique([organizationId, id])
   @@index([organizationId, purchaseId])
   @@index([organizationId, costCenterId])
   @@map("purchase_items")
@@ -339,8 +346,8 @@ model CostAllocation {
   costCenterId   String       @map("cost_center_id") @db.Uuid
   percentage     Decimal      @db.Decimal(7, 4)
   amount         Decimal      @db.Decimal(14, 2)
-  purchaseItem   PurchaseItem @relation(fields: [purchaseItemId], references: [id], onDelete: Cascade)
-  costCenter     CostCenter   @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
+  purchaseItem   PurchaseItem @relation(fields: [organizationId, purchaseItemId], references: [organizationId, id], onDelete: Cascade)
+  costCenter     CostCenter   @relation(fields: [organizationId, costCenterId], references: [organizationId, id], onDelete: Restrict)
 
   @@unique([purchaseItemId, costCenterId])
   @@index([organizationId, costCenterId])
@@ -355,7 +362,7 @@ model Installment {
   dueDate        DateTime  @map("due_date") @db.Date
   amount         Decimal   @db.Decimal(14, 2)
   paidAt         DateTime? @map("paid_at") @db.Date
-  purchase       Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchase       Purchase  @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
 
   @@unique([purchaseId, sequence])
   @@index([organizationId, dueDate])
@@ -390,7 +397,8 @@ model InvoiceDocument {
   reviewedAt     DateTime?             @map("reviewed_at")
   importedAt     DateTime?             @map("imported_at")
   organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  purchase       Purchase?             @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  /// The migration uses PostgreSQL column-specific SET NULL for purchaseId.
+  purchase       Purchase?             @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: NoAction)
   createdBy      User?                 @relation("InvoiceDocumentCreator", fields: [createdById], references: [id], onDelete: SetNull)
   reviewedBy     User?                 @relation("InvoiceDocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
   importedBy     User?                 @relation("InvoiceDocumentImporter", fields: [importedById], references: [id], onDelete: SetNull)

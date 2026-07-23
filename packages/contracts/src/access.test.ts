@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { hasOrganizationPermission } from './access.js';
+import {
+  hasAccessPermission,
+  hasOrganizationPermission,
+} from './access.js';
 
 describe('organization access', () => {
   it('allows a buyer to operate purchases', () => {
@@ -18,6 +21,24 @@ describe('organization access', () => {
 
   it('does not grant platform management to company roles', () => {
     expect(hasOrganizationPermission('ORGANIZATION_ADMIN', 'platform:manage')).toBe(false);
+  });
+
+  it('grants every permission to the independent platform owner', () => {
+    expect(hasAccessPermission(['PLATFORM_OWNER'], undefined, 'platform:manage')).toBe(true);
+    expect(
+      hasAccessPermission(
+        ['PLATFORM_OWNER'],
+        'REPORT_VIEWER',
+        'integration:write',
+      ),
+    ).toBe(true);
+  });
+
+  it('uses the organization permission matrix for company users', () => {
+    expect(hasAccessPermission([], 'BUYER', 'purchase:write')).toBe(true);
+    expect(hasAccessPermission([], 'BUYER', 'integration:write')).toBe(false);
+    expect(hasAccessPermission([], 'REPORT_VIEWER', 'invoice:write')).toBe(false);
+    expect(hasAccessPermission([], undefined, 'dashboard:read')).toBe(false);
   });
 });
 

@@ -13,6 +13,8 @@ Navegador
 
 O front-end nunca recebe a chave privilegiada do banco. A API valida o token do Supabase, a identidade local, a empresa ativa, o papel e a permissao antes de executar operacoes.
 
+Um contrato automatizado inventaria todos os controllers da API. Rotas operacionais precisam combinar `AuthGuard`, `OrganizationAccessGuard`, `PermissionsGuard` e uma permissao declarada; saude, conclusao do perfil e administracao global possuem politicas excepcionais explicitas. Um novo controller sem classificacao faz a suite falhar.
+
 Respostas da API usam `Cache-Control: no-store`, e a interface desativa o cache nas requisicoes operacionais. Isso evita reutilizar identidade, permissoes, indicadores ou dados empresariais depois de uma troca de sessao ou empresa.
 
 O navegador nao acessa tabelas operacionais pelo cliente Supabase. O Row Level Security fica habilitado sem politicas para `anon` e `authenticated`, e os privilegios de `PUBLIC`, `anon` e `authenticated` sao revogados. Somente a API usa a conexao PostgreSQL protegida. O CI consulta o catalogo do PostgreSQL e falha se uma tabela da aplicacao for criada sem RLS.
@@ -21,11 +23,13 @@ O cadastro de identidade separa o e-mail autenticado do nome exibido na platafor
 
 ## Multiempresa
 
-Um usuario pode participar de varias organizacoes por meio de `OrganizationMembership`. Cada requisicao autenticada possui uma empresa ativa. Todas as entidades operacionais carregam `organizationId` e sao filtradas por esse identificador.
+Um usuario pode participar de varias organizacoes por meio de `OrganizationMembership`. Cada requisicao autenticada possui uma empresa ativa. O cabecalho `x-organization-id` deve ser um UUID valido, precisa coincidir com o tenant presente na rota e somente e promovido ao contexto ativo depois da verificacao do vinculo. Todas as entidades operacionais carregam `organizationId` e sao filtradas por esse identificador.
 
 O papel global `PLATFORM_OWNER` fica separado dos papeis da organizacao. Isso impede que um administrador de cliente promova usuarios para administrar a plataforma inteira.
 
 Os e-mails autorizados a receber o papel global ficam em `PLATFORM_OWNER_EMAILS`, configurado somente no back-end. Contas como `compras@humanclinic.com.br` permanecem vinculadas apenas a empresa cliente.
+
+API e interface consomem a mesma matriz compartilhada de permissoes. O menu usa permissoes de leitura, e cada tela recebe capacidades especificas de escrita; por exemplo, o comprador opera compras e cadastros, mas nao recebe controles de sincronizacao porque nao possui `integration:write`. O leitor de relatorios permanece somente leitura, enquanto o proprietario global recebe todas as capacidades sem depender do papel na empresa ativa.
 
 ## Papeis iniciais
 
@@ -46,7 +50,7 @@ O modo `demo` usa repositorios em memoria com os mesmos contratos das implementa
 
 O cadastro da organizacao mantem nome exibido, razao social, CNPJ, contato e endereco. Esses dados pertencem ao tenant e somente o proprietario global ou um administrador da propria empresa pode altera-los.
 
-As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor.
+As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor. Relacoes operacionais tambem usam chaves estrangeiras compostas por `organization_id` e pelo identificador do registro, impedindo que fornecedor, centro de custo, compra, item, rateio, parcela, nota fiscal ou sincronizacao seja ligado a outra empresa mesmo por uma gravacao direta no banco.
 
 ## Sincronizacao com Google Sheets
 

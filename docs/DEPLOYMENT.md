@@ -55,7 +55,7 @@ Configure os seguintes valores no gerenciador de segredos da hospedagem:
 | `NODE_ENV` | `production` |
 | `DEMO_MODE` | `false` |
 | `APP_WEB_URL` | origem HTTPS exata da interface |
-| `CORS_ORIGIN` | lista explicita que inclui `APP_WEB_URL` |
+| `CORS_ORIGIN` | lista explicita de origens HTTPS que inclui `APP_WEB_URL` |
 | `DATABASE_URL` | conexao PostgreSQL protegida |
 | `SUPABASE_URL` | origem HTTPS do projeto |
 | `SUPABASE_PUBLISHABLE_KEY` | chave publica usada para validar o contexto |
@@ -65,6 +65,8 @@ Configure os seguintes valores no gerenciador de segredos da hospedagem:
 | `TRUST_PROXY` | `true` apenas atras de proxy confiavel |
 | `INVOICE_STORAGE_BUCKET` | bucket privado, por padrao `invoice-documents` |
 | `OCR_LANGUAGE_DATA_PATH` | sobrescrita opcional; a imagem ja inclui o modelo portugues |
+
+Com `NODE_ENV=production`, a API encerra a inicializacao se `DEMO_MODE` nao for `false`, se `REQUIRE_VERIFIED_EMAIL` nao for `true` ou se qualquer entrada de `CORS_ORIGIN` usar HTTP. Essa verificacao ocorre antes de abrir a porta da aplicacao.
 
 Para Google Sheets, configure somente uma das variaveis `GOOGLE_SERVICE_ACCOUNT_JSON` ou `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64`. O JSON nunca deve ser montado na interface web ou gravado no banco.
 

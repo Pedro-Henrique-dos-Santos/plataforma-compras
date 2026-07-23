@@ -53,7 +53,7 @@ jobs:
             --security-opt no-new-privileges \
             --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --env DEMO_MODE=true \
-            --env NODE_ENV=production \
+            --env NODE_ENV=test \
             --publish 3333:3333 \
             e-gestao-compras-api:ci
           for attempt in $(seq 1 60); do

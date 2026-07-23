@@ -16,10 +16,18 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
   const demoMode = booleanValue(raw['DEMO_MODE'], nodeEnvironment !== 'production');
   environment['NODE_ENV'] = nodeEnvironment;
   environment['DEMO_MODE'] = String(demoMode);
-  environment['REQUIRE_VERIFIED_EMAIL'] = String(
-    booleanValue(raw['REQUIRE_VERIFIED_EMAIL'], !demoMode),
+  const requireVerifiedEmail = booleanValue(
+    raw['REQUIRE_VERIFIED_EMAIL'],
+    !demoMode,
   );
+  environment['REQUIRE_VERIFIED_EMAIL'] = String(requireVerifiedEmail);
   environment['TRUST_PROXY'] = String(booleanValue(raw['TRUST_PROXY'], false));
+  if (nodeEnvironment === 'production' && demoMode) {
+    throw new Error('DEMO_MODE must be false in production.');
+  }
+  if (nodeEnvironment === 'production' && !requireVerifiedEmail) {
+    throw new Error('REQUIRE_VERIFIED_EMAIL must be true in production.');
+  }
 
   const invoiceStorageBucket =
     textValue(raw['INVOICE_STORAGE_BUCKET']) || 'invoice-documents';
@@ -82,6 +90,12 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
     }
     if (!normalizedCorsOrigins.includes(appWebOrigin)) {
       throw new Error('CORS_ORIGIN must include APP_WEB_URL.');
+    }
+    if (
+      nodeEnvironment === 'production' &&
+      normalizedCorsOrigins.some((origin) => !origin.startsWith('https://'))
+    ) {
+      throw new Error('Every CORS_ORIGIN must use HTTPS in production.');
     }
 
     const supabaseOrigin = normalizeHttpOrigin(textValue(raw['SUPABASE_URL']));

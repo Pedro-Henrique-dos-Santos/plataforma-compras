@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
-import type { OrganizationSummary, UserContext } from '@compras/contracts';
+import {
+  hasAccessPermission,
+  type OrganizationSummary,
+  type Permission,
+  type UserContext,
+} from '@compras/contracts';
 import {
   BarChart3,
   Building2,
@@ -54,18 +59,38 @@ const navigation: Array<{
   id: ViewId;
   label: string;
   icon: typeof BarChart3;
-  visibility?: 'platform-owner' | 'organization-admin';
+  permission: Permission;
 }> = [
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-  { id: 'reports', label: 'Relatorios', icon: FileText },
-  { id: 'purchases', label: 'Compras', icon: ShoppingCart },
-  { id: 'suppliers', label: 'Fornecedores', icon: Store },
-  { id: 'prices', label: 'Tabela de precos', icon: Tags },
-  { id: 'cost-centers', label: 'Centros de custo', icon: Landmark },
-  { id: 'invoice-documents', label: 'Notas fiscais', icon: FileScan },
-  { id: 'integrations', label: 'Automacoes', icon: Workflow },
-  { id: 'organizations', label: 'Empresas', icon: Building2, visibility: 'organization-admin' },
-  { id: 'access', label: 'Acessos', icon: ShieldCheck, visibility: 'organization-admin' },
+  { id: 'dashboard', label: 'Dashboard', icon: BarChart3, permission: 'dashboard:read' },
+  { id: 'reports', label: 'Relatorios', icon: FileText, permission: 'purchase:read' },
+  { id: 'purchases', label: 'Compras', icon: ShoppingCart, permission: 'purchase:read' },
+  { id: 'suppliers', label: 'Fornecedores', icon: Store, permission: 'supplier:read' },
+  { id: 'prices', label: 'Tabela de precos', icon: Tags, permission: 'price:read' },
+  {
+    id: 'cost-centers',
+    label: 'Centros de custo',
+    icon: Landmark,
+    permission: 'cost-center:read',
+  },
+  {
+    id: 'invoice-documents',
+    label: 'Notas fiscais',
+    icon: FileScan,
+    permission: 'invoice:read',
+  },
+  {
+    id: 'integrations',
+    label: 'Automacoes',
+    icon: Workflow,
+    permission: 'integration:read',
+  },
+  {
+    id: 'organizations',
+    label: 'Empresas',
+    icon: Building2,
+    permission: 'organization:manage',
+  },
+  { id: 'access', label: 'Acessos', icon: ShieldCheck, permission: 'member:manage' },
 ];
 
 const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
@@ -272,15 +297,13 @@ export function getVisibleNavigation(
   user: Pick<UserContext, 'platformRoles'>,
   activeOrganization: Pick<OrganizationSummary, 'role'>,
 ) {
-  const isPlatformOwner = user.platformRoles.includes('PLATFORM_OWNER');
-  const isOrganizationAdmin = activeOrganization.role === 'ORGANIZATION_ADMIN';
-  return navigation.filter((item) => {
-    if (item.visibility === 'platform-owner') return isPlatformOwner;
-    if (item.visibility === 'organization-admin') {
-      return isPlatformOwner || isOrganizationAdmin;
-    }
-    return true;
-  });
+  return navigation.filter((item) =>
+    hasAccessPermission(
+      user.platformRoles,
+      activeOrganization.role,
+      item.permission,
+    ),
+  );
 }
 
 function accountRole(isPlatformOwner: boolean, role: OrganizationSummary['role']): string {

@@ -41,6 +41,17 @@ test('verifies bundled Portuguese OCR data without network access', () => {
   assert.match(containersWorkflow, /resolvePortugueseOcrLanguageData/);
 });
 
+test('keeps the isolated API smoke test outside production mode', () => {
+  assert.match(
+    containersWorkflow,
+    /--env DEMO_MODE=true\s+\\\s+--env NODE_ENV=test/,
+  );
+  assert.doesNotMatch(
+    containersWorkflow,
+    /--env DEMO_MODE=true\s+\\\s+--env NODE_ENV=production/,
+  );
+});
+
 test('serves the SPA from an unprivileged web image with stable navigation', () => {
   assert.match(webDockerfile, /nginxinc\/nginx-unprivileged:stable-alpine/);
   assert.match(webDockerfile, /USER 101:101/);

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { validateDatabaseSecuritySnapshot } from './verify-deployed-database.mjs';
+import {
+  REQUIRED_TENANT_RELATIONS,
+  validateDatabaseSecuritySnapshot,
+} from './verify-deployed-database.mjs';
 
 const validSnapshot = {
   migrations: [
@@ -16,12 +19,14 @@ const validSnapshot = {
     { name: 'organizations', rlsEnabled: true },
     { name: 'purchases', rlsEnabled: true },
   ],
+  tenantRelations: REQUIRED_TENANT_RELATIONS,
 };
 
-test('accepts completed migrations, RLS and revoked browser-role grants', () => {
+test('accepts completed migrations, RLS, tenant relations and revoked browser-role grants', () => {
   assert.deepEqual(validateDatabaseSecuritySnapshot(validSnapshot), {
     migrations: 1,
     protectedTables: 2,
+    tenantRelations: 10,
   });
 });
 
@@ -82,5 +87,49 @@ test('rejects privileges inherited through the PostgreSQL PUBLIC role', () => {
         tableGrants: [{ grantee: 'PUBLIC', tableName: 'suppliers', privilege: 'SELECT' }],
       }),
     /PUBLIC:suppliers:SELECT/,
+  );
+});
+
+test('rejects a missing tenant-aware foreign key', () => {
+  assert.throws(
+    () =>
+      validateDatabaseSecuritySnapshot({
+        ...validSnapshot,
+        tenantRelations: validSnapshot.tenantRelations.slice(1),
+      }),
+    /suppliers_organization_id_default_cost_center_id_fkey/,
+  );
+});
+
+test('rejects a tenant foreign key with incomplete source columns', () => {
+  assert.throws(
+    () =>
+      validateDatabaseSecuritySnapshot({
+        ...validSnapshot,
+        tenantRelations: validSnapshot.tenantRelations.map((relation, index) =>
+          index === 0
+            ? { ...relation, sourceColumns: ['default_cost_center_id'] }
+            : relation,
+        ),
+      }),
+    /suppliers_organization_id_default_cost_center_id_fkey/,
+  );
+});
+
+test('rejects a tenant foreign key that would null the tenant column', () => {
+  assert.throws(
+    () =>
+      validateDatabaseSecuritySnapshot({
+        ...validSnapshot,
+        tenantRelations: validSnapshot.tenantRelations.map((relation, index) =>
+          index === 0
+            ? {
+                ...relation,
+                deleteSetColumns: ['organization_id', 'default_cost_center_id'],
+              }
+            : relation,
+        ),
+      }),
+    /suppliers_organization_id_default_cost_center_id_fkey/,
   );
 });
