@@ -4,9 +4,11 @@ dist/
 coverage/
 .vite/
 .turbo/
+*.tsbuildinfo
 __pycache__/
 *.py[cod]
 .tools/
+.codex/
 
 # Local credentials and environment files
 .env
@@ -23,6 +25,7 @@ Thumbs.db
 # Runtime output
 *.log
 tmp/
+backups/
 
 # Previous generated working directories; preserved under legacy/
 outputs/

@@ -6,6 +6,7 @@ import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module.js';
+import { requestObservabilityMiddleware } from './common/request-observability.middleware.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,10 +21,17 @@ async function bootstrap() {
     .map((origin) => origin.trim());
 
   app.setGlobalPrefix('api');
+  if (config.get<string>('TRUST_PROXY', 'false') === 'true') {
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  }
   app.use(helmet());
+  app.use(requestObservabilityMiddleware());
   app.enableCors({
     origin: corsOrigins,
-    credentials: true,
+    allowedHeaders: ['Authorization', 'Content-Type', 'x-organization-id', 'x-request-id'],
+    credentials: false,
+    exposedHeaders: ['Content-Disposition', 'x-request-id'],
+    maxAge: 600,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
   app.useGlobalPipes(
@@ -33,6 +41,7 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
+  app.enableShutdownHooks();
 
   await app.listen(port);
 }

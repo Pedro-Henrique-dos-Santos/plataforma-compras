@@ -1,6 +1,6 @@
 {
   "name": "plataforma-compras",
-  "version": "0.1.0",
+  "version": "0.10.0",
   "private": true,
   "description": "Plataforma multiempresa para gestao, inteligencia e controle de compras.",
   "packageManager": "pnpm@11.7.0",
@@ -13,13 +13,24 @@
     "dev:api": "pnpm --filter @compras/api dev",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --if-present test && node --test scripts/container-contracts.test.mjs scripts/github-workflow-security.test.mjs scripts/restore-drill.test.mjs scripts/supabase-bootstrap.test.mjs scripts/ui-acceptance-fixture.test.mjs scripts/verify-deployed-database.test.mjs scripts/verify-release.test.mjs",
+    "test:integration": "pnpm --filter @compras/api test:integration",
     "lint": "pnpm -r --if-present lint",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:generate": "pnpm --filter @compras/database prisma:generate",
     "db:validate": "pnpm --filter @compras/database prisma:validate",
+    "db:verify:deployed": "node scripts/verify-deployed-database.mjs",
     "db:migrate": "pnpm --filter @compras/database prisma:migrate",
+    "db:deploy": "pnpm --filter @compras/database prisma:deploy",
     "db:seed": "pnpm --filter @compras/database prisma:seed",
-    "db:studio": "pnpm --filter @compras/database prisma:studio"
+    "db:studio": "pnpm --filter @compras/database prisma:studio",
+    "db:backup": "node scripts/backup-database.mjs",
+    "db:backup:verify": "node scripts/verify-backup.mjs",
+    "db:restore:drill": "node scripts/restore-drill.mjs",
+    "supabase:bootstrap": "node scripts/supabase-bootstrap.mjs",
+    "load:smoke": "node scripts/load-smoke.mjs",
+    "ui:acceptance:provision": "node --env-file-if-exists=.env.staging.local scripts/ui-acceptance-fixture.mjs provision",
+    "ui:acceptance:cleanup": "node --env-file-if-exists=.env.staging.local scripts/ui-acceptance-fixture.mjs cleanup",
+    "release:verify": "node scripts/verify-release.mjs"
   }
 }

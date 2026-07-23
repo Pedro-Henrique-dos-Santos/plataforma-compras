@@ -51,18 +51,54 @@ enum AuditAction {
   SWITCH_ORGANIZATION
 }
 
+enum IntegrationHealth {
+  NEVER_SYNCED
+  HEALTHY
+  ERROR
+}
+
+enum SheetSyncRunStatus {
+  PREVIEWED
+  APPLYING
+  APPLIED
+  FAILED
+}
+
+enum InvoiceDocumentStatus {
+  PROCESSING
+  REVIEW_REQUIRED
+  READY
+  OUT_OF_SCOPE
+  IMPORTING
+  IMPORTED
+  FAILED
+}
+
+enum InvoiceDocumentKind {
+  PDF
+  XML
+}
+
 model User {
-  id                    String                   @id @default(uuid()) @db.Uuid
-  authUserId            String                   @unique @map("auth_user_id") @db.Uuid
-  email                 String                   @unique @db.VarChar(255)
-  name                  String                   @db.VarChar(120)
-  active                Boolean                  @default(true)
-  createdAt             DateTime                 @default(now()) @map("created_at")
-  updatedAt             DateTime                 @updatedAt @map("updated_at")
-  platformRoles         PlatformRoleAssignment[]
-  memberships           OrganizationMembership[]
-  auditEvents           AuditLog[]                @relation("AuditActor")
-  createdOrganizations  Organization[]            @relation("OrganizationCreator")
+  id                       String                   @id @default(uuid()) @db.Uuid
+  authUserId               String                   @unique @map("auth_user_id") @db.Uuid
+  email                    String                   @unique @db.VarChar(255)
+  name                     String                   @db.VarChar(120)
+  active                   Boolean                  @default(true)
+  termsAcceptedAt          DateTime?                @map("terms_accepted_at")
+  termsVersion             String?                  @map("terms_version") @db.VarChar(40)
+  privacyAcceptedAt        DateTime?                @map("privacy_accepted_at")
+  privacyVersion           String?                  @map("privacy_version") @db.VarChar(40)
+  createdAt                DateTime                 @default(now()) @map("created_at")
+  updatedAt                DateTime                 @updatedAt @map("updated_at")
+  platformRoles            PlatformRoleAssignment[]
+  memberships              OrganizationMembership[]
+  auditEvents              AuditLog[]               @relation("AuditActor")
+  createdOrganizations     Organization[]           @relation("OrganizationCreator")
+  sheetSyncRuns            SheetSyncRun[]           @relation("SheetSyncRunCreator")
+  createdInvoiceDocuments  InvoiceDocument[]        @relation("InvoiceDocumentCreator")
+  reviewedInvoiceDocuments InvoiceDocument[]        @relation("InvoiceDocumentReviewer")
+  importedInvoiceDocuments InvoiceDocument[]        @relation("InvoiceDocumentImporter")
 
   @@map("users")
 }
@@ -79,22 +115,34 @@ model PlatformRoleAssignment {
 }
 
 model Organization {
-  id               String                   @id @default(uuid()) @db.Uuid
-  name             String                   @db.VarChar(120)
-  slug             String                   @unique @db.VarChar(80)
-  document         String?                  @unique @db.VarChar(18)
-  active           Boolean                  @default(true)
-  createdById      String?                  @map("created_by_id") @db.Uuid
-  createdAt        DateTime                 @default(now()) @map("created_at")
-  updatedAt        DateTime                 @updatedAt @map("updated_at")
-  createdBy        User?                    @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  memberships      OrganizationMembership[]
-  costCenters      CostCenter[]
-  suppliers        Supplier[]
-  supplierPrices   SupplierPrice[]
-  purchases        Purchase[]
-  invoiceDocuments InvoiceDocument[]
-  auditLogs        AuditLog[]
+  id                      String                   @id @default(uuid()) @db.Uuid
+  name                    String                   @db.VarChar(120)
+  legalName               String?                  @map("legal_name") @db.VarChar(160)
+  slug                    String                   @unique @db.VarChar(80)
+  document                String?                  @unique @db.VarChar(18)
+  email                   String?                  @db.VarChar(255)
+  phone                   String?                  @db.VarChar(30)
+  postalCode              String?                  @map("postal_code") @db.VarChar(8)
+  street                  String?                  @db.VarChar(160)
+  addressNumber           String?                  @map("address_number") @db.VarChar(30)
+  addressComplement       String?                  @map("address_complement") @db.VarChar(100)
+  district                String?                  @db.VarChar(100)
+  city                    String?                  @db.VarChar(100)
+  state                   String?                  @db.Char(2)
+  active                  Boolean                  @default(true)
+  createdById             String?                  @map("created_by_id") @db.Uuid
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+  createdBy               User?                    @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  memberships             OrganizationMembership[]
+  costCenters             CostCenter[]
+  suppliers               Supplier[]
+  supplierPrices          SupplierPrice[]
+  purchases               Purchase[]
+  invoiceDocuments        InvoiceDocument[]
+  auditLogs               AuditLog[]
+  googleSheetsIntegration GoogleSheetsIntegration?
+  sheetSyncRuns           SheetSyncRun[]
 
   @@map("organizations")
 }
@@ -116,14 +164,14 @@ model OrganizationMembership {
 }
 
 model CostCenter {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  code           String       @db.VarChar(40)
-  name           String       @db.VarChar(120)
-  active         Boolean      @default(true)
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  code           String           @db.VarChar(40)
+  name           String           @db.VarChar(120)
+  active         Boolean          @default(true)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   suppliers      Supplier[]
   purchaseItems  PurchaseItem[]
   allocations    CostAllocation[]
@@ -134,23 +182,23 @@ model CostCenter {
 }
 
 model Supplier {
-  id                  String         @id @default(uuid()) @db.Uuid
-  organizationId      String         @map("organization_id") @db.Uuid
-  legalName           String         @map("legal_name") @db.VarChar(160)
-  tradeName           String?        @map("trade_name") @db.VarChar(160)
-  document            String?        @db.VarChar(18)
-  category            String?        @db.VarChar(100)
-  operationNature     String?        @map("operation_nature") @db.VarChar(100)
-  paymentMethod       String?        @map("payment_method") @db.VarChar(80)
-  defaultCostCenterId String?        @map("default_cost_center_id") @db.Uuid
-  email               String?        @db.VarChar(255)
-  phone               String?        @db.VarChar(30)
-  status              SupplierStatus @default(ACTIVE)
+  id                  String          @id @default(uuid()) @db.Uuid
+  organizationId      String          @map("organization_id") @db.Uuid
+  legalName           String          @map("legal_name") @db.VarChar(160)
+  tradeName           String?         @map("trade_name") @db.VarChar(160)
+  document            String?         @db.VarChar(18)
+  category            String?         @db.VarChar(100)
+  operationNature     String?         @map("operation_nature") @db.VarChar(100)
+  paymentMethod       String?         @map("payment_method") @db.VarChar(80)
+  defaultCostCenterId String?         @map("default_cost_center_id") @db.Uuid
+  email               String?         @db.VarChar(255)
+  phone               String?         @db.VarChar(30)
+  status              SupplierStatus  @default(ACTIVE)
   notes               String?
-  createdAt           DateTime       @default(now()) @map("created_at")
-  updatedAt           DateTime       @updatedAt @map("updated_at")
-  organization        Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  defaultCostCenter   CostCenter?    @relation(fields: [defaultCostCenterId], references: [id], onDelete: SetNull)
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+  organization        Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  defaultCostCenter   CostCenter?     @relation(fields: [defaultCostCenterId], references: [id], onDelete: SetNull)
   prices              SupplierPrice[]
   purchases           Purchase[]
 
@@ -160,73 +208,124 @@ model Supplier {
 }
 
 model SupplierPrice {
-  id                String       @id @default(uuid()) @db.Uuid
-  organizationId    String       @map("organization_id") @db.Uuid
-  supplierId        String       @map("supplier_id") @db.Uuid
-  itemCode          String?      @map("item_code") @db.VarChar(80)
-  description       String       @db.VarChar(240)
-  normalizedName    String       @map("normalized_name") @db.VarChar(240)
-  unit              String?      @db.VarChar(30)
-  initialPrice      Decimal?     @map("initial_price") @db.Decimal(14, 4)
-  negotiatedPrice   Decimal      @map("negotiated_price") @db.Decimal(14, 4)
-  validFrom         DateTime?    @map("valid_from") @db.Date
-  validUntil        DateTime?    @map("valid_until") @db.Date
-  status            PriceStatus  @default(ACTIVE)
-  source             String?      @db.VarChar(40)
-  notes              String?
-  createdAt          DateTime     @default(now()) @map("created_at")
-  updatedAt          DateTime     @updatedAt @map("updated_at")
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier           Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  supplierId      String       @map("supplier_id") @db.Uuid
+  itemCode        String?      @map("item_code") @db.VarChar(80)
+  description     String       @db.VarChar(240)
+  normalizedName  String       @map("normalized_name") @db.VarChar(240)
+  unit            String?      @db.VarChar(30)
+  initialPrice    Decimal?     @map("initial_price") @db.Decimal(14, 4)
+  negotiatedPrice Decimal      @map("negotiated_price") @db.Decimal(14, 4)
+  validFrom       DateTime?    @map("valid_from") @db.Date
+  validUntil      DateTime?    @map("valid_until") @db.Date
+  status          PriceStatus  @default(ACTIVE)
+  source          String       @default("MANUAL") @db.VarChar(40)
+  notes           String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier        Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
+  @@unique([organizationId, supplierId, itemCode])
   @@index([organizationId, supplierId, status])
   @@index([organizationId, normalizedName])
   @@map("supplier_prices")
 }
 
 model Purchase {
-  id               String          @id @default(uuid()) @db.Uuid
-  organizationId   String          @map("organization_id") @db.Uuid
-  supplierId       String          @map("supplier_id") @db.Uuid
-  number           String          @db.VarChar(40)
-  issuedAt         DateTime        @map("issued_at") @db.Date
-  status           PurchaseStatus  @default(REGISTERED)
-  category         String?         @db.VarChar(100)
-  operationNature  String?         @map("operation_nature") @db.VarChar(100)
-  paymentMethod    String?         @map("payment_method") @db.VarChar(80)
-  total            Decimal         @db.Decimal(14, 2)
-  negotiatedSavings Decimal        @default(0) @map("negotiated_savings") @db.Decimal(14, 2)
-  notes            String?
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
-  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier         Supplier        @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  items            PurchaseItem[]
-  installments     Installment[]
-  invoiceDocuments InvoiceDocument[]
+  id                String            @id @default(uuid()) @db.Uuid
+  organizationId    String            @map("organization_id") @db.Uuid
+  supplierId        String            @map("supplier_id") @db.Uuid
+  number            String            @db.VarChar(40)
+  invoiceNumber     String?           @map("invoice_number") @db.VarChar(60)
+  issuedAt          DateTime?         @map("issued_at") @db.Date
+  status            PurchaseStatus    @default(REGISTERED)
+  category          String?           @db.VarChar(100)
+  operationNature   String?           @map("operation_nature") @db.VarChar(100)
+  paymentMethod     String?           @map("payment_method") @db.VarChar(80)
+  total             Decimal           @db.Decimal(14, 2)
+  negotiatedSavings Decimal           @default(0) @map("negotiated_savings") @db.Decimal(14, 2)
+  source            String            @default("MANUAL") @db.VarChar(40)
+  sourceReference   String?           @map("source_reference") @db.VarChar(120)
+  notes             String?
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier          Supplier          @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items             PurchaseItem[]
+  installments      Installment[]
+  invoiceDocuments  InvoiceDocument[]
 
   @@unique([organizationId, number])
+  @@unique([organizationId, supplierId, invoiceNumber])
+  @@unique([organizationId, source, sourceReference])
   @@index([organizationId, issuedAt])
   @@index([organizationId, supplierId])
   @@map("purchases")
 }
 
+model GoogleSheetsIntegration {
+  id                    String            @id @default(uuid()) @db.Uuid
+  organizationId        String            @unique @map("organization_id") @db.Uuid
+  spreadsheetId         String            @map("spreadsheet_id") @db.VarChar(160)
+  spreadsheetTitle      String?           @map("spreadsheet_title") @db.VarChar(160)
+  itemsSheetName        String            @default("Itens do Pedido") @map("items_sheet_name") @db.VarChar(120)
+  installmentsSheetName String            @default("Parcelas do Pedido") @map("installments_sheet_name") @db.VarChar(120)
+  suppliersSheetName    String            @default("Cadastro de Fornecedores") @map("suppliers_sheet_name") @db.VarChar(120)
+  pricesSheetName       String            @default("Tabela de Precos Negociados") @map("prices_sheet_name") @db.VarChar(120)
+  headerRow             Int               @default(1) @map("header_row")
+  enabled               Boolean           @default(true)
+  lastStatus            IntegrationHealth @default(NEVER_SYNCED) @map("last_status")
+  lastSyncedAt          DateTime?         @map("last_synced_at")
+  lastError             String?           @map("last_error")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  organization          Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  syncRuns              SheetSyncRun[]
+
+  @@map("google_sheets_integrations")
+}
+
+model SheetSyncRun {
+  id             String                  @id @default(uuid()) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  integrationId  String                  @map("integration_id") @db.Uuid
+  createdById    String?                 @map("created_by_id") @db.Uuid
+  status         SheetSyncRunStatus      @default(PREVIEWED)
+  snapshotHash   String                  @map("snapshot_hash") @db.Char(64)
+  sourceRowCount Int                     @map("source_row_count")
+  preview        Json
+  payload        Json
+  result         Json?
+  error          String?
+  createdAt      DateTime                @default(now()) @map("created_at")
+  appliedAt      DateTime?               @map("applied_at")
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration    GoogleSheetsIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  createdBy      User?                   @relation("SheetSyncRunCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([integrationId, status])
+  @@map("sheet_sync_runs")
+}
+
 model PurchaseItem {
-  id               String           @id @default(uuid()) @db.Uuid
-  organizationId   String           @map("organization_id") @db.Uuid
-  purchaseId       String           @map("purchase_id") @db.Uuid
-  costCenterId     String?          @map("cost_center_id") @db.Uuid
-  description      String           @db.VarChar(240)
-  quantity         Decimal          @default(1) @db.Decimal(14, 4)
-  unit             String?          @db.VarChar(30)
-  unitPrice        Decimal          @map("unit_price") @db.Decimal(14, 4)
-  negotiatedPrice  Decimal?         @map("negotiated_price") @db.Decimal(14, 4)
-  total            Decimal          @db.Decimal(14, 2)
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
-  purchase         Purchase         @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  costCenter       CostCenter?      @relation(fields: [costCenterId], references: [id], onDelete: SetNull)
-  allocations      CostAllocation[]
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  purchaseId      String           @map("purchase_id") @db.Uuid
+  costCenterId    String?          @map("cost_center_id") @db.Uuid
+  description     String           @db.VarChar(240)
+  quantity        Decimal          @default(1) @db.Decimal(14, 4)
+  unit            String?          @db.VarChar(30)
+  unitPrice       Decimal          @map("unit_price") @db.Decimal(14, 4)
+  negotiatedPrice Decimal?         @map("negotiated_price") @db.Decimal(14, 4)
+  total           Decimal          @db.Decimal(14, 2)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  purchase        Purchase         @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  costCenter      CostCenter?      @relation(fields: [costCenterId], references: [id], onDelete: SetNull)
+  allocations     CostAllocation[]
 
   @@index([organizationId, purchaseId])
   @@index([organizationId, costCenterId])
@@ -249,14 +348,14 @@ model CostAllocation {
 }
 
 model Installment {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  purchaseId     String   @map("purchase_id") @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  purchaseId     String    @map("purchase_id") @db.Uuid
   sequence       Int
-  dueDate        DateTime @map("due_date") @db.Date
-  amount         Decimal  @db.Decimal(14, 2)
+  dueDate        DateTime  @map("due_date") @db.Date
+  amount         Decimal   @db.Decimal(14, 2)
   paidAt         DateTime? @map("paid_at") @db.Date
-  purchase       Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchase       Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
   @@unique([purchaseId, sequence])
   @@index([organizationId, dueDate])
@@ -264,37 +363,56 @@ model Installment {
 }
 
 model InvoiceDocument {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  purchaseId     String?      @map("purchase_id") @db.Uuid
-  invoiceNumber  String?      @map("invoice_number") @db.VarChar(60)
-  accessKey      String?      @map("access_key") @db.VarChar(60)
-  fileName       String       @map("file_name") @db.VarChar(255)
-  mimeType       String       @map("mime_type") @db.VarChar(100)
-  storagePath    String       @map("storage_path") @db.VarChar(500)
-  parser         String?      @db.VarChar(80)
-  confidence     Decimal?     @db.Decimal(5, 4)
-  parsedData     Json?        @map("parsed_data")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  purchase       Purchase?    @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  purchaseId     String?               @map("purchase_id") @db.Uuid
+  createdById    String?               @map("created_by_id") @db.Uuid
+  reviewedById   String?               @map("reviewed_by_id") @db.Uuid
+  importedById   String?               @map("imported_by_id") @db.Uuid
+  invoiceNumber  String?               @map("invoice_number") @db.VarChar(60)
+  accessKey      String?               @map("access_key") @db.VarChar(60)
+  fileName       String                @map("file_name") @db.VarChar(255)
+  mimeType       String                @map("mime_type") @db.VarChar(100)
+  kind           InvoiceDocumentKind
+  size           Int                   @default(0)
+  sha256         String?               @db.Char(64)
+  storagePath    String                @map("storage_path") @db.VarChar(500)
+  status         InvoiceDocumentStatus @default(PROCESSING)
+  parser         String?               @db.VarChar(80)
+  confidence     Decimal?              @db.Decimal(5, 4)
+  parsedData     Json?                 @map("parsed_data")
+  reviewData     Json?                 @map("review_data")
+  warnings       Json                  @default("[]")
+  errors         Json                  @default("[]")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+  processedAt    DateTime?             @map("processed_at")
+  reviewedAt     DateTime?             @map("reviewed_at")
+  importedAt     DateTime?             @map("imported_at")
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase       Purchase?             @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  createdBy      User?                 @relation("InvoiceDocumentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedBy     User?                 @relation("InvoiceDocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  importedBy     User?                 @relation("InvoiceDocumentImporter", fields: [importedById], references: [id], onDelete: SetNull)
 
+  @@unique([organizationId, sha256])
   @@index([organizationId, invoiceNumber])
   @@index([organizationId, accessKey])
+  @@index([organizationId, status, createdAt])
   @@map("invoice_documents")
 }
 
 model AuditLog {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String?      @map("organization_id") @db.Uuid
-  actorUserId    String?      @map("actor_user_id") @db.Uuid
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String?       @map("organization_id") @db.Uuid
+  actorUserId    String?       @map("actor_user_id") @db.Uuid
   action         AuditAction
-  resource       String       @db.VarChar(100)
-  resourceId     String?      @map("resource_id") @db.VarChar(100)
-  requestId      String?      @map("request_id") @db.VarChar(100)
-  ipAddress      String?      @map("ip_address") @db.VarChar(64)
+  resource       String        @db.VarChar(100)
+  resourceId     String?       @map("resource_id") @db.VarChar(100)
+  requestId      String?       @map("request_id") @db.VarChar(100)
+  ipAddress      String?       @map("ip_address") @db.VarChar(64)
   metadata       Json?
-  createdAt      DateTime     @default(now()) @map("created_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   actor          User?         @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
@@ -302,4 +420,3 @@ model AuditLog {
   @@index([actorUserId, createdAt])
   @@map("audit_logs")
 }
-

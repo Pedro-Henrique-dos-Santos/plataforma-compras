@@ -1,38 +1,160 @@
-import { Injectable } from '@nestjs/common';
-import type { OrganizationSummary, UserContext } from '@compras/contracts';
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type {
+  CreateOrganizationInput,
+  InviteOrganizationMemberInput,
+  OrganizationMember,
+  OrganizationSummary,
+  UpdateOrganizationInput,
+  UpdateOrganizationMemberInput,
+  UserContext,
+} from '@compras/contracts';
 
-import { demoOrganizations } from '../demo/demo.data.js';
 import type { AuthenticatedIdentity } from '../domain/identity.js';
 import { isPlatformOwner } from '../domain/identity.js';
+import { MemberProvisioningService } from './member-provisioning.service.js';
+import { OrganizationsRepository } from './organizations.repository.js';
 
 @Injectable()
 export class OrganizationsService {
-  listForUser(user: AuthenticatedIdentity): OrganizationSummary[] {
-    if (isPlatformOwner(user.platformRoles)) {
-      return demoOrganizations;
-    }
+  constructor(
+    @Inject(OrganizationsRepository)
+    private readonly repository: OrganizationsRepository,
+    @Inject(MemberProvisioningService)
+    private readonly provisioning: MemberProvisioningService,
+  ) {}
 
-    // Membership persistence is connected in the Supabase integration phase.
-    return [];
+  listForUser(user: AuthenticatedIdentity): Promise<OrganizationSummary[]> {
+    return this.repository.listForUser(user);
   }
 
   findAccessible(
     user: AuthenticatedIdentity,
     organizationId: string,
-  ): OrganizationSummary | undefined {
-    return this.listForUser(user).find(
-      (organization) => organization.id === organizationId && organization.active,
-    );
+  ): Promise<OrganizationSummary | undefined> {
+    return this.repository.findAccessible(user, organizationId);
   }
 
-  getUserContext(user: AuthenticatedIdentity): UserContext {
+  async getUserContext(user: AuthenticatedIdentity): Promise<UserContext> {
     return {
       id: user.id,
       email: user.email,
       name: user.name,
+      termsAcceptedAt: user.termsAcceptedAt ?? null,
+      termsVersion: user.termsVersion ?? null,
+      privacyAcceptedAt: user.privacyAcceptedAt ?? null,
+      privacyVersion: user.privacyVersion ?? null,
       platformRoles: user.platformRoles,
-      organizations: this.listForUser(user),
+      organizations: await this.listForUser(user),
     };
   }
-}
 
+  async createOrganization(
+    actor: AuthenticatedIdentity,
+    input: CreateOrganizationInput,
+  ): Promise<OrganizationSummary> {
+    if (!isPlatformOwner(actor.platformRoles)) {
+      throw new ForbiddenException('Somente o proprietario global pode criar empresas.');
+    }
+    return this.repository.createOrganization(actor, input);
+  }
+
+  async updateOrganization(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: UpdateOrganizationInput,
+  ): Promise<OrganizationSummary> {
+    const organization = await this.assertAccessible(actor, organizationId);
+    if (!isPlatformOwner(actor.platformRoles) && organization.role !== 'ORGANIZATION_ADMIN') {
+      throw new ForbiddenException('Somente administradores podem alterar a empresa.');
+    }
+    return this.repository.updateOrganization(actor, organizationId, input);
+  }
+
+  async listMembers(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+  ): Promise<OrganizationMember[]> {
+    await this.assertAccessible(actor, organizationId);
+    return this.repository.listMembers(organizationId);
+  }
+
+  async inviteMember(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: InviteOrganizationMemberInput,
+  ): Promise<OrganizationMember> {
+    const organization = await this.assertAccessible(actor, organizationId);
+    const existing = await this.repository.findUserByEmail(input.email);
+    const name = input.name ?? existing?.name ?? this.nameFromEmail(input.email);
+    const provisioned = existing
+      ? { authUserId: existing.authUserId, status: 'ACTIVE' as const }
+      : await this.provisioning.invite({
+          email: input.email,
+          name,
+          organizationId,
+          organizationName: organization.name,
+        });
+
+    return this.repository.upsertMember(actor, organizationId, {
+      authUserId: provisioned.authUserId,
+      email: input.email,
+      name,
+      role: input.role,
+      status: provisioned.status,
+    });
+  }
+
+  async updateMember(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    membershipId: string,
+    input: UpdateOrganizationMemberInput,
+  ): Promise<OrganizationMember> {
+    await this.assertAccessible(actor, organizationId);
+    const current = await this.repository.findMember(organizationId, membershipId);
+    if (!current) {
+      throw new NotFoundException('Vinculo de usuario nao encontrado.');
+    }
+
+    const nextRole = input.role ?? current.role;
+    const nextStatus = input.status ?? current.status;
+    const removesActiveAdministrator =
+      current.role === 'ORGANIZATION_ADMIN' &&
+      current.status === 'ACTIVE' &&
+      (nextRole !== 'ORGANIZATION_ADMIN' || nextStatus !== 'ACTIVE');
+    if (
+      removesActiveAdministrator &&
+      (await this.repository.countActiveAdministrators(organizationId)) <= 1
+    ) {
+      throw new ConflictException('A empresa precisa manter ao menos um administrador ativo.');
+    }
+
+    return this.repository.updateMember(actor, organizationId, membershipId, input);
+  }
+
+  private async assertAccessible(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+  ): Promise<OrganizationSummary> {
+    const organization = await this.repository.findAccessible(actor, organizationId);
+    if (!organization) {
+      throw new ForbiddenException('Esta empresa nao esta disponivel para o usuario.');
+    }
+    return organization;
+  }
+
+  private nameFromEmail(email: string): string {
+    const localPart = email.split('@')[0] ?? 'Usuario';
+    const words = localPart.split(/[._-]+/).filter(Boolean);
+    const name = words
+      .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+      .join(' ');
+    return name.length >= 2 ? name.slice(0, 120) : 'Usuario convidado';
+  }
+}

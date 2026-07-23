@@ -9,16 +9,16 @@ import {
 } from '@nestjs/common';
 
 import type { RequestWithIdentity } from '../domain/identity.js';
-import { OrganizationsService } from '../organizations/organizations.service.js';
+import { OrganizationsRepository } from '../organizations/organizations.repository.js';
 
 @Injectable()
 export class OrganizationAccessGuard implements CanActivate {
   constructor(
-    @Inject(OrganizationsService)
-    private readonly organizations: OrganizationsService,
+    @Inject(OrganizationsRepository)
+    private readonly organizations: OrganizationsRepository,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithIdentity>();
     if (!request.user) {
       throw new UnauthorizedException();
@@ -29,7 +29,12 @@ export class OrganizationAccessGuard implements CanActivate {
       throw new BadRequestException('x-organization-id header is required.');
     }
 
-    const organization = this.organizations.findAccessible(
+    const routeOrganizationId = request.params['organizationId'];
+    if (routeOrganizationId && routeOrganizationId !== organizationId) {
+      throw new BadRequestException('Organization header and route must match.');
+    }
+
+    const organization = await this.organizations.findAccessible(
       request.user,
       organizationId,
     );

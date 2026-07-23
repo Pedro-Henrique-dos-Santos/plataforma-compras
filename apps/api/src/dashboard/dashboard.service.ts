@@ -1,16 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import type { DashboardSummary } from '@compras/contracts';
+import { Inject, Injectable } from '@nestjs/common';
+import type { DashboardFilters, DashboardSummary } from '@compras/contracts';
 
-import { demoDashboards } from '../demo/demo.data.js';
+import { ProcurementRepository } from '../procurement/procurement.repository.js';
 
 @Injectable()
 export class DashboardService {
-  getSummary(organizationId: string): DashboardSummary {
-    const summary = demoDashboards[organizationId];
-    if (!summary) {
-      throw new NotFoundException('Dashboard is not available for this organization.');
-    }
-    return summary;
+  constructor(
+    @Inject(ProcurementRepository)
+    private readonly repository: ProcurementRepository,
+  ) {}
+
+  getSummary(
+    organizationId: string,
+    filters: DashboardFilters,
+  ): Promise<DashboardSummary> {
+    return this.repository.getDashboardSummary(organizationId, filters);
   }
 }
-

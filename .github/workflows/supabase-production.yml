@@ -1,0 +1,102 @@
+name: Supabase Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Tag imutavel da versao, por exemplo v0.9.0
+        required: true
+        type: string
+      backup_reference:
+        description: Identificador do backup externo verificado antes da janela
+        required: true
+        type: string
+      confirmation:
+        description: Digite APLICAR PRODUCAO para liberar as migracoes
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-production-database
+  cancel-in-progress: false
+
+jobs:
+  migrate-and-verify:
+    name: Migrate and verify production
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      INVOICE_STORAGE_BUCKET: invoice-documents
+      SUPABASE_SECRET_KEY: ${{ secrets.PRODUCTION_SUPABASE_SECRET_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_URL: ${{ secrets.PRODUCTION_SUPABASE_URL }}
+    steps:
+      - name: Confirm production operation
+        env:
+          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          test "$CONFIRMATION" = "APLICAR PRODUCAO"
+          test -n "$BACKUP_REFERENCE"
+          case "$RELEASE_TAG" in v*.*.*) ;; *) exit 1 ;; esac
+
+      - name: Validate required secrets
+        run: |
+          test -n "$DATABASE_URL"
+          test -n "$SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-$SUPABASE_SERVICE_ROLE_KEY}"
+
+      - name: Checkout immutable release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: refs/tags/${{ inputs.release_tag }}
+
+      - name: Confirm immutable release tag belongs to main
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+          tag_commit="$(git rev-list -n 1 "refs/tags/$RELEASE_TAG")"
+          test "$(git rev-parse HEAD)" = "$tag_commit"
+          git merge-base --is-ancestor HEAD origin/main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Verify release metadata
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: node scripts/verify-release.mjs
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate database client
+        run: pnpm db:generate
+
+      - name: Validate database schema
+        run: pnpm db:validate
+
+      - name: Apply production migrations
+        run: pnpm db:deploy
+
+      - name: Verify deployed database protections
+        run: pnpm db:verify:deployed
+
+      - name: Provision private invoice bucket
+        run: pnpm supabase:bootstrap
