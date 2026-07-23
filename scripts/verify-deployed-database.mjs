@@ -6,7 +6,85 @@ const requireFromDatabasePackage = createRequire(
   new URL('../packages/database/package.json', import.meta.url),
 );
 
-export function validateDatabaseSecuritySnapshot({ migrations, tableGrants, tables }) {
+export const REQUIRED_TENANT_RELATIONS = [
+  {
+    name: 'suppliers_organization_id_default_cost_center_id_fkey',
+    tableName: 'suppliers',
+    referencedTable: 'cost_centers',
+    sourceColumns: ['organization_id', 'default_cost_center_id'],
+    targetColumns: ['organization_id', 'id'],
+  },
+  {
+    name: 'supplier_prices_organization_id_supplier_id_fkey',
+    tableName: 'supplier_prices',
+    referencedTable: 'suppliers',
+    sourceColumns: ['organization_id', 'supplier_id'],
+    targetColumns: ['organization_id', 'id'],
+  },
+  {
+    name: 'purchases_organization_id_supplier_id_fkey',
+    tableName: 'purchases',
+    referencedTable: 'suppliers',
+    sourceColumns: ['organization_id', 'supplier_id'],
+    targetColumns: ['organization_id', 'id'],
+  },
+  {
+    name: 'sheet_sync_runs_organization_id_integration_id_fkey',
+    tableName: 'sheet_sync_runs',
+    referencedTable: 'google_sheets_integrations',
+    sourceColumns: ['organization_id', 'integration_id'],
+    targetColumns: ['organization_id', 'id'],
+  },
+  {
+    name: 'purchase_items_organization_id_purchase_id_fkey',
+    tableName: 'purchase_items',
+    referencedTable: 'purchases',
+    sourceColumns: ['organization_id', 'purchase_id'],
+    targetColumns: ['organization_id', 'id'],
+  },
+  {
+    name: 'purchase_items_organization_id_cost_center_id_fkey',
+    tableName: 'purchase_items',
+    referencedTable: 'cost_centers',
+    sourceColumns: ['organization_id', 'cost_center_id'],
+    targetColumns: ['organization_id', 'id'],
+  },
+  {
+    name: 'cost_allocations_organization_id_purchase_item_id_fkey',
+    tableName: 'cost_allocations',
+    referencedTable: 'purchase_items',
+    sourceColumns: ['organization_id', 'purchase_item_id'],
+    targetColumns: ['organization_id', 'id'],
+  },
+  {
+    name: 'cost_allocations_organization_id_cost_center_id_fkey',
+    tableName: 'cost_allocations',
+    referencedTable: 'cost_centers',
+    sourceColumns: ['organization_id', 'cost_center_id'],
+    targetColumns: ['organization_id', 'id'],
+  },
+  {
+    name: 'installments_organization_id_purchase_id_fkey',
+    tableName: 'installments',
+    referencedTable: 'purchases',
+    sourceColumns: ['organization_id', 'purchase_id'],
+    targetColumns: ['organization_id', 'id'],
+  },
+  {
+    name: 'invoice_documents_organization_id_purchase_id_fkey',
+    tableName: 'invoice_documents',
+    referencedTable: 'purchases',
+    sourceColumns: ['organization_id', 'purchase_id'],
+    targetColumns: ['organization_id', 'id'],
+  },
+];
+
+export function validateDatabaseSecuritySnapshot({
+  migrations,
+  tableGrants,
+  tables,
+  tenantRelations,
+}) {
   if (!Array.isArray(migrations) || migrations.length === 0) {
     throw new Error('No completed Prisma migrations were found.');
   }
@@ -43,14 +121,36 @@ export function validateDatabaseSecuritySnapshot({ migrations, tableGrants, tabl
     );
   }
 
+  const relationByName = new Map(
+    (tenantRelations ?? []).map((relation) => [relation.name, relation]),
+  );
+  const invalidRelations = REQUIRED_TENANT_RELATIONS.filter((expected) => {
+    const actual = relationByName.get(expected.name);
+    return (
+      !actual ||
+      actual.tableName !== expected.tableName ||
+      actual.referencedTable !== expected.referencedTable ||
+      !sameColumns(actual.sourceColumns, expected.sourceColumns) ||
+      !sameColumns(actual.targetColumns, expected.targetColumns)
+    );
+  });
+  if (invalidRelations.length > 0) {
+    throw new Error(
+      `Missing or invalid tenant relation constraints: ${invalidRelations
+        .map((relation) => relation.name)
+        .join(', ')}.`,
+    );
+  }
+
   return {
     migrations: completedMigrations.length,
     protectedTables: tables.length,
+    tenantRelations: REQUIRED_TENANT_RELATIONS.length,
   };
 }
 
 export async function verifyDeployedDatabase(prisma) {
-  const [migrations, tables, tableGrants] = await Promise.all([
+  const [migrations, tables, tableGrants, tenantRelations] = await Promise.all([
     prisma.$queryRawUnsafe(`
       SELECT
         migration_name AS "name",
@@ -80,9 +180,54 @@ export async function verifyDeployedDatabase(prisma) {
         AND grantee IN ('PUBLIC', 'anon', 'authenticated')
       ORDER BY grantee, table_name, privilege_type
     `),
+    prisma.$queryRawUnsafe(`
+      SELECT
+        constraint_record.conname AS "name",
+        source_table.relname AS "tableName",
+        target_table.relname AS "referencedTable",
+        ARRAY(
+          SELECT source_attribute.attname
+          FROM unnest(constraint_record.conkey) WITH ORDINALITY
+            AS source_key(attribute_number, position)
+          JOIN pg_attribute source_attribute
+            ON source_attribute.attrelid = constraint_record.conrelid
+           AND source_attribute.attnum = source_key.attribute_number
+          ORDER BY source_key.position
+        ) AS "sourceColumns",
+        ARRAY(
+          SELECT target_attribute.attname
+          FROM unnest(constraint_record.confkey) WITH ORDINALITY
+            AS target_key(attribute_number, position)
+          JOIN pg_attribute target_attribute
+            ON target_attribute.attrelid = constraint_record.confrelid
+           AND target_attribute.attnum = target_key.attribute_number
+          ORDER BY target_key.position
+        ) AS "targetColumns"
+      FROM pg_constraint constraint_record
+      JOIN pg_class source_table ON source_table.oid = constraint_record.conrelid
+      JOIN pg_class target_table ON target_table.oid = constraint_record.confrelid
+      JOIN pg_namespace source_namespace
+        ON source_namespace.oid = source_table.relnamespace
+      WHERE source_namespace.nspname = 'public'
+        AND constraint_record.contype = 'f'
+      ORDER BY constraint_record.conname
+    `),
   ]);
 
-  return validateDatabaseSecuritySnapshot({ migrations, tableGrants, tables });
+  return validateDatabaseSecuritySnapshot({
+    migrations,
+    tableGrants,
+    tables,
+    tenantRelations,
+  });
+}
+
+function sameColumns(actual, expected) {
+  return (
+    Array.isArray(actual) &&
+    actual.length === expected.length &&
+    actual.every((column, index) => column === expected[index])
+  );
 }
 
 async function main() {

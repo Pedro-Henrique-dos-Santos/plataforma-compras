@@ -40,6 +40,7 @@ O balanceador deve retirar a instancia do trafego quando `ready` retornar `503`,
 - `pnpm db:verify:deployed` confirma migracoes concluidas, RLS em todas as tabelas da aplicacao e ausencia de privilegios para `PUBLIC`, `anon` e `authenticated`.
 - O catalogo e validado para garantir RLS em todas as tabelas da aplicacao.
 - Chaves de negocio iguais sao exercitadas em duas empresas sem conflito entre tenants.
+- Dez relacoes operacionais usam chaves estrangeiras compostas e rejeitam referencias cujo registro pai pertence a outra empresa.
 - Fornecedor e centro de custo de outra empresa sao rejeitados pelo repositorio.
 - Dashboard, relatorio, compras, fornecedores e auditoria sao conferidos por organizacao.
 - Um backup customizado e restaurado em outro banco, com reconciliacao de migracoes, RLS, contagens e totais.

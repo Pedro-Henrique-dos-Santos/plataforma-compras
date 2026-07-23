@@ -17,6 +17,7 @@ O GitHub Actions deve executar adicionalmente:
 
 - aplicacao integral das migracoes em PostgreSQL descartavel;
 - testes de isolamento por organizacao e das politicas RLS;
+- tentativa negativa de relacionar registros de empresas diferentes, rejeitada pelas chaves estrangeiras compostas;
 - seed exclusivamente sintetico;
 - backup, restauracao e reconciliacao de estrutura, contagens e valores.
 

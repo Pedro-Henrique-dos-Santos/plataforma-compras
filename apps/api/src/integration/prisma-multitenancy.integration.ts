@@ -104,6 +104,169 @@ describe('Prisma multi-company security', () => {
     expect(tables.filter((table) => !table.rlsEnabled)).toEqual([]);
   });
 
+  it('rejects cross-company relationships at the database boundary', async () => {
+    const centerA = await repository.createCostCenter(actor, organizationAId, {
+      code: 'DB-GUARD-A',
+      name: 'Database Guard A',
+    });
+    const centerB = await repository.createCostCenter(actor, organizationBId, {
+      code: 'DB-GUARD-B',
+      name: 'Database Guard B',
+    });
+    const supplierA = await repository.createSupplier(
+      actor,
+      organizationAId,
+      supplierInput('Database Guard Supplier A', centerA.id, '00000000001090'),
+    );
+    const supplierB = await repository.createSupplier(
+      actor,
+      organizationBId,
+      supplierInput('Database Guard Supplier B', centerB.id, '00000000001170'),
+    );
+    const purchaseA = await repository.createPurchase(
+      actor,
+      organizationAId,
+      purchaseInput('DB-GUARD-A', supplierA.id, centerA.id, 10, 9),
+    );
+    const purchaseB = await repository.createPurchase(
+      actor,
+      organizationBId,
+      purchaseInput('DB-GUARD-B', supplierB.id, centerB.id, 10, 9),
+    );
+    const itemA = await prisma.purchaseItem.findFirstOrThrow({
+      where: { organizationId: organizationAId, purchaseId: purchaseA.id },
+    });
+    const itemB = await prisma.purchaseItem.findFirstOrThrow({
+      where: { organizationId: organizationBId, purchaseId: purchaseB.id },
+    });
+    const integrationA = await prisma.googleSheetsIntegration.create({
+      data: {
+        organizationId: organizationAId,
+        spreadsheetId: `db-guard-a-${suffix}`,
+      },
+    });
+    const integrationB = await prisma.googleSheetsIntegration.create({
+      data: {
+        organizationId: organizationBId,
+        spreadsheetId: `db-guard-b-${suffix}`,
+      },
+    });
+
+    await expectForeignKeyViolation(
+      prisma.supplier.create({
+        data: {
+          organizationId: organizationAId,
+          legalName: 'Cross-company cost center',
+          defaultCostCenterId: centerB.id,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.supplierPrice.create({
+        data: {
+          organizationId: organizationAId,
+          supplierId: supplierB.id,
+          itemCode: 'CROSS-COMPANY',
+          description: 'Cross-company supplier price',
+          normalizedName: 'cross-company supplier price',
+          negotiatedPrice: 1,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.purchase.create({
+        data: {
+          organizationId: organizationAId,
+          supplierId: supplierB.id,
+          number: 'CROSS-COMPANY-SUPPLIER',
+          total: 1,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.sheetSyncRun.create({
+        data: {
+          organizationId: organizationAId,
+          integrationId: integrationB.id,
+          snapshotHash: 'a'.repeat(64),
+          sourceRowCount: 0,
+          preview: {},
+          payload: {},
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.purchaseItem.create({
+        data: {
+          organizationId: organizationAId,
+          purchaseId: purchaseB.id,
+          description: 'Cross-company purchase',
+          unitPrice: 1,
+          total: 1,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.purchaseItem.create({
+        data: {
+          organizationId: organizationAId,
+          purchaseId: purchaseA.id,
+          costCenterId: centerB.id,
+          description: 'Cross-company cost center',
+          unitPrice: 1,
+          total: 1,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.costAllocation.create({
+        data: {
+          organizationId: organizationAId,
+          purchaseItemId: itemB.id,
+          costCenterId: centerA.id,
+          percentage: 100,
+          amount: 1,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.costAllocation.create({
+        data: {
+          organizationId: organizationAId,
+          purchaseItemId: itemA.id,
+          costCenterId: centerB.id,
+          percentage: 100,
+          amount: 1,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.installment.create({
+        data: {
+          organizationId: organizationAId,
+          purchaseId: purchaseB.id,
+          sequence: 99,
+          dueDate: new Date('2026-12-01T00:00:00.000Z'),
+          amount: 1,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.invoiceDocument.create({
+        data: {
+          organizationId: organizationAId,
+          purchaseId: purchaseB.id,
+          fileName: 'cross-company.pdf',
+          mimeType: 'application/pdf',
+          kind: 'PDF',
+          storagePath: `${organizationAId}/cross-company.pdf`,
+        },
+      }),
+    );
+
+    expect(integrationA.organizationId).toBe(organizationAId);
+  });
+
   it('keeps equal business keys and operational data isolated by company', async () => {
     const centerA = await repository.createCostCenter(actor, organizationAId, {
       code: 'OPS',
@@ -433,4 +596,8 @@ function departmentTotal(
   department: string,
 ): number {
   return dashboard.spendByDepartment.find((entry) => entry.department === department)?.value ?? 0;
+}
+
+async function expectForeignKeyViolation(operation: Promise<unknown>): Promise<void> {
+  await expect(operation).rejects.toMatchObject({ code: 'P2003' });
 }

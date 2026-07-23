@@ -46,7 +46,7 @@ O modo `demo` usa repositorios em memoria com os mesmos contratos das implementa
 
 O cadastro da organizacao mantem nome exibido, razao social, CNPJ, contato e endereco. Esses dados pertencem ao tenant e somente o proprietario global ou um administrador da propria empresa pode altera-los.
 
-As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor.
+As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor. Relacoes operacionais tambem usam chaves estrangeiras compostas por `organization_id` e pelo identificador do registro, impedindo que fornecedor, centro de custo, compra, item, rateio, parcela, nota fiscal ou sincronizacao seja ligado a outra empresa mesmo por uma gravacao direta no banco.
 
 ## Sincronizacao com Google Sheets
 
