@@ -1,14 +1,15 @@
 # Auditoria de conclusao
 
-Data de referencia: 2026-07-22
+Data de referencia: 2026-07-23
 Versao auditada: `0.10.0`
 Base integrada na `main`: `3b5661ce5b3be157bd8d4633e0172dd8931a3f2d`
+Candidato empilhado: pull requests `10`, `11`, `12` e `13`
 
 ## Conclusao executiva
 
-As capacidades previstas para o codigo e para a homologacao do E-Gestao Compras estao implementadas e verificadas. A plataforma cobre identidade, empresas, cadastros mestres, tabela de precos, importacoes, compras, rateios, automacao documental, indicadores, relatorios, seguranca, recuperacao e empacotamento.
+As capacidades previstas para o codigo e para a homologacao do E-Gestao Compras estao implementadas e verificadas na base integrada e no candidato empilhado. A plataforma cobre identidade, empresas, cadastros mestres, tabela de precos, importacoes, compras, rateios, automacao documental, indicadores, relatorios, seguranca, recuperacao e empacotamento.
 
-Isso nao significa que a plataforma esteja em producao. O conector permanente do Google, a revisao juridica, a infraestrutura publica, os segredos de producao, o backup de corte e a liberacao gradual ainda dependem de decisoes e recursos externos. O Apps Script deve permanecer disponivel ate a conclusao desses gates.
+Os pull requests `10` a `13` ainda nao pertencem a `main` e precisam ser incorporados em ordem depois de autorizacao explicita. Isso tambem nao significa que a plataforma esteja em producao. O conector permanente do Google, a revisao juridica, a infraestrutura publica, os segredos de producao, o backup de corte e a liberacao gradual ainda dependem de decisoes e recursos externos. O Apps Script deve permanecer disponivel ate a conclusao desses gates.
 
 ## Metodo
 
@@ -21,7 +22,7 @@ A auditoria deriva os requisitos de `PROJECT_CONTEXT.md`, `ARCHITECTURE.md` e `R
 | Base versionada e legado preservado | `legacy/`, monorepositorio, `README.md`, modo demonstrativo e workflows | Comprovado |
 | React, TypeScript, NestJS e PostgreSQL | `apps/web`, `apps/api`, `packages/contracts`, `packages/database` e ADR 0001 | Comprovado |
 | Identidade, perfil, LGPD e recuperacao de acesso | Modulo `auth`, contratos de acesso, telas de login, perfil, consentimento e documentos legais | Comprovado no codigo e em homologacao |
-| Multiempresa e papeis sem alcada de aprovacao | Guardas de organizacao e permissao, `OrganizationMembership`, papel global separado e ADR 0002 | Comprovado |
+| Multiempresa e papeis sem alcada de aprovacao | Guardas de organizacao e permissao, contrato transversal de controllers, `OrganizationMembership`, papel global separado e ADR 0002 | Comprovado |
 | Cadastro e edicao da empresa | Contratos de organizacao, repositorios, API e `OrganizationsView` | Comprovado no codigo e em homologacao |
 | Fornecedores e centros de custo | Controllers de dados mestres, repositorios Prisma e demo, telas e testes | Comprovado |
 | Tabela de precos e importacao em lote | `supplier-prices`, contratos de importacao, `PricesView` e testes por linha | Comprovado |
@@ -32,7 +33,7 @@ A auditoria deriva os requisitos de `PROJECT_CONTEXT.md`, `ARCHITECTURE.md` e `R
 | XML, PDF, OCR e revisao fiscal | Modulo `invoice-documents`, validadores, parser XML, extrator PDF, Tesseract, revisao e conciliacao | Comprovado |
 | Dashboard e gastos por departamento | Builder do dashboard, filtros, graficos e testes que evitam dupla contagem de rateios | Comprovado |
 | Relatorios CSV e Excel | Relatorio consolidado, Excel resumido, Excel detalhado, itens por mes e protecao contra formulas | Comprovado e inspecionado |
-| Seguranca do banco | RLS, revogacao de `PUBLIC`, `anon` e `authenticated`, verificador de catalogo e testes de isolamento | Comprovado no CI e em homologacao |
+| Seguranca da API e do banco | Inventario de controllers, guardas, chaves estrangeiras compostas, RLS, revogacao de `PUBLIC`, `anon` e `authenticated`, verificador de catalogo e testes de isolamento | Comprovado no codigo, nos testes, no CI e em homologacao |
 | Observabilidade e recuperacao | Health checks, request ID, logs, backup, verificacao e ensaio de restauracao | Comprovado no codigo e no CI |
 | Imagens e release | Dockerfiles nao privilegiados, smoke tests, metadados de release, GHCR e workflow protegido | Comprovado no codigo e no CI |
 | Documentacao e versionamento | ADRs, runbooks, roteiro, changelog, versoes sincronizadas e pull request | Comprovado |
@@ -56,6 +57,17 @@ Na atualizacao de 2026-07-22:
 - o aceite visual da tela `Automacoes` passou em desktop e em 390 por 844 pixels, sem erro de console ou rolagem horizontal;
 - a conta de servico real ainda nao foi configurada, portanto a verificacao autenticada permanente continua corretamente registrada como gate externo.
 
+Na atualizacao de 2026-07-23:
+
+- a oitava migracao adicionou dez relacoes compostas que impedem referencias operacionais entre empresas diferentes;
+- cinco testes de integracao PostgreSQL passaram a validar gravacoes cruzadas, ciclo operacional, limpeza, seed, backup e restauracao;
+- os guardas de tenant e permissoes receberam cobertura direta para UUID invalido, rota divergente, empresa inacessivel, papeis e proprietario global;
+- todos os `12` controllers passaram a ser inventariados por teste, e cada rota operacional precisa declarar autenticacao, tenant, guarda de permissao e permissao;
+- a inicializacao de producao passou a rejeitar modo demonstracao, identidade sem e-mail verificado e qualquer origem CORS sem HTTPS;
+- a suite ampliada registrou `30` testes de contratos, `102` da API, `11` da interface e `41` verificadores de infraestrutura e release;
+- `pnpm audit --prod --audit-level high` nao encontrou vulnerabilidades conhecidas;
+- os workflows `CI` e `Containers` permanecem obrigatorios para o commit de cabeca do pull request antes de qualquer merge.
+
 ## Gates externos restantes
 
 | Gate | Evidencia necessaria para concluir |
@@ -69,4 +81,4 @@ Na atualizacao de 2026-07-22:
 
 ## Regra de conclusao
 
-O desenvolvimento e a homologacao funcional podem ser considerados concluidos para a versao `0.10.0`, e o merge dessa base esta comprovado. A implantacao integral somente pode ser declarada concluida quando todos os gates externos acima possuirem evidencia registrada. Ate la, nao criar a tag de producao, nao promover o banco e nao desligar o legado.
+O desenvolvimento e a homologacao funcional podem ser considerados concluidos para o candidato `0.10.0`. A base ate o pull request `7` esta integrada; a pilha `10` a `13` ainda exige merge autorizado e CI verde em cada cabeca. A implantacao integral somente pode ser declarada concluida quando todos os gates externos acima possuirem evidencia registrada. Ate la, nao criar a tag de producao, nao promover o banco e nao desligar o legado.

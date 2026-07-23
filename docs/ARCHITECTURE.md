@@ -13,6 +13,8 @@ Navegador
 
 O front-end nunca recebe a chave privilegiada do banco. A API valida o token do Supabase, a identidade local, a empresa ativa, o papel e a permissao antes de executar operacoes.
 
+Um contrato automatizado inventaria todos os controllers da API. Rotas operacionais precisam combinar `AuthGuard`, `OrganizationAccessGuard`, `PermissionsGuard` e uma permissao declarada; saude, conclusao do perfil e administracao global possuem politicas excepcionais explicitas. Um novo controller sem classificacao faz a suite falhar.
+
 Respostas da API usam `Cache-Control: no-store`, e a interface desativa o cache nas requisicoes operacionais. Isso evita reutilizar identidade, permissoes, indicadores ou dados empresariais depois de uma troca de sessao ou empresa.
 
 O navegador nao acessa tabelas operacionais pelo cliente Supabase. O Row Level Security fica habilitado sem politicas para `anon` e `authenticated`, e os privilegios de `PUBLIC`, `anon` e `authenticated` sao revogados. Somente a API usa a conexao PostgreSQL protegida. O CI consulta o catalogo do PostgreSQL e falha se uma tabela da aplicacao for criada sem RLS.

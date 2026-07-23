@@ -28,6 +28,7 @@ Ainda faltam a configuracao permanente do conector Google por conta de servico, 
 - `GET /api/health/ready` confirma o acesso ao PostgreSQL fora do modo demonstrativo.
 - Toda resposta recebe `x-request-id`.
 - O cabecalho de empresa e validado como UUID antes do acesso ao banco e deve coincidir com o tenant presente na rota.
+- Um teste transversal classifica todos os controllers e exige autenticacao, tenant, guarda de permissao e permissao declarada em cada rota operacional.
 - A inicializacao em producao falha se o modo demonstracao estiver ativo, se o e-mail verificado nao for obrigatorio ou se alguma origem CORS nao usar HTTPS.
 - Respostas operacionais usam `Cache-Control: no-store` e nao geram `ETag`.
 - Cada requisicao gera um log JSON com metodo, caminho sem query string, status, duracao e identificador.

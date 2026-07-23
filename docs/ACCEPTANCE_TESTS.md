@@ -19,6 +19,7 @@ O GitHub Actions deve executar adicionalmente:
 - testes de isolamento por organizacao e das politicas RLS;
 - tentativa negativa de relacionar registros de empresas diferentes, rejeitada pelas chaves estrangeiras compostas;
 - testes dos guardas para UUID invalido, rota divergente, empresa inacessivel, papeis e proprietario global;
+- inventario de todos os controllers e rejeicao de rota operacional sem autenticacao, tenant, guarda de permissao e permissao declarada;
 - testes que rejeitam configuracao de producao com modo demonstracao, e-mail nao verificado ou origem CORS sem HTTPS;
 - seed exclusivamente sintetico;
 - backup, restauracao e reconciliacao de estrutura, contagens e valores.
