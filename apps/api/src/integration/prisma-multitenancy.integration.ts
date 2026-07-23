@@ -300,8 +300,8 @@ describe('Prisma multi-company security', () => {
 
     const [suppliersA, suppliersB, purchasesA, purchasesB, dashboardA, reportA, reportB] =
       await Promise.all([
-        repository.listSuppliers(organizationAId, { search: 'Supplier A' }),
-        repository.listSuppliers(organizationBId, { search: 'Supplier B' }),
+        repository.listSuppliers(organizationAId, { search: '00000000000191' }),
+        repository.listSuppliers(organizationBId, { search: '00000000000191' }),
         repository.listPurchases(organizationAId, { search: 'SHARED-001' }),
         repository.listPurchases(organizationBId, { search: 'SHARED-001' }),
         repository.getDashboardSummary(organizationAId, {
