@@ -27,6 +27,7 @@ Ainda faltam a configuracao permanente do conector Google por conta de servico, 
 - `GET /api/health/live` confirma que o processo responde.
 - `GET /api/health/ready` confirma o acesso ao PostgreSQL fora do modo demonstrativo.
 - Toda resposta recebe `x-request-id`.
+- Respostas operacionais usam `Cache-Control: no-store` e nao geram `ETag`.
 - Cada requisicao gera um log JSON com metodo, caminho sem query string, status, duracao e identificador.
 - A aplicacao encerra conexoes ao receber sinais de desligamento.
 - As rotas XLSX usam resposta de arquivo transmitido, evitando serializacao acidental do `Buffer` como JSON.

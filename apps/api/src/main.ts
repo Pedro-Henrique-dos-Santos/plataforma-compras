@@ -6,6 +6,7 @@ import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module.js';
+import { noStoreMiddleware } from './common/no-store.middleware.js';
 import { requestObservabilityMiddleware } from './common/request-observability.middleware.js';
 
 async function bootstrap() {
@@ -21,10 +22,12 @@ async function bootstrap() {
     .map((origin) => origin.trim());
 
   app.setGlobalPrefix('api');
+  app.getHttpAdapter().getInstance().disable('etag');
   if (config.get<string>('TRUST_PROXY', 'false') === 'true') {
     app.getHttpAdapter().getInstance().set('trust proxy', 1);
   }
   app.use(helmet());
+  app.use(noStoreMiddleware());
   app.use(requestObservabilityMiddleware());
   app.enableCors({
     origin: corsOrigins,

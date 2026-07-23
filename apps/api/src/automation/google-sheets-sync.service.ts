@@ -10,6 +10,7 @@ import {
 import type {
   CostCenter,
   GoogleSheetsConnectorStatus,
+  GoogleSheetsConnectionCheck,
   GoogleSheetsIntegration,
   GoogleSheetsIntegrationInput,
   PurchaseSummary,
@@ -75,6 +76,13 @@ export class GoogleSheetsSyncService {
       input,
     );
     return enrichIntegration(saved, this.reader.connectorInfo());
+  }
+
+  async checkConnection(
+    organizationId: string,
+  ): Promise<GoogleSheetsConnectionCheck> {
+    const integration = await this.requireIntegration(organizationId);
+    return this.reader.checkConnection(integration);
   }
 
   async preview(

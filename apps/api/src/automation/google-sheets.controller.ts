@@ -65,6 +65,15 @@ export class GoogleSheetsController {
     return this.sync.preview(actor, organization.id);
   }
 
+  @Post('check')
+  @RequirePermission('integration:write')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  checkConnection(
+    @ActiveOrganization() organization: OrganizationSummary,
+  ) {
+    return this.sync.checkConnection(organization.id);
+  }
+
   @Post('workbook-preview')
   @RequirePermission('integration:write')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })

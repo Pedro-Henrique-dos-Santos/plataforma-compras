@@ -53,6 +53,24 @@ export type GoogleSheetsConnectorStatus = z.infer<
   typeof googleSheetsConnectorStatusSchema
 >;
 
+export const googleSheetsMappedSheetSchema = z.object({
+  configuredName: z.string().min(1).max(120),
+  actualName: z.string().min(1).max(120),
+});
+export type GoogleSheetsMappedSheet = z.infer<typeof googleSheetsMappedSheetSchema>;
+
+export const googleSheetsConnectionCheckSchema = z.object({
+  connectorMode: googleSheetsConnectorModeSchema.exclude(['UNCONFIGURED']),
+  spreadsheetTitle: z.string().min(1).max(160),
+  serviceAccountEmail: nullableText(255),
+  requiredSheets: z.array(googleSheetsMappedSheetSchema).length(4),
+  legacySheetName: nullableText(120),
+  checkedAt: z.string().datetime(),
+});
+export type GoogleSheetsConnectionCheck = z.infer<
+  typeof googleSheetsConnectionCheckSchema
+>;
+
 export const sheetSyncEntitySchema = z.enum([
   'SUPPLIER',
   'COST_CENTER',

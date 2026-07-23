@@ -57,7 +57,8 @@
 - [Concluido no codigo] Empacotar web e API em imagens separadas, nao privilegiadas e com health checks.
 - [Concluido no codigo] Validar conteineres no CI e preparar publicacao versionada no GitHub Container Registry.
 - [Concluido no codigo] Proteger migracoes de producao com tag imutavel, referencia de backup, confirmacao explicita e verificacao de RLS.
-- [Pendente externo] Aprovar e mesclar o pull request na `main`.
+- [Concluido] Aprovar e mesclar o pull request 7 na `main` com CI verde.
+- [Concluido no codigo] Validar credencial, compartilhamento e abas do Google Sheets com escopo somente leitura antes da previa.
 - [Pendente externo] Configurar a conta de servico permanente do Google e validar a sincronizacao autenticada.
 - [Pendente externo] Aprovar juridicamente os Termos de uso, o Aviso de privacidade e o processo LGPD.
 - [Pendente externo] Configurar hospedagem, dominios HTTPS, ambientes protegidos, segredos e alertas de producao.

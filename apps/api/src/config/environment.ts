@@ -28,7 +28,11 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
   }
   environment['INVOICE_STORAGE_BUCKET'] = invoiceStorageBucket;
 
-  const corsOrigins = (textValue(raw['CORS_ORIGIN']) || 'http://localhost:5173')
+  const corsOrigins =
+    (
+      textValue(raw['CORS_ORIGIN']) ||
+      'http://localhost:5173,http://127.0.0.1:5173'
+    )
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
