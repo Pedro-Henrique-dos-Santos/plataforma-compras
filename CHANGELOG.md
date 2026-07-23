@@ -13,6 +13,7 @@
 - Adicionada a matriz de conclusao com evidencias por requisito e gates externos de producao.
 - Restringida a migracao de producao a uma tag explicita cujo commit pertence a `main`.
 - Fixadas as dependencias dos workflows por SHA e protegidas por teste contra referencias moveis.
+- Atualizadas as GitHub Actions pinadas para releases com runtime Node 24 suportado.
 
 ## 0.9.0 - 2026-07-16
 
