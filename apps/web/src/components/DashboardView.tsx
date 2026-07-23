@@ -122,12 +122,16 @@ export function DashboardView({
     return <DashboardSkeleton />;
   }
 
+  const hasComparisonPeriod = Boolean(filters.dateFrom && filters.dateTo);
   const metrics = [
     {
       label: 'Comprado no periodo',
       value: currency.format(summary.totalPurchased.value),
       variation: summary.totalPurchased.variation,
-      detail: 'Total do filtro selecionado',
+      detail: hasComparisonPeriod
+        ? 'Sem base no periodo anterior'
+        : 'Total do filtro selecionado',
+      variationTone: 'neutral',
       icon: CircleDollarSign,
       tone: 'brand',
     },
@@ -135,7 +139,10 @@ export function DashboardView({
       label: 'Economia negociada',
       value: currency.format(summary.negotiatedSavings.value),
       variation: summary.negotiatedSavings.variation,
-      detail: 'Economia no filtro selecionado',
+      detail: hasComparisonPeriod
+        ? 'Sem base no periodo anterior'
+        : 'Economia no filtro selecionado',
+      variationTone: 'performance',
       icon: HandCoins,
       tone: 'teal',
     },
@@ -144,6 +151,7 @@ export function DashboardView({
       value: String(summary.activeSuppliers),
       variation: null,
       detail: 'Cadastros ativos na empresa',
+      variationTone: 'neutral',
       icon: Store,
       tone: 'gold',
     },
@@ -152,6 +160,7 @@ export function DashboardView({
       value: String(summary.registeredPurchases),
       variation: null,
       detail: 'Pedidos no filtro selecionado',
+      variationTone: 'neutral',
       icon: ReceiptText,
       tone: 'graphite',
     },
@@ -271,6 +280,12 @@ export function DashboardView({
         {metrics.map((metric) => {
           const Icon = metric.icon;
           const positive = metric.variation !== null && metric.variation >= 0;
+          const variationClass =
+            metric.variationTone === 'performance'
+              ? positive
+                ? 'positive'
+                : 'negative'
+              : 'neutral';
           return (
             <article className="metric-card" key={metric.label}>
               <span className={`metric-icon ${metric.tone}`}>
@@ -280,7 +295,7 @@ export function DashboardView({
                 <p>{metric.label}</p>
                 <strong>{metric.value}</strong>
                 {metric.variation !== null ? (
-                  <small className={positive ? 'positive' : 'negative'}>
+                  <small className={variationClass}>
                     {positive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                     {Math.abs(metric.variation).toLocaleString('pt-BR')}% frente ao periodo anterior
                   </small>

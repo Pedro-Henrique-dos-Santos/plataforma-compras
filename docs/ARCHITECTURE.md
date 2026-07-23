@@ -74,6 +74,8 @@ Cancelamento e reativacao exigem motivo, atualizam o estado sem apagar o histori
 
 O dashboard nao armazena totais derivados. Por padrao, a API agrega todo o historico de compras registradas e aceita filtros de periodo, fornecedor, centro de custo, categoria e inclusao de registros sem data. Quando um item possui rateio, somente os valores das alocacoes entram no grafico por departamento; o total direto do item nao e somado novamente. Compras sem data entram nos totais, categorias e departamentos, mas ficam fora da serie mensal ate a correcao da emissao.
 
+Quando o filtro informa data inicial e final, os indicadores de valor comprado e economia comparam o resultado com o intervalo imediatamente anterior de mesma duracao, preservando os demais filtros. A API nao inventa percentual quando o periodo anterior possui base monetaria zero; nesse caso, a variacao permanece indisponivel.
+
 ## Relatorios
 
 Os relatorios usam as compras como fonte unica e aplicam o `organizationId` antes de qualquer filtro. A API consolida valores, economia, ticket medio e contagens e devolve agrupamentos por fornecedor, categoria, departamento e mes. Os valores departamentais usam os montantes exatos dos rateios e mantem itens sem classificacao visiveis.

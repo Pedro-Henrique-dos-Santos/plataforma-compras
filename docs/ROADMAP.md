@@ -37,7 +37,7 @@
 
 - [Concluido] Migrar dashboard e indicadores para consultas do banco.
 - [Concluido] Criar filtros por empresa e exportacoes CSV e XLSX.
-- [Concluido] Consolidar economia negociada, comparativos mensais e gastos por departamento.
+- [Concluido no codigo e testes] Consolidar economia negociada, comparacao com o intervalo anterior e gastos por departamento.
 - [Concluido em homologacao] Exibir todo o historico por padrao e filtrar dashboard por periodo, fornecedor, centro de custo e categoria.
 - [Concluido em homologacao] Separar Excel resumido e detalhado, incluindo consolidacao mensal dos itens comprados.
 

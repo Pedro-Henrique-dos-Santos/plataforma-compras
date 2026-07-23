@@ -186,6 +186,41 @@ describe('Prisma multi-company security', () => {
     expect(auditB.map((event) => event.resourceId)).not.toContain(supplierA.id);
   });
 
+  it('computes period comparisons inside the active organization and filters', async () => {
+    const center = await repository.createCostCenter(actor, organizationAId, {
+      code: 'COMPARE',
+      name: 'Comparison Department',
+    });
+    const supplier = await repository.createSupplier(
+      actor,
+      organizationAId,
+      supplierInput('Comparison Supplier', center.id, '00000000000353'),
+    );
+
+    await repository.createPurchase(
+      actor,
+      organizationAId,
+      purchaseInput('COMPARE-PREVIOUS-001', supplier.id, center.id, 120, 100, '2026-06-15'),
+    );
+    await repository.createPurchase(
+      actor,
+      organizationAId,
+      purchaseInput('COMPARE-CURRENT-001', supplier.id, center.id, 200, 150, '2026-07-15'),
+    );
+
+    const summary = await repository.getDashboardSummary(organizationAId, {
+      dateFrom: '2026-07-01',
+      dateTo: '2026-07-31',
+      includeUndated: false,
+      supplierId: supplier.id,
+      costCenterId: center.id,
+    });
+
+    expect(summary.registeredPurchases).toBe(1);
+    expect(summary.totalPurchased).toEqual({ value: 150, variation: 50 });
+    expect(summary.negotiatedSavings).toEqual({ value: 50, variation: 150 });
+  });
+
   it('edits, cancels and restores a purchase with tenant and audit protection', async () => {
     const center = await repository.createCostCenter(actor, organizationAId, {
       code: 'LIFE',
@@ -365,12 +400,13 @@ function purchaseInput(
   costCenterId: string,
   unitPrice: number,
   negotiatedPrice: number,
+  issuedAt = new Date().toISOString().slice(0, 10),
 ) {
   return {
     number,
     invoiceNumber: null,
     supplierId,
-    issuedAt: new Date().toISOString().slice(0, 10),
+    issuedAt,
     category: null,
     operationNature: null,
     paymentMethod: null,

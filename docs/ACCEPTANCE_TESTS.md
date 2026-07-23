@@ -115,12 +115,14 @@ Use os arquivos sinteticos em `apps/api/src/invoices/__fixtures__/` e `legacy/sa
 4. Abrir o dashboard sem periodo e confirmar que ele mostra todo o historico, incluindo compras sem data nos totais.
 5. Aplicar no dashboard filtros de periodo, fornecedor, departamento e categoria e conferir todos os indicadores e graficos.
 6. Desmarcar a inclusao de pedidos sem data e confirmar a alteracao da contagem e dos totais.
-7. Aplicar no relatorio filtros de periodo, fornecedor, departamento, categoria e status.
-8. Exportar CSV e abrir no Excel sem execucao de formulas originadas dos dados.
-9. Exportar o Excel resumido e conferir as seis abas gerenciais.
-10. Exportar o Excel detalhado e conferir compras, itens, rateios, parcelas, documentos e fornecedores.
-11. Na aba `Itens por mes`, reconciliar quantidade, numero de compras, fornecedores, gasto, economia e preco medio com os itens de origem.
-12. Confirmar que compras sem data aparecem no grupo `Sem data` e nao entram em um mes artificial.
+7. Informar data inicial e final, conferir as variacoes contra o intervalo imediatamente anterior de mesma duracao e confirmar que fornecedor, departamento e categoria permanecem aplicados.
+8. Usar um periodo anterior sem valor e confirmar que o sistema nao apresenta um percentual inventado.
+9. Aplicar no relatorio filtros de periodo, fornecedor, departamento, categoria e status.
+10. Exportar CSV e abrir no Excel sem execucao de formulas originadas dos dados.
+11. Exportar o Excel resumido e conferir as seis abas gerenciais.
+12. Exportar o Excel detalhado e conferir compras, itens, rateios, parcelas, documentos e fornecedores.
+13. Na aba `Itens por mes`, reconciliar quantidade, numero de compras, fornecedores, gasto, economia e preco medio com os itens de origem.
+14. Confirmar que compras sem data aparecem no grupo `Sem data` e nao entram em um mes artificial.
 
 ## 7. Responsividade e acessibilidade
 

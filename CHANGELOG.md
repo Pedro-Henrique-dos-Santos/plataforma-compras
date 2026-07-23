@@ -2,6 +2,7 @@
 
 ## Nao publicado
 
+- Adicionada comparacao dos indicadores de compras e economia com o intervalo anterior de mesma duracao quando o dashboard usa periodo fechado.
 - Adicionada verificacao autenticada de credencial, compartilhamento e mapeamento das abas do Google Sheets antes da previa.
 - Reduzido o escopo da conta de servico Google para `spreadsheets.readonly`.
 - Impedido o cache de identidade e dados operacionais para evitar respostas `304` sem corpo e dados obsoletos apos troca de contexto.
