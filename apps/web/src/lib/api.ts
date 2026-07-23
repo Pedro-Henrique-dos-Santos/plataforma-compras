@@ -57,6 +57,7 @@ export async function apiUpload<T>(
   body.append('file', file);
   const response = await fetch(`${API_URL}${path}`, {
     body,
+    cache: 'no-store',
     headers,
     method: 'POST',
     signal: options.signal,
@@ -71,6 +72,7 @@ export async function apiDownload(
   const headers = requestHeaders(options);
   headers.set('Accept', options.accept ?? 'application/octet-stream');
   const response = await fetch(`${API_URL}${path}`, {
+    cache: 'no-store',
     headers,
     method: 'GET',
     signal: options.signal,
@@ -97,6 +99,7 @@ async function apiRequest<T>(
   }
 
   const response = await fetch(`${API_URL}${path}`, {
+    cache: 'no-store',
     headers,
     method: options.method,
     signal: options.signal,

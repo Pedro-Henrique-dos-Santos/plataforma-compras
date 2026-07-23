@@ -24,10 +24,12 @@ Os nomes podem ser alterados na tela `Automacoes`. Os cabecalhos sao normalizado
 1. Crie uma conta de servico em um projeto Google Cloud com a Google Sheets API habilitada.
 2. Gere uma chave JSON exclusiva para o ambiente do servidor.
 3. Configure `GOOGLE_SERVICE_ACCOUNT_JSON` ou `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64` no servidor. Nunca use as duas ao mesmo tempo.
-4. Compartilhe a planilha com o e-mail da conta de servico.
+4. Compartilhe a planilha como leitora com o e-mail da conta de servico.
 5. Mantenha a chave fora do GitHub, do navegador e das tabelas do banco.
 
-Para leitura e futura escrita controlada, a conta usa o escopo `spreadsheets`. O modo demonstracao usa um lote local isolado e nunca altera a planilha real.
+O conector usa somente o escopo `spreadsheets.readonly`. A aplicacao nao solicita permissao de escrita e o fluxo de transicao continua unidirecional. O modo demonstracao usa um lote local isolado e nunca altera a planilha real.
+
+Depois de salvar o ID e os nomes das abas na tela `Automacoes`, use `Verificar acesso`. Essa operacao valida a credencial, o compartilhamento da planilha e as quatro abas obrigatorias sem ler o lote completo, criar previa ou gravar dados. Somente depois dessa verificacao gere a previa de sincronizacao.
 
 ## Importacao por Excel
 

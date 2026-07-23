@@ -13,6 +13,8 @@ Navegador
 
 O front-end nunca recebe a chave privilegiada do banco. A API valida o token do Supabase, a identidade local, a empresa ativa, o papel e a permissao antes de executar operacoes.
 
+Respostas da API usam `Cache-Control: no-store`, e a interface desativa o cache nas requisicoes operacionais. Isso evita reutilizar identidade, permissoes, indicadores ou dados empresariais depois de uma troca de sessao ou empresa.
+
 O navegador nao acessa tabelas operacionais pelo cliente Supabase. O Row Level Security fica habilitado sem politicas para `anon` e `authenticated`, e os privilegios de `PUBLIC`, `anon` e `authenticated` sao revogados. Somente a API usa a conexao PostgreSQL protegida. O CI consulta o catalogo do PostgreSQL e falha se uma tabela da aplicacao for criada sem RLS.
 
 O cadastro de identidade separa o e-mail autenticado do nome exibido na plataforma. Os Termos de uso e o Aviso de privacidade possuem versoes independentes; a API grava a versao, a data, o endereco de rede disponivel e o agente do navegador em evento de auditoria. Uma nova versao volta a bloquear o acesso ate que os dois documentos sejam aceitos novamente.
@@ -49,6 +51,8 @@ As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele,
 ## Sincronizacao com Google Sheets
 
 Cada empresa possui no maximo uma configuracao ativa de Google Sheets. A credencial da conta de servico fica somente no ambiente do servidor; o banco guarda apenas o ID da planilha, os nomes das abas e o estado da ultima sincronizacao.
+
+A conta de servico recebe somente acesso de leitura e a API solicita o escopo `spreadsheets.readonly`. Uma verificacao dedicada consulta apenas os metadados da planilha para comprovar credencial, compartilhamento e mapeamento das abas antes de qualquer previa. Essa verificacao nao cria lote nem grava dados operacionais.
 
 A leitura usa as abas normalizadas de fornecedores, precos, itens e parcelas. Quando a aba `valores negociados` existe, o adaptador tambem incorpora o historico legado, elimina pedidos que ja aparecem nos itens normalizados e herda o centro de custo padrao do fornecedor. Registros historicos sem data permanecem visiveis como pendencia e nao recebem datas inventadas.
 

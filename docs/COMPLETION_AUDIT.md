@@ -1,14 +1,14 @@
 # Auditoria de conclusao
 
-Data de referencia: 2026-07-17
+Data de referencia: 2026-07-22
 Versao auditada: `0.10.0`
-Commit auditado: `e3455d5d0e5758ff00139b791fd89fb4ad9a595b`
+Base integrada na `main`: `3b5661ce5b3be157bd8d4633e0172dd8931a3f2d`
 
 ## Conclusao executiva
 
 As capacidades previstas para o codigo e para a homologacao do E-Gestao Compras estao implementadas e verificadas. A plataforma cobre identidade, empresas, cadastros mestres, tabela de precos, importacoes, compras, rateios, automacao documental, indicadores, relatorios, seguranca, recuperacao e empacotamento.
 
-Isso nao significa que a plataforma esteja em producao. O merge, o conector permanente do Google, a revisao juridica, a infraestrutura publica, os segredos de producao, o backup de corte e a liberacao gradual ainda dependem de decisoes e recursos externos. O Apps Script deve permanecer disponivel ate a conclusao desses gates.
+Isso nao significa que a plataforma esteja em producao. O conector permanente do Google, a revisao juridica, a infraestrutura publica, os segredos de producao, o backup de corte e a liberacao gradual ainda dependem de decisoes e recursos externos. O Apps Script deve permanecer disponivel ate a conclusao desses gates.
 
 ## Metodo
 
@@ -25,7 +25,7 @@ A auditoria deriva os requisitos de `PROJECT_CONTEXT.md`, `ARCHITECTURE.md` e `R
 | Cadastro e edicao da empresa | Contratos de organizacao, repositorios, API e `OrganizationsView` | Comprovado no codigo e em homologacao |
 | Fornecedores e centros de custo | Controllers de dados mestres, repositorios Prisma e demo, telas e testes | Comprovado |
 | Tabela de precos e importacao em lote | `supplier-prices`, contratos de importacao, `PricesView` e testes por linha | Comprovado |
-| Google Sheets e importacao XLSX | Controller de integracao, leitor XLSX, parser, previa persistida, conciliacao e testes | Comprovado no codigo e em homologacao |
+| Google Sheets e importacao XLSX | Verificacao autenticada somente leitura, leitor XLSX, parser, previa persistida, conciliacao e testes | Verificacao comprovada no codigo; importacao comprovada em homologacao |
 | Dedupe e preservacao do historico | Conciliacao por chaves de negocio, complemento de nota, idempotencia e compras sem data | Comprovado em homologacao |
 | Compras, itens, rateios e parcelas | Contratos, endpoints, repositorios, `PurchasesView` e testes de calculo | Comprovado |
 | Edicao, cancelamento e reativacao | Controle concorrente, motivo obrigatorio, auditoria, protecao de parcelas pagas e testes multiempresa | Comprovado no codigo e em homologacao |
@@ -48,11 +48,18 @@ Na revisao de 2026-07-17:
 - o aceite visual cobriu 1280 por 720 e 390 por 844 pixels, sem erro de console ou rolagem horizontal da pagina;
 - o pull request 7 recebeu o commit auditado e os seis checks de validacao e conteineres passaram na publicacao.
 
+Na atualizacao de 2026-07-22:
+
+- o pull request 7 foi mesclado na `main` pelo commit `3b5661ce5b3be157bd8d4633e0172dd8931a3f2d`;
+- a suite local ampliada passou com `30` testes de contratos, `77` da API, `11` da interface e `36` verificadores de infraestrutura e release;
+- os testes automatizados passaram a comprovar que a verificacao do conector usa somente leitura, valida o mapeamento e nao cria uma previa;
+- o aceite visual da tela `Automacoes` passou em desktop e em 390 por 844 pixels, sem erro de console ou rolagem horizontal;
+- a conta de servico real ainda nao foi configurada, portanto a verificacao autenticada permanente continua corretamente registrada como gate externo.
+
 ## Gates externos restantes
 
 | Gate | Evidencia necessaria para concluir |
 | --- | --- |
-| Merge | Pull request aprovado e commit presente na `main` |
 | Google permanente | Conta de servico dedicada, planilha compartilhada e sincronizacao autenticada validada |
 | Revisao juridica | Termos, Aviso de privacidade, papeis LGPD, retencao e canal dos titulares aprovados |
 | Infraestrutura | Dominios HTTPS, API e web hospedadas, CORS, proxy, alertas e segredos configurados |
@@ -62,4 +69,4 @@ Na revisao de 2026-07-17:
 
 ## Regra de conclusao
 
-O desenvolvimento e a homologacao funcional podem ser considerados concluidos para a versao `0.10.0`. A implantacao integral somente pode ser declarada concluida quando todos os gates externos acima possuirem evidencia registrada. Ate la, nao criar a tag de producao, nao promover o banco e nao desligar o legado.
+O desenvolvimento e a homologacao funcional podem ser considerados concluidos para a versao `0.10.0`, e o merge dessa base esta comprovado. A implantacao integral somente pode ser declarada concluida quando todos os gates externos acima possuirem evidencia registrada. Ate la, nao criar a tag de producao, nao promover o banco e nao desligar o legado.

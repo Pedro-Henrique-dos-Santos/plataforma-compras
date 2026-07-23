@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type {
+  GoogleSheetsConnectionCheck,
   GoogleSheetsConnectorStatus,
   GoogleSheetsIntegration,
   GoogleSheetsIntegrationInput,
@@ -63,9 +64,12 @@ export function IntegrationsView({
   const [form, setForm] = useState<IntegrationForm>(initialForm);
   const [preview, setPreview] = useState<SheetSyncPreview | null>(null);
   const [result, setResult] = useState<SheetSyncResult | null>(null);
+  const [connectionCheck, setConnectionCheck] =
+    useState<GoogleSheetsConnectionCheck | null>(null);
   const [filter, setFilter] = useState<SheetSyncAction['action'] | 'ALL'>('ALL');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -86,6 +90,7 @@ export function IntegrationsView({
         setForm(formFromIntegration(nextStatus.integration));
         setPreview(null);
         setResult(null);
+        setConnectionCheck(null);
       })
       .catch((requestError: unknown) => {
         if (!controller.signal.aborted) setError(errorMessage(requestError));
@@ -103,6 +108,13 @@ export function IntegrationsView({
       ),
     [filter, preview],
   );
+
+  function editForm(update: (current: IntegrationForm) => IntegrationForm) {
+    setForm(update);
+    setConnectionCheck(null);
+    setPreview(null);
+    setResult(null);
+  }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -123,6 +135,7 @@ export function IntegrationsView({
       }));
       setPreview(null);
       setResult(null);
+      setConnectionCheck(null);
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {
@@ -170,6 +183,24 @@ export function IntegrationsView({
       setError(errorMessage(requestError));
     } finally {
       setApplying(false);
+    }
+  }
+
+  async function checkConnection() {
+    setChecking(true);
+    setError(null);
+    setConnectionCheck(null);
+    try {
+      const check = await apiPost<GoogleSheetsConnectionCheck>(
+        '/integrations/google-sheets/check',
+        {},
+        { token: accessToken, organizationId },
+      );
+      setConnectionCheck(check);
+    } catch (requestError) {
+      setError(errorMessage(requestError));
+    } finally {
+      setChecking(false);
     }
   }
 
@@ -231,7 +262,9 @@ export function IntegrationsView({
               />
               <button
                 className="secondary-button"
-                disabled={!integrationSaved || uploading}
+                disabled={
+                  !integrationSaved || uploading || checking || previewing || applying
+                }
                 onClick={() => workbookInput.current?.click()}
                 title="Gerar previa a partir de um arquivo Excel"
                 type="button"
@@ -243,8 +276,33 @@ export function IntegrationsView({
           )}
           {canWrite && (
             <button
+              className="secondary-button"
+              disabled={
+                !connectorReady ||
+                !integrationSaved ||
+                checking ||
+                previewing ||
+                uploading ||
+                applying
+              }
+              onClick={() => void checkConnection()}
+              type="button"
+            >
+              <CheckCircle2 size={16} />
+              {checking ? 'Verificando acesso' : 'Verificar acesso'}
+            </button>
+          )}
+          {canWrite && (
+            <button
               className="primary-button"
-              disabled={!connectorReady || !integrationSaved || previewing}
+              disabled={
+                !connectorReady ||
+                !integrationSaved ||
+                previewing ||
+                checking ||
+                uploading ||
+                applying
+              }
               onClick={() => void generatePreview()}
               type="button"
             >
@@ -256,6 +314,12 @@ export function IntegrationsView({
       </section>
 
       {error && <div className="inline-error">{error}</div>}
+      {connectionCheck && (
+        <div className="success-banner">
+          <CheckCircle2 size={18} />
+          <span>{connectionCheckMessage(connectionCheck)}</span>
+        </div>
+      )}
       {result && (
         <div className="success-banner">
           <CheckCircle2 size={18} />
@@ -277,11 +341,15 @@ export function IntegrationsView({
         <span className={`status-label ${connectorReady ? 'active' : ''}`}>
           {connectorReady ? 'Disponivel' : 'Pendente'}
         </span>
-        {status?.integration?.lastSyncedAt && (
+        {connectionCheck ? (
+          <span className="integration-last-sync">
+            Acesso verificado {formatDateTime(connectionCheck.checkedAt)}
+          </span>
+        ) : status?.integration?.lastSyncedAt ? (
           <span className="integration-last-sync">
             Ultima sincronizacao {formatDateTime(status.integration.lastSyncedAt)}
           </span>
-        )}
+        ) : null}
       </section>
 
       <form className="panel management-form integration-form" onSubmit={(event) => void save(event)}>
@@ -296,7 +364,9 @@ export function IntegrationsView({
           ID da planilha
           <input
             disabled={!canConfigure}
-            onChange={(event) => setForm((current) => ({ ...current, spreadsheetId: event.target.value }))}
+            onChange={(event) =>
+              editForm((current) => ({ ...current, spreadsheetId: event.target.value }))
+            }
             required
             value={form.spreadsheetId}
           />
@@ -305,7 +375,9 @@ export function IntegrationsView({
           Aba de itens
           <input
             disabled={!canConfigure}
-            onChange={(event) => setForm((current) => ({ ...current, itemsSheetName: event.target.value }))}
+            onChange={(event) =>
+              editForm((current) => ({ ...current, itemsSheetName: event.target.value }))
+            }
             required
             value={form.itemsSheetName}
           />
@@ -314,7 +386,12 @@ export function IntegrationsView({
           Aba de parcelas
           <input
             disabled={!canConfigure}
-            onChange={(event) => setForm((current) => ({ ...current, installmentsSheetName: event.target.value }))}
+            onChange={(event) =>
+              editForm((current) => ({
+                ...current,
+                installmentsSheetName: event.target.value,
+              }))
+            }
             required
             value={form.installmentsSheetName}
           />
@@ -323,7 +400,12 @@ export function IntegrationsView({
           Aba de fornecedores
           <input
             disabled={!canConfigure}
-            onChange={(event) => setForm((current) => ({ ...current, suppliersSheetName: event.target.value }))}
+            onChange={(event) =>
+              editForm((current) => ({
+                ...current,
+                suppliersSheetName: event.target.value,
+              }))
+            }
             required
             value={form.suppliersSheetName}
           />
@@ -332,7 +414,9 @@ export function IntegrationsView({
           Aba de precos
           <input
             disabled={!canConfigure}
-            onChange={(event) => setForm((current) => ({ ...current, pricesSheetName: event.target.value }))}
+            onChange={(event) =>
+              editForm((current) => ({ ...current, pricesSheetName: event.target.value }))
+            }
             required
             value={form.pricesSheetName}
           />
@@ -343,7 +427,9 @@ export function IntegrationsView({
             disabled={!canConfigure}
             max="20"
             min="1"
-            onChange={(event) => setForm((current) => ({ ...current, headerRow: event.target.value }))}
+            onChange={(event) =>
+              editForm((current) => ({ ...current, headerRow: event.target.value }))
+            }
             required
             type="number"
             value={form.headerRow}
@@ -353,14 +439,20 @@ export function IntegrationsView({
           <input
             checked={form.enabled}
             disabled={!canConfigure}
-            onChange={(event) => setForm((current) => ({ ...current, enabled: event.target.checked }))}
+            onChange={(event) =>
+              editForm((current) => ({ ...current, enabled: event.target.checked }))
+            }
             type="checkbox"
           />
           <span>Integracao ativa</span>
         </label>
         {canConfigure && (
           <div className="form-actions integration-form-actions">
-            <button className="secondary-button" disabled={saving} type="submit">
+            <button
+              className="secondary-button"
+              disabled={saving || checking || previewing || uploading || applying}
+              type="submit"
+            >
               <Save size={16} />
               {saving ? 'Salvando' : 'Salvar configuracao'}
             </button>
@@ -398,7 +490,7 @@ export function IntegrationsView({
             {canWrite && (
               <button
                 className="primary-button sync-apply-button"
-                disabled={applying || Boolean(result)}
+                disabled={applying || checking || previewing || uploading || Boolean(result)}
                 onClick={() => void applyPreview()}
                 type="button"
               >
@@ -506,6 +598,11 @@ function connectorDetail(status: GoogleSheetsConnectorStatus | null): string {
   if (status?.serviceAccountEmail) return status.serviceAccountEmail;
   if (status?.mode === 'DEMO') return 'Leitura local sem alterar a planilha principal';
   return 'Servidor sem credencial configurada';
+}
+
+export function connectionCheckMessage(check: GoogleSheetsConnectionCheck): string {
+  const legacy = check.legacySheetName ? ' e historico legado' : '';
+  return `Acesso confirmado a ${check.spreadsheetTitle}: ${check.requiredSheets.length} abas obrigatorias${legacy}.`;
 }
 
 function actionLabel(action: SheetSyncAction['action']): string {

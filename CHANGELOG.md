@@ -1,5 +1,13 @@
 # Changelog
 
+## Nao publicado
+
+- Adicionada verificacao autenticada de credencial, compartilhamento e mapeamento das abas do Google Sheets antes da previa.
+- Reduzido o escopo da conta de servico Google para `spreadsheets.readonly`.
+- Impedido o cache de identidade e dados operacionais para evitar respostas `304` sem corpo e dados obsoletos apos troca de contexto.
+- Alinhadas as origens locais `localhost` e `127.0.0.1` na validacao de CORS do ambiente de desenvolvimento.
+- Registrado o merge do pull request 7 na `main` como gate concluido.
+
 ## 0.10.0 - 2026-07-17
 
 - Adicionada consulta detalhada de compras com itens, rateios, parcelas, observacoes e dados fiscais.

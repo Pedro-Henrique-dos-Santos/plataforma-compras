@@ -66,6 +66,16 @@ As credenciais do Supabase devem existir somente no ambiente local protegido ou 
 5. Importar o modelo CSV e conferir erros por linha antes de gravar.
 6. Confirmar que a tabela de precos nao exige quantidade do item.
 
+### Integracao com Google Sheets
+
+1. Salvar o ID da planilha e quatro nomes de abas diferentes na tela `Automacoes`.
+2. Compartilhar a planilha como leitora com o e-mail exibido da conta de servico.
+3. Executar `Verificar acesso` e confirmar titulo, quatro abas obrigatorias e horario da verificacao.
+4. Confirmar nos logs ou no teste automatizado que o cliente solicita somente `spreadsheets.readonly`.
+5. Configurar duas fontes com a mesma aba e confirmar que a verificacao rejeita o mapeamento.
+6. Confirmar que a verificacao nao cria previa, lote, fornecedor, preco ou compra.
+7. Gerar a previa somente depois da verificacao e revisar as acoes antes de aplicar.
+
 ## 4. Operacao de compras
 
 1. Registrar uma compra com mais de um item.

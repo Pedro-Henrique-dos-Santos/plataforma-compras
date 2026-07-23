@@ -97,7 +97,7 @@ O identificador de backup serve como barreira operacional; o arquivo real deve p
 
 ## Ordem de implantacao
 
-1. Aprovar e mesclar o pull request com CI verde.
+1. Confirmar que o commit aprovado esta na `main` com CI verde.
 2. Gerar e verificar um backup fora do GitHub.
 3. Criar a tag semantica e aguardar as duas imagens no GHCR.
 4. Executar `Supabase Production` com aprovacao do ambiente.

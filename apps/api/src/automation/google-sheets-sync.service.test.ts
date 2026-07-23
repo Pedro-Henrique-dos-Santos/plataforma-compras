@@ -1,8 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import type { PurchaseSummary, Supplier } from '@compras/contracts';
+import type {
+  GoogleSheetsConnectionCheck,
+  PurchaseSummary,
+  Supplier,
+} from '@compras/contracts';
 
-import { planSheetSync } from './google-sheets-sync.service.js';
+import {
+  GoogleSheetsSyncService,
+  planSheetSync,
+} from './google-sheets-sync.service.js';
 import type { ParsedSheetPayload } from './sheet-sync.types.js';
 
 const supplier: Supplier = {
@@ -25,6 +32,38 @@ const supplier: Supplier = {
 };
 
 describe('Google Sheets reconciliation', () => {
+  it('checks access without creating a synchronization preview', async () => {
+    const integration = { id: 'integration-id' };
+    const check: GoogleSheetsConnectionCheck = {
+      connectorMode: 'DEMO',
+      spreadsheetTitle: 'Planilha de valores negociados',
+      serviceAccountEmail: null,
+      requiredSheets: [
+        { configuredName: 'Itens', actualName: 'Itens' },
+        { configuredName: 'Parcelas', actualName: 'Parcelas' },
+        { configuredName: 'Fornecedores', actualName: 'Fornecedores' },
+        { configuredName: 'Precos', actualName: 'Precos' },
+      ],
+      legacySheetName: null,
+      checkedAt: '2026-07-22T20:00:00.000Z',
+    };
+    const createSheetSyncRun = vi.fn();
+    const automation = {
+      getGoogleSheetsIntegration: vi.fn().mockResolvedValue(integration),
+      createSheetSyncRun,
+    };
+    const reader = { checkConnection: vi.fn().mockResolvedValue(check) };
+    const service = new GoogleSheetsSyncService(
+      automation as never,
+      {} as never,
+      reader as never,
+    );
+
+    await expect(service.checkConnection('organization-id')).resolves.toEqual(check);
+    expect(reader.checkConnection).toHaveBeenCalledWith(integration);
+    expect(createSheetSyncRun).not.toHaveBeenCalled();
+  });
+
   it('attaches a missing invoice when supplier and amount match an existing purchase', () => {
     const planned = planSheetSync(payload(), [], [supplier], [], [existingPurchase()]);
     expect(planned.actions).toContainEqual(

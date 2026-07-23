@@ -10,6 +10,9 @@ describe('validateEnvironment', () => {
     expect(environment['REQUIRE_VERIFIED_EMAIL']).toBe('false');
     expect(environment['INVOICE_STORAGE_BUCKET']).toBe('invoice-documents');
     expect(environment['TRUST_PROXY']).toBe('false');
+    expect(environment['CORS_ORIGIN']).toBe(
+      'http://localhost:5173,http://127.0.0.1:5173',
+    );
   });
 
   it('rejects an incomplete production environment', () => {
