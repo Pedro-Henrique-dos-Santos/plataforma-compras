@@ -37,6 +37,10 @@ A primeira versao foi criada em Google Sheets e Google Apps Script. Ela possui p
 - `compras@humanclinic.com.br` pertence somente ao contexto Human Clinic e nao sera proprietario global.
 - O nome do produto e E-Gestao Compras; o nome da empresa ativa continua variavel.
 - A interface possui os temas Normal, Escuro e Branco e barra lateral recolhivel.
+- Depois da autenticacao, o usuario escolhe entre os modulos Compras, Financeiro
+  e Administracao. Cada modulo possui navegacao lateral propria, filtrada pelas
+  permissoes da empresa ativa, sem separar os dados ou interromper os vinculos
+  entre pedido, documento fiscal, recebimento e titulo financeiro.
 
 ## Ambientes conhecidos
 

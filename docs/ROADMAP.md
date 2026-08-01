@@ -17,6 +17,9 @@
 - [Concluido] Aplicar papeis, permissoes e auditoria multiempresa.
 - [Concluido no codigo e testes] Derivar menu e controles de escrita da interface pela mesma matriz de permissoes usada na API.
 - [Concluido] Criar identidade E-Gestao, tres temas e barra lateral recolhivel.
+- [Concluido no codigo e testes] Criar o lancador central de modulos e separar
+  as navegacoes contextuais de Compras, Financeiro e Administracao, preservando
+  o fluxo integrado entre as areas.
 - [Concluido] Bloquear acesso direto do navegador as tabelas operacionais.
 
 ## Fase 2: cadastros mestres

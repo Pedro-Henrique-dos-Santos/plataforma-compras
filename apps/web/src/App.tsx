@@ -17,9 +17,10 @@ import {
 } from '@compras/contracts';
 
 import logoMark from './assets/egestao-mark.svg';
-import { AppShell, type ViewId } from './components/AppShell';
+import { AppShell } from './components/AppShell';
 import { ConsentScreen } from './components/ConsentScreen';
 import { LoginScreen } from './components/LoginScreen';
+import { ModuleLauncher } from './components/ModuleLauncher';
 import { OrganizationSetupScreen } from './components/OrganizationSetupScreen';
 import { PasswordResetScreen } from './components/PasswordResetScreen';
 import { apiGet, apiPatch, apiPost } from './lib/api';
@@ -27,6 +28,12 @@ import { getOrganizationCapabilities } from './lib/access';
 import { demoMode, supabase } from './lib/auth';
 import { resolveInitialOrganization } from './lib/organizations';
 import { parseThemeMode, type ThemeMode } from './lib/theme';
+import {
+  getDefaultModuleView,
+  getVisibleModules,
+  type AppModuleId,
+  type ViewId,
+} from './module-navigation';
 
 type SessionState = 'checking' | 'signed-out' | 'signed-in' | 'password-recovery';
 
@@ -123,6 +130,7 @@ export default function App() {
   const [dataRevision, setDataRevision] = useState(0);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [activeModule, setActiveModule] = useState<AppModuleId | null>(null);
   const [view, setView] = useState<ViewId>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
@@ -294,6 +302,7 @@ export default function App() {
     setUser(null);
     setDashboard(null);
     setMembers([]);
+    setActiveModule(null);
     setSessionState('signed-out');
   }
 
@@ -303,6 +312,7 @@ export default function App() {
     setMembers([]);
     setDashboardFilters({ includeUndated: true });
     setError(null);
+    setActiveModule(null);
     setView('dashboard');
   }
 
@@ -322,6 +332,7 @@ export default function App() {
     );
     localStorage.setItem(ACTIVE_ORGANIZATION_KEY, organization.id);
     setActiveOrganizationId(organization.id);
+    setActiveModule(null);
     setView('dashboard');
   }
 
@@ -384,6 +395,34 @@ export default function App() {
     setDataRevision((current) => current + 1);
   }
 
+  function handleModuleSelect(moduleId: AppModuleId) {
+    if (!user || !activeOrganization) {
+      return;
+    }
+    const nextView = getDefaultModuleView(moduleId, user, activeOrganization);
+    if (!nextView) {
+      return;
+    }
+    setError(null);
+    setMobileMenuOpen(false);
+    setActiveModule(moduleId);
+    setView(nextView);
+  }
+
+  function handleOpenSettings() {
+    if (!user || !activeOrganization) {
+      return;
+    }
+    const modules = getVisibleModules(user, activeOrganization);
+    const context = modules.find((module) => module.id === 'administration') ?? modules[0];
+    if (!context) {
+      return;
+    }
+    setError(null);
+    setActiveModule(context.id);
+    setView('settings');
+  }
+
   if (sessionState === 'checking') {
     return <FullPageLoading />;
   }
@@ -424,10 +463,29 @@ export default function App() {
 
   const capabilities = getOrganizationCapabilities(user, activeOrganization);
 
+  if (!activeModule) {
+    return (
+      <ModuleLauncher
+        activeOrganization={activeOrganization}
+        onModuleSelect={handleModuleSelect}
+        onOpenSettings={handleOpenSettings}
+        onOrganizationChange={handleOrganizationChange}
+        onSignOut={() => void handleSignOut()}
+        organizations={user.organizations}
+        user={user}
+      />
+    );
+  }
+
   return (
     <AppShell
+      activeModule={activeModule}
       activeOrganization={activeOrganization}
       mobileMenuOpen={mobileMenuOpen}
+      onModuleExit={() => {
+        setMobileMenuOpen(false);
+        setActiveModule(null);
+      }}
       onMobileMenuChange={setMobileMenuOpen}
       onOrganizationChange={handleOrganizationChange}
       onSidebarCollapsedChange={handleSidebarCollapsedChange}

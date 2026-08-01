@@ -2,6 +2,12 @@
 
 ## Nao publicado
 
+- Adicionado lancador central para os modulos Compras, Financeiro e
+  Administracao, com menus laterais contextuais derivados das permissoes do
+  usuario e retorno rapido para a selecao de area.
+- Preservada a continuidade entre pedidos, documentos fiscais, recebimentos e
+  contas a pagar apesar da separacao visual dos modulos.
+
 ## 0.11.0 - 2026-08-01
 
 - Adicionados Kanban financeiro, aprovacao por titulo ou fotografia do pedido,

@@ -1,56 +1,36 @@
 import type { ReactNode } from 'react';
 import {
-  hasAccessPermission,
   type OrganizationSummary,
-  type Permission,
   type UserContext,
 } from '@compras/contracts';
 import {
-  BarChart3,
   Building2,
   ChevronDown,
-  FileScan,
-  FileText,
-  Landmark,
-  ListChecks,
+  LayoutGrid,
   LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  ShieldCheck,
-  ShoppingCart,
-  SlidersHorizontal,
-  Store,
-  Tags,
-  WalletCards,
-  Workflow,
   X,
 } from 'lucide-react';
 
 import logoMark from '../assets/egestao-mark.svg';
+import {
+  getAppModule,
+  getVisibleModuleNavigationGroups,
+  type AppModuleId,
+  type ViewId,
+} from '../module-navigation';
 
-export type ViewId =
-  | 'dashboard'
-  | 'reports'
-  | 'purchases'
-  | 'approvals'
-  | 'payables'
-  | 'approval-settings'
-  | 'financial-settings'
-  | 'suppliers'
-  | 'prices'
-  | 'cost-centers'
-  | 'invoice-documents'
-  | 'integrations'
-  | 'organizations'
-  | 'access'
-  | 'settings';
+export type { AppModuleId, ViewId } from '../module-navigation';
 
 type AppShellProps = {
+  activeModule: AppModuleId;
   activeOrganization: OrganizationSummary;
   children: ReactNode;
   mobileMenuOpen: boolean;
+  onModuleExit: () => void;
   onMobileMenuChange: (open: boolean) => void;
   onOrganizationChange: (organizationId: string) => void;
   onSidebarCollapsedChange: (collapsed: boolean) => void;
@@ -61,58 +41,6 @@ type AppShellProps = {
   user: UserContext;
   view: ViewId;
 };
-
-const navigation: Array<{
-  id: ViewId;
-  label: string;
-  icon: typeof BarChart3;
-  permission: Permission;
-}> = [
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3, permission: 'dashboard:read' },
-  { id: 'reports', label: 'Relatorios', icon: FileText, permission: 'purchase:read' },
-  { id: 'purchases', label: 'Compras', icon: ShoppingCart, permission: 'purchase:read' },
-  { id: 'approvals', label: 'Aprovacoes', icon: ListChecks, permission: 'approval:act' },
-  { id: 'payables', label: 'Contas a pagar', icon: WalletCards, permission: 'payable:read' },
-  { id: 'suppliers', label: 'Fornecedores', icon: Store, permission: 'supplier:read' },
-  { id: 'prices', label: 'Tabela de precos', icon: Tags, permission: 'price:read' },
-  {
-    id: 'cost-centers',
-    label: 'Centros de custo',
-    icon: Landmark,
-    permission: 'cost-center:read',
-  },
-  {
-    id: 'invoice-documents',
-    label: 'Notas fiscais',
-    icon: FileScan,
-    permission: 'invoice:read',
-  },
-  {
-    id: 'integrations',
-    label: 'Automacoes',
-    icon: Workflow,
-    permission: 'integration:read',
-  },
-  {
-    id: 'organizations',
-    label: 'Empresas',
-    icon: Building2,
-    permission: 'organization:manage',
-  },
-  { id: 'access', label: 'Acessos', icon: ShieldCheck, permission: 'member:manage' },
-  {
-    id: 'approval-settings',
-    label: 'Regras de aprovacao',
-    icon: Workflow,
-    permission: 'approval:manage',
-  },
-  {
-    id: 'financial-settings',
-    label: 'Regras financeiras',
-    icon: SlidersHorizontal,
-    permission: 'payment-approval:manage',
-  },
-];
 
 const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
   dashboard: {
@@ -178,9 +106,11 @@ const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
 };
 
 export function AppShell({
+  activeModule,
   activeOrganization,
   children,
   mobileMenuOpen,
+  onModuleExit,
   onMobileMenuChange,
   onOrganizationChange,
   onSidebarCollapsedChange,
@@ -192,7 +122,13 @@ export function AppShell({
   view,
 }: AppShellProps) {
   const isPlatformOwner = user.platformRoles.includes('PLATFORM_OWNER');
-  const visibleNavigation = getVisibleNavigation(user, activeOrganization);
+  const module = getAppModule(activeModule);
+  const ModuleIcon = module.icon;
+  const navigationGroups = getVisibleModuleNavigationGroups(
+    activeModule,
+    user,
+    activeOrganization,
+  );
   const title = viewTitles[view];
 
   function selectView(nextView: ViewId) {
@@ -229,24 +165,42 @@ export function AppShell({
           </button>
         </div>
 
-        <nav className="navigation" aria-label="Navegacao principal">
-          <p className="nav-section-label">Operacao</p>
-          {visibleNavigation.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                aria-current={view === item.id ? 'page' : undefined}
-                className={`nav-item ${view === item.id ? 'active' : ''}`}
-                key={item.id}
-                onClick={() => selectView(item.id)}
-                title={sidebarCollapsed ? item.label : undefined}
-                type="button"
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+        <button
+          className={`sidebar-module-switcher module-tone-${module.tone}`}
+          onClick={onModuleExit}
+          title={sidebarCollapsed ? 'Voltar aos modulos' : undefined}
+          type="button"
+        >
+          <span className="sidebar-module-icon"><ModuleIcon size={19} /></span>
+          <span className="sidebar-module-copy">
+            <small>Modulo ativo</small>
+            <strong>{module.label}</strong>
+          </span>
+          <LayoutGrid className="sidebar-module-grid" size={17} />
+        </button>
+
+        <nav className="navigation" aria-label={`Navegacao do modulo ${module.label}`}>
+          {navigationGroups.map((group) => (
+            <section className="nav-group" key={group.label}>
+              <p className="nav-section-label">{group.label}</p>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    aria-current={view === item.id ? 'page' : undefined}
+                    className={`nav-item ${view === item.id ? 'active' : ''}`}
+                    key={item.id}
+                    onClick={() => selectView(item.id)}
+                    title={sidebarCollapsed ? item.label : undefined}
+                    type="button"
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </section>
+          ))}
         </nav>
 
         <nav className="navigation utility-navigation" aria-label="Preferencias">
@@ -327,19 +281,6 @@ export function AppShell({
         <main className="page-content">{children}</main>
       </div>
     </div>
-  );
-}
-
-export function getVisibleNavigation(
-  user: Pick<UserContext, 'platformRoles'>,
-  activeOrganization: Pick<OrganizationSummary, 'role'>,
-) {
-  return navigation.filter((item) =>
-    hasAccessPermission(
-      user.platformRoles,
-      activeOrganization.role,
-      item.permission,
-    ),
   );
 }
 

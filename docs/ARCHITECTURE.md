@@ -213,7 +213,18 @@ navegador.
 
 ## Interface
 
-O produto usa a marca E-Gestao Compras e exibe o nome da empresa ativa no cabecalho. A barra lateral pode ser recolhida e permanece funcional em telas menores. As preferencias visuais oferecem os temas Normal, Escuro e Branco e sao salvas apenas no navegador do usuario.
+O produto usa a marca E-Gestao Compras e exibe o nome da empresa ativa no
+cabecalho. Depois da autenticacao, um lancador central apresenta os modulos
+Compras, Financeiro e Administracao permitidos ao usuario. Ao entrar em um
+modulo, a barra lateral mostra somente as rotas daquele contexto e permite
+voltar ao lancador para trocar de area.
+
+Essa divisao e exclusivamente de navegacao: pedidos, documentos fiscais,
+recebimentos e titulos financeiros continuam relacionados no mesmo tenant e na
+mesma API. Os menus e comandos permanecem derivados da matriz compartilhada de
+permissoes. A barra lateral pode ser recolhida e permanece funcional em telas
+menores. As preferencias visuais oferecem os temas Normal, Escuro e Branco e
+sao salvas apenas no navegador do usuario.
 
 ## Operacao e recuperacao
 
