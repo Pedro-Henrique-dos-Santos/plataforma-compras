@@ -10,6 +10,7 @@ import type {
 } from '@compras/contracts';
 
 import type { AuthenticatedIdentity } from '../domain/identity.js';
+import { CnpjLookupService } from './cnpj-lookup.service.js';
 import {
   ProcurementRepository,
   type CostCenterFilters,
@@ -22,7 +23,13 @@ export class MasterDataService {
   constructor(
     @Inject(ProcurementRepository)
     private readonly repository: ProcurementRepository,
+    @Inject(CnpjLookupService)
+    private readonly cnpjLookup: CnpjLookupService,
   ) {}
+
+  lookupSupplierCnpj(document: string) {
+    return this.cnpjLookup.lookup(document);
+  }
 
   listCostCenters(organizationId: string, filters: CostCenterFilters) {
     return this.repository.listCostCenters(organizationId, filters);

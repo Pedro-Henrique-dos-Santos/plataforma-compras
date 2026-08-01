@@ -972,6 +972,15 @@ button:disabled {
   padding: 26px 28px 42px;
 }
 
+.workspace-purchases .page-content {
+  width: 100%;
+  padding: 14px 14px 24px;
+}
+
+.purchase-workspace {
+  gap: 12px;
+}
+
 .dashboard-layout,
 .management-layout {
   min-width: 0;
@@ -1470,32 +1479,48 @@ td {
 
 .purchase-kanban {
   min-width: 0;
-  min-height: 560px;
+  min-height: calc(100vh - 224px);
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(238px, 1fr);
-  gap: 10px;
+  grid-auto-columns: minmax(220px, 1fr);
+  gap: 0;
   overflow-x: auto;
-  padding: 0 0 10px;
+  padding: 0;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
   overscroll-behavior-inline: contain;
+  scroll-snap-type: x proximity;
 }
 
 .kanban-lane {
-  min-width: 238px;
+  min-width: 220px;
   display: grid;
   grid-template-rows: 46px minmax(0, 1fr);
   align-self: stretch;
-  background: var(--surface-alt);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  background: transparent;
+  border-right: 1px solid var(--line);
+  scroll-snap-align: start;
+  transition: background-color 140ms ease;
+}
+
+.kanban-lane:last-child {
+  border-right: 0;
+}
+
+.kanban-lane.drop-target {
+  background: color-mix(in srgb, var(--teal-soft) 62%, transparent);
 }
 
 .kanban-lane-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 11px;
+  padding: 0 12px;
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
 
@@ -1522,12 +1547,12 @@ td {
   min-height: 180px;
   display: grid;
   align-content: start;
-  gap: 8px;
-  padding: 8px;
+  gap: 9px;
+  padding: 10px;
 }
 
 .purchase-kanban-card {
-  min-height: 178px;
+  min-height: 176px;
   display: grid;
   grid-template-rows: auto auto auto auto 1fr auto;
   gap: 7px;
@@ -1535,11 +1560,28 @@ td {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 5px;
-  box-shadow: 0 2px 8px rgba(25, 29, 31, 0.05);
+  box-shadow: 0 1px 4px rgba(25, 29, 31, 0.05);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease,
+    transform 140ms ease;
 }
 
 .purchase-kanban-card[draggable="true"] {
   cursor: grab;
+}
+
+.purchase-kanban-card[draggable="true"]:hover {
+  border-color: var(--input-border);
+  box-shadow: 0 5px 14px rgba(25, 29, 31, 0.09);
+  transform: translateY(-1px);
+}
+
+.purchase-kanban-card.dragging {
+  cursor: grabbing;
+  opacity: 0.42;
+  transform: scale(0.985);
 }
 
 .purchase-kanban-card.cancelled {
@@ -1690,6 +1732,110 @@ td {
 
 .payable-metric.danger strong {
   color: var(--danger);
+}
+
+.payable-metric.success strong {
+  color: var(--success);
+}
+
+.receivables-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(170px, 0.32fr) 150px 150px auto;
+}
+
+.receivables-filter-bar > label:not(.search-field):not(.compact-select) input {
+  width: 100%;
+  height: 38px;
+  padding: 0 9px;
+  color: var(--ink);
+  background: var(--input);
+  border: 1px solid var(--input-border);
+  border-radius: 5px;
+}
+
+.table-secondary-text {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.table-avatar.finance {
+  color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.receivable-balance-band {
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.receivable-balance-band span {
+  display: grid;
+  gap: 5px;
+}
+
+.receivable-balance-band small,
+.receivable-detail-grid small,
+.receivable-settlement-list small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.receivable-balance-band strong {
+  font-size: 20px;
+}
+
+.receivable-detail-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.receivable-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.receivable-detail-grid span {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.receivable-settlement-list {
+  display: grid;
+}
+
+.receivable-settlement-list > div {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(160px, 0.45fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.receivable-settlement-list > div:last-child {
+  border-bottom: 0;
+}
+
+.receivable-settlement-list span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.receivable-settlement-list p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
 }
 
 .payable-filter-bar {
@@ -4238,6 +4384,10 @@ td {
     padding: 22px 18px 36px;
   }
 
+  .workspace-purchases .page-content {
+    padding: 14px 12px 28px;
+  }
+
   .filter-bar {
     align-items: stretch;
     flex-wrap: wrap;
@@ -4647,6 +4797,45 @@ td {
   .payable-filter-bar .search-field {
     grid-column: 1 / -1;
   }
+
+  .receivables-filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receivables-filter-bar .search-field {
+    grid-column: 1 / -1;
+  }
+}
+
+.cnpj-lookup-field {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.cnpj-lookup-field .secondary-button {
+  min-width: 138px;
+}
+
+.form-info {
+  padding: 10px 12px;
+  color: var(--teal);
+  background: var(--teal-soft);
+  border: 1px solid color-mix(in srgb, var(--teal) 24%, transparent);
+  border-radius: 5px;
+  font-size: 10px;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 620px) {
@@ -4656,7 +4845,7 @@ td {
   }
 
   .purchase-kanban {
-    min-height: 500px;
+    min-height: calc(100vh - 300px);
     grid-auto-columns: minmax(82vw, 82vw);
   }
 
@@ -4683,6 +4872,7 @@ td {
 
   .payable-metrics,
   .payable-filter-bar,
+  .receivables-filter-bar,
   .approver-options {
     grid-template-columns: 1fr;
   }
@@ -4699,6 +4889,21 @@ td {
 
   .payable-filter-bar .search-field {
     grid-column: auto;
+  }
+
+  .receivables-filter-bar .search-field {
+    grid-column: auto;
+  }
+
+  .cnpj-lookup-field,
+  .receivable-detail-summary,
+  .receivable-detail-grid,
+  .receivable-settlement-list > div {
+    grid-template-columns: 1fr;
+  }
+
+  .cnpj-lookup-field .secondary-button {
+    width: 100%;
   }
 
   .inline-actions {
@@ -4933,7 +5138,7 @@ td {
 
 .purchase-financial-status {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 1px;
   overflow: hidden;
   background: var(--line);
@@ -4943,18 +5148,22 @@ td {
 
 .purchase-financial-status span {
   min-width: 0;
-  min-height: 42px;
-  display: grid;
-  grid-template-columns: 14px minmax(0, 1fr);
-  align-content: center;
-  align-items: start;
+  min-height: 31px;
+  display: flex;
+  align-items: center;
   gap: 5px;
-  padding: 6px;
-  overflow-wrap: anywhere;
+  padding: 5px 7px;
+  overflow: hidden;
   color: var(--muted);
   background: var(--surface-alt);
   font-size: 8px;
   line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.purchase-financial-status svg {
+  flex: 0 0 auto;
 }
 
 .fiscal-card {
@@ -5352,12 +5561,8 @@ td {
     min-width: max-content;
   }
 
-  .purchase-financial-status {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .purchase-financial-status span {
-    min-height: 34px;
+    min-height: 31px;
   }
 }
 

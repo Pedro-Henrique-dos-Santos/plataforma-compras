@@ -186,6 +186,18 @@ describe('validateEnvironment', () => {
     ).toBe('20000');
   });
 
+  it('limits public CNPJ lookup timeouts', () => {
+    expect(
+      validateEnvironment({ NODE_ENV: 'development' })['CNPJ_LOOKUP_TIMEOUT_MS'],
+    ).toBe('6000');
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'development',
+        CNPJ_LOOKUP_TIMEOUT_MS: '999',
+      }),
+    ).toThrow(/between 1000 and 15000/);
+  });
+
   it('keeps fiscal automation in shadow mode and validates its secrets and URLs', () => {
     const defaults = validateEnvironment({ NODE_ENV: 'development' });
     expect(defaults['FISCAL_ROLLOUT_MODE']).toBe('SHADOW');

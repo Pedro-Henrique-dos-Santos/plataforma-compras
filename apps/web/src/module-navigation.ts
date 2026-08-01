@@ -4,6 +4,7 @@ import {
   FileScan,
   FileText,
   Landmark,
+  CircleDollarSign,
   ListChecks,
   Settings2,
   ShieldCheck,
@@ -31,6 +32,7 @@ export type ViewId =
   | 'purchases'
   | 'approvals'
   | 'payables'
+  | 'receivables'
   | 'approval-settings'
   | 'financial-settings'
   | 'suppliers'
@@ -162,6 +164,14 @@ const navigation: ModuleNavigationItem[] = [
     label: 'Contas a pagar',
     icon: WalletCards,
     permission: 'payable:read',
+    module: 'finance',
+    section: 'Operacao',
+  },
+  {
+    id: 'receivables',
+    label: 'Contas a receber',
+    icon: CircleDollarSign,
+    permission: 'receivable:read',
     module: 'finance',
     section: 'Operacao',
   },

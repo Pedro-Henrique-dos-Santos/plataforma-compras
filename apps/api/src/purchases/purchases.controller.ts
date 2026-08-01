@@ -116,7 +116,13 @@ export class PurchasesController {
     @Body(new ZodValidationPipe(changePurchaseWorkflowStageInputSchema))
     input: ChangePurchaseWorkflowStageInput,
   ) {
-    return this.purchases.changeWorkflowStage(actor, organization.id, id, input);
+    return this.purchases.changeWorkflowStage(
+      actor,
+      organization.id,
+      id,
+      input,
+      organization.role,
+    );
   }
 
   @Post(':id/submit-approval')

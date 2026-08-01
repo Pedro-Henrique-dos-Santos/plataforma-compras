@@ -19,12 +19,14 @@ describe('organization capabilities', () => {
       canManagePaymentApprovals: true,
       canManagePlatform: false,
       canSettlePayments: true,
+      canSettleReceivables: true,
       canWriteCostCenters: true,
       canWriteIntegrations: true,
       canWriteInvoices: true,
       canWritePayables: true,
       canWritePrices: true,
       canWritePurchases: true,
+      canWriteReceivables: true,
       canWriteSuppliers: true,
     });
   });
@@ -41,6 +43,8 @@ describe('organization capabilities', () => {
     expect(capabilities.canWriteCostCenters).toBe(true);
     expect(capabilities.canWriteInvoices).toBe(true);
     expect(capabilities.canWritePayables).toBe(true);
+    expect(capabilities.canWriteReceivables).toBe(false);
+    expect(capabilities.canSettleReceivables).toBe(false);
     expect(capabilities.canActOnApprovals).toBe(true);
     expect(capabilities.canManageApprovals).toBe(false);
     expect(capabilities.canWriteIntegrations).toBe(false);
@@ -57,6 +61,8 @@ describe('organization capabilities', () => {
     expect(capabilities.canWritePayables).toBe(true);
     expect(capabilities.canActOnPaymentApprovals).toBe(true);
     expect(capabilities.canSettlePayments).toBe(true);
+    expect(capabilities.canWriteReceivables).toBe(true);
+    expect(capabilities.canSettleReceivables).toBe(true);
     expect(capabilities.canWritePurchases).toBe(false);
     expect(capabilities.canManagePaymentApprovals).toBe(false);
     expect(capabilities.canManageFiscalIntegration).toBe(false);

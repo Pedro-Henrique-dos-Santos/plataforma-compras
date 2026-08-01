@@ -30,6 +30,8 @@ export function getOrganizationCapabilities(
     canWritePurchases: allowed('purchase:write'),
     canActOnApprovals: allowed('approval:act'),
     canWritePayables: allowed('payable:write'),
+    canWriteReceivables: allowed('receivable:write'),
+    canSettleReceivables: allowed('receivable:settle'),
     canSettlePayments: allowed('payment:settle'),
     canActOnPaymentApprovals: allowed('payment-approval:act'),
     canManagePaymentApprovals: allowed('payment-approval:manage'),

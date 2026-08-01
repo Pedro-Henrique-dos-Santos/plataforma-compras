@@ -34,6 +34,73 @@ afterEach(() => {
 });
 
 describe('purchase approval workflow', () => {
+  it('lets an administrator return cards directly when the reason rule is disabled', async () => {
+    const repository = new DemoProcurementRepository();
+    const supplier = (await repository.listSuppliers(HUMAN_CLINIC_ID))[0];
+    expect(supplier).toBeDefined();
+    if (!supplier) return;
+    const created = await repository.createPurchase(
+      buyer,
+      HUMAN_CLINIC_ID,
+      purchaseInput(supplier.id, 'RETORNO-ADMIN-001', 100),
+    );
+    const requested = await repository.changePurchaseWorkflowStage(
+      buyer,
+      HUMAN_CLINIC_ID,
+      created.id,
+      { expectedUpdatedAt: created.updatedAt, stage: 'REQUESTED', reason: null },
+      { organizationRole: 'ORGANIZATION_ADMIN' },
+    );
+    const submitted = await repository.submitPurchaseForApproval(
+      buyer,
+      HUMAN_CLINIC_ID,
+      created.id,
+      requested.updatedAt,
+    );
+
+    const returned = await repository.changePurchaseWorkflowStage(
+      buyer,
+      HUMAN_CLINIC_ID,
+      created.id,
+      {
+        expectedUpdatedAt: submitted.updatedAt,
+        stage: 'REGISTRATION',
+        reason: null,
+      },
+      { organizationRole: 'ORGANIZATION_ADMIN' },
+    );
+
+    expect(returned.workflowStage).toBe('REGISTRATION');
+    expect(returned.approval?.status).toBe('CANCELLED');
+
+    await repository.updateApprovalSettings(buyer, HUMAN_CLINIC_ID, {
+      financeChannel: null,
+      financeRecipient: null,
+      notifyFinanceOnApproval: false,
+      requireStageReturnReason: true,
+    });
+    const requestedAgain = await repository.changePurchaseWorkflowStage(
+      buyer,
+      HUMAN_CLINIC_ID,
+      created.id,
+      { expectedUpdatedAt: returned.updatedAt, stage: 'REQUESTED', reason: null },
+      { organizationRole: 'ORGANIZATION_ADMIN' },
+    );
+    await expect(
+      repository.changePurchaseWorkflowStage(
+        buyer,
+        HUMAN_CLINIC_ID,
+        created.id,
+        {
+          expectedUpdatedAt: requestedAgain.updatedAt,
+          stage: 'REGISTRATION',
+          reason: null,
+        },
+        { organizationRole: 'ORGANIZATION_ADMIN' },
+      ),
+    ).rejects.toThrow(/motivo/i);
+  });
+
   it('requires two distinct approvals above the threshold and creates a payable', async () => {
     const repository = new DemoProcurementRepository();
     const supplier = await repository.createSupplier(owner, HUMAN_CLINIC_ID, {

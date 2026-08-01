@@ -125,6 +125,8 @@ describe('Prisma multi-company security', () => {
       'purchase_stage_history',
       'purchases',
       'receipt_responsibilities',
+      'receivable_settlements',
+      'receivables',
       'sheet_sync_runs',
       'supplier_prices',
       'suppliers',

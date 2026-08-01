@@ -62,6 +62,7 @@ import {
   type PurchaseFilters,
   type SupplierFilters,
   type SupplierPriceFilters,
+  type WorkflowTransitionContext,
 } from './procurement.repository.js';
 
 type StoredCostCenter = CostCenter & { organizationId: string };
@@ -286,6 +287,15 @@ export class DemoProcurementRepository extends ProcurementRepository {
       defaultCostCenterId: input.defaultCostCenterId,
       email: input.email,
       phone: input.phone,
+      postalCode: input.postalCode ?? null,
+      street: input.street ?? null,
+      addressNumber: input.addressNumber ?? null,
+      addressComplement: input.addressComplement ?? null,
+      district: input.district ?? null,
+      city: input.city ?? null,
+      state: input.state ?? null,
+      registrationStatus: input.registrationStatus ?? null,
+      primaryActivity: input.primaryActivity ?? null,
       status: 'ACTIVE',
       notes: input.notes,
       createdAt: now,
@@ -563,6 +573,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
     organizationId: string,
     id: string,
     input: ChangePurchaseWorkflowStageInput,
+    context: WorkflowTransitionContext = {},
   ): Promise<PurchaseDetail> {
     const purchase = this.requireStoredPurchase(organizationId, id);
     if (purchase.status === 'CANCELLED') {
@@ -574,12 +585,32 @@ export class DemoProcurementRepository extends ProcurementRepository {
     if (purchase.workflowStage === input.stage) {
       return this.toPurchaseDetail(purchase);
     }
+    const settings = await this.getApprovalSettings(organizationId);
     assertDemoManualStageTransition(
       purchase.workflowStage,
       input.stage,
       input.reason ?? null,
       purchase.invoiceNumber !== null,
+      {
+        adminOverride:
+          actor.platformRoles.includes('PLATFORM_OWNER') ||
+          context.organizationRole === 'ORGANIZATION_ADMIN',
+        automated: context.automated === true,
+        requireReturnReason: settings.requireStageReturnReason,
+      },
     );
+    if (
+      purchase.workflowStage === 'AWAITING_APPROVAL' &&
+      demoWorkflowStageIndex(input.stage) < demoWorkflowStageIndex(purchase.workflowStage)
+    ) {
+      const now = new Date().toISOString();
+      for (const request of purchase.approvalRequests) {
+        if (request.status === 'PENDING') {
+          request.status = 'CANCELLED';
+          request.resolvedAt = now;
+        }
+      }
+    }
     this.moveStoredPurchase(purchase, input.stage, actor, input.reason ?? null);
     return this.toPurchaseDetail(purchase);
   }
@@ -825,6 +856,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
         financeChannel: null,
         financeRecipient: null,
         notifyFinanceOnApproval: false,
+        requireStageReturnReason: false,
         updatedAt: null,
       },
     );
@@ -1750,7 +1782,20 @@ function assertDemoManualStageTransition(
   to: PurchaseWorkflowStage,
   reason: string | null,
   invoiceLinked: boolean,
+  options: {
+    adminOverride: boolean;
+    automated: boolean;
+    requireReturnReason: boolean;
+  },
 ) {
+  const movingBackwards = demoWorkflowStageIndex(to) < demoWorkflowStageIndex(from);
+  if (options.automated) {
+    if (demoWorkflowStageIndex(to) !== demoWorkflowStageIndex(from) + 1) {
+      throw new BadRequestException('A automacao tentou ignorar uma etapa do fluxo de compras.');
+    }
+    return;
+  }
+
   const allowed: Record<PurchaseWorkflowStage, PurchaseWorkflowStage[]> = {
     REGISTRATION: ['REQUESTED'],
     REQUESTED: ['REGISTRATION'],
@@ -1760,7 +1805,7 @@ function assertDemoManualStageTransition(
     RECEIVED: ['SUPPLIER_INVOICED', 'COMPLETED'],
     COMPLETED: ['RECEIVED'],
   };
-  if (!allowed[from].includes(to)) {
+  if (!allowed[from].includes(to) && !(options.adminOverride && movingBackwards)) {
     if (to === 'AWAITING_APPROVAL' || to === 'PURCHASE_ORDER') {
       throw new BadRequestException(
         'Use a acao de enviar para aprovacao; estas etapas nao podem ser ignoradas.',
@@ -1768,17 +1813,37 @@ function assertDemoManualStageTransition(
     }
     throw new BadRequestException('Esta mudanca de etapa nao e permitida.');
   }
+  if (demoWorkflowStageIndex(to) > demoWorkflowStageIndex(from)) {
+    if (to === 'SUPPLIER_INVOICED') {
+      throw new BadRequestException(
+        'Vincule uma nota fiscal ao pedido; o faturamento e atualizado pela conciliacao fiscal.',
+      );
+    }
+    if (to === 'RECEIVED') {
+      throw new BadRequestException(
+        'Confirme os itens recebidos; o recebimento nao pode ser avancado manualmente.',
+      );
+    }
+    if (to === 'COMPLETED') {
+      throw new BadRequestException(
+        'O pedido sera concluido quando estiver integralmente recebido e sem saldo financeiro.',
+      );
+    }
+  }
   if ((to === 'SUPPLIER_INVOICED' || to === 'COMPLETED') && !invoiceLinked) {
     throw new BadRequestException(
       'Vincule uma nota fiscal antes de concluir esta etapa.',
     );
   }
-  if (to === 'REQUESTED' && invoiceLinked) {
+  if (
+    demoWorkflowStageIndex(to) < demoWorkflowStageIndex('PURCHASE_ORDER') &&
+    invoiceLinked
+  ) {
     throw new BadRequestException(
-      'Uma compra com nota fiscal vinculada nao pode voltar para solicitacao.',
+      'Uma compra com nota fiscal vinculada nao pode voltar para antes do pedido de compra.',
     );
   }
-  if (demoWorkflowStageIndex(to) < demoWorkflowStageIndex(from) && !reason) {
+  if (movingBackwards && options.requireReturnReason && !reason) {
     throw new BadRequestException('Informe o motivo para retornar a compra de etapa.');
   }
 }
@@ -2018,6 +2083,15 @@ function supplier(
     defaultCostCenterId,
     email: null,
     phone: null,
+    postalCode: null,
+    street: null,
+    addressNumber: null,
+    addressComplement: null,
+    district: null,
+    city: null,
+    state: null,
+    registrationStatus: null,
+    primaryActivity: null,
     status: 'ACTIVE',
     notes: null,
     createdAt: INITIAL_DATE,

@@ -22,6 +22,7 @@ import { ApprovalsController } from '../purchases/approvals.controller.js';
 import { PayablesController } from '../purchases/payables.controller.js';
 import { PurchasesController } from '../purchases/purchases.controller.js';
 import { ProcureToPayController } from '../procure-to-pay/procure-to-pay.controller.js';
+import { ReceivablesController } from '../receivables/receivables.controller.js';
 import { ReportsController } from '../reports/reports.controller.js';
 import { REQUIRED_PERMISSIONS_KEY } from './require-permission.decorator.js';
 
@@ -45,6 +46,7 @@ const tenantControllers: ControllerClass[] = [
   PayablesController,
   PurchasesController,
   ProcureToPayController,
+  ReceivablesController,
   ReportsController,
   SupplierPricesController,
   SuppliersController,
@@ -72,6 +74,7 @@ const expectedControllerFiles = [
   'purchases/payables.controller.ts',
   'purchases/purchases.controller.ts',
   'procure-to-pay/procure-to-pay.controller.ts',
+  'receivables/receivables.controller.ts',
   'reports/reports.controller.ts',
 ].sort();
 

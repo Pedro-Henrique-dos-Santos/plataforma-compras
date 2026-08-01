@@ -1461,6 +1461,7 @@ export class ProcureToPayService {
               stage: 'COMPLETED',
               reason: 'Pedido integralmente recebido e sem saldo financeiro.',
             },
+            { automated: true },
           );
         }
       }
@@ -1725,6 +1726,7 @@ export class ProcureToPayService {
             stage: 'RECEIVED',
             reason: 'Recebimento integral confirmado.',
           },
+          { automated: true },
         );
       }
       return stripOrganization(receipt);

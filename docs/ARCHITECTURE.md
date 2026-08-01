@@ -12,6 +12,7 @@ Navegador
   -> Storage privado (XML, PDF, QR Pix e comprovantes)
   -> Google Sheets API (conciliacao durante a transicao)
   -> Google Drive para documentos durante a transicao
+  -> Adaptador de consulta cadastral de CNPJ
 ```
 
 O front-end nunca recebe a chave privilegiada do banco. A API valida o token do Supabase, a identidade local, a empresa ativa, o papel e a permissao antes de executar operacoes.
@@ -63,6 +64,13 @@ solicitacoes conservam fotografias do total, regra, canal e destinatarios usados
 naquele envio, evitando que uma configuracao futura altere a auditoria passada.
 
 O cadastro da organizacao mantem nome exibido, razao social, CNPJ, contato e endereco. Esses dados pertencem ao tenant e somente o proprietario global ou um administrador da propria empresa pode altera-los.
+
+Fornecedores mantem razao social, nome fantasia, CNPJ, contato, endereco,
+situacao cadastral e atividade principal. A consulta por CNPJ passa por um
+endpoint fixo da API, com validacao, limite de requisicoes e tempo maximo no
+servidor. O adaptador inicial usa BrasilAPI e pode ser substituido por SERPRO ou
+outro provedor homologado sem expor o navegador diretamente. Dados consultados
+preenchem o formulario para revisao humana e nao sao persistidos automaticamente.
 
 As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor.
 
@@ -122,6 +130,15 @@ O Kanban usa `Cadastro`, `Solicitacao`, `Aguardando aprovacao`,
 Compras manuais iniciam em cadastro; importacoes historicas iniciam como pedido
 formalizado; uma nota fiscal importada inicia como faturada. Cada movimento gera
 historico com autor, instante e motivo quando exigido.
+
+A exigencia de motivo para retornar uma compra e uma configuracao do tenant e
+inicia desabilitada. Administradores da empresa e proprietarios da plataforma
+podem retornar diretamente a qualquer etapa anterior permitida. Uma NF-e
+vinculada impede retorno anterior a `Pedido de compra`, e movimentos futuros de
+faturamento, recebimento e conclusao continuam controlados pelo fluxo integrado.
+Ao sair de `Aguardando aprovacao`, a solicitacao pendente e cancelada de forma
+auditavel. A interface antecipa apenas o movimento valido e restaura o card se a
+API rejeitar a alteracao.
 
 Ao enviar uma compra para aprovacao, a API escolhe a regra ativa de maior valor
 minimo aplicavel ao total. A regra admite quorum de uma ou duas pessoas. A
@@ -186,6 +203,21 @@ pagamento e que o aprovador financeiro registre a propria baixa. O sistema
 continua sem acessar conta bancaria, guardar senha, executar Pix ou confirmar
 pagamento automaticamente.
 
+## Contas a receber
+
+Contas a receber formam um dominio financeiro separado das parcelas de compras.
+Cada titulo pertence a uma empresa e registra cliente, CNPJ, descricao, valor,
+emissao, vencimento, origem e referencia externa. Os estados persistidos sao
+`OPEN`, `PARTIALLY_RECEIVED`, `RECEIVED` e `CANCELLED`; atraso e previsao de
+recebimento sao indicadores calculados pela data, nao estados gravados.
+
+Baixas sao registros independentes com valor, data, identificador bancario,
+observacao e autor. O saldo e o estado sao recalculados no servidor, uma baixa
+nao pode exceder o saldo e um titulo com recebimentos nao pode ser cancelado.
+Todas as operacoes usam `organizationId`, chaves estrangeiras compostas,
+concorrencia otimista, auditoria e RLS. A interface oferece filtros, historico,
+baixa parcial e exportacao Excel com neutralizacao de formulas.
+
 ## Indicadores
 
 O dashboard nao armazena totais derivados. Por padrao, a API agrega todo o historico de compras registradas e aceita filtros de periodo, fornecedor, centro de custo, categoria e inclusao de registros sem data. Quando um item possui rateio, somente os valores das alocacoes entram no grafico por departamento; o total direto do item nao e somado novamente. Compras sem data entram nos totais, categorias e departamentos, mas ficam fora da serie mensal ate a correcao da emissao.
@@ -206,8 +238,8 @@ iniciadas por caracteres de formula. O CSV usa separador compativel com Excel em
 `pt_BR`. O Excel resumido entrega indicadores, compras e agrupamentos por
 departamento, fornecedor, categoria e mes. O Excel detalhado acrescenta itens,
 consolidacao mensal de itens, rateios, parcelas, notas fiscais e dados
-cadastrais dos fornecedores. Ambos identificam a etapa da compra. O Excel de
-contas a pagar entrega resumo financeiro e titulos filtrados. Datas, quantidades
+cadastrais dos fornecedores. Ambos identificam a etapa da compra. Os Excel de
+contas a pagar e a receber entregam resumos financeiros e titulos filtrados. Datas, quantidades
 e valores monetarios permanecem tipados; nenhuma agregacao e calculada no
 navegador.
 
@@ -225,6 +257,10 @@ mesma API. Os menus e comandos permanecem derivados da matriz compartilhada de
 permissoes. A barra lateral pode ser recolhida e permanece funcional em telas
 menores. As preferencias visuais oferecem os temas Normal, Escuro e Branco e
 sao salvas apenas no navegador do usuario.
+
+O Kanban de compras usa a largura operacional disponivel, colunas continuas
+separadas por linhas e cabecalhos fixos durante a rolagem. Os cards preservam
+dimensoes estaveis e o arraste destaca somente destinos aceitos pela API.
 
 ## Operacao e recuperacao
 

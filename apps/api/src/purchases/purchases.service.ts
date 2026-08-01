@@ -12,6 +12,7 @@ import type {
   UpdateApprovalSettingsInput,
   UpdatePayableInput,
   UpdatePurchaseInput,
+  OrganizationRole,
 } from '@compras/contracts';
 
 import type { AuthenticatedIdentity } from '../domain/identity.js';
@@ -66,12 +67,14 @@ export class PurchasesService {
     organizationId: string,
     id: string,
     input: ChangePurchaseWorkflowStageInput,
+    organizationRole: OrganizationRole,
   ) {
     return this.repository.changePurchaseWorkflowStage(
       actor,
       organizationId,
       id,
       input,
+      { organizationRole },
     );
   }
 

@@ -29,6 +29,8 @@
 - [Concluido] Criar conciliacao entre planilha e PostgreSQL.
 - [Concluido] Adicionar importacao XLSX com historico legado, previa e deduplicacao.
 - [Concluido em homologacao] Preservar compras historicas sem data como pendencia, sem excluir o pedido nem inventar emissao.
+- [Concluido no codigo e testes] Consultar fornecedor por CNPJ por adaptador de
+  back-end, preencher endereco e situacao cadastral para revisao sem gravacao automatica.
 
 ## Fase 3: operacao de compras
 
@@ -36,6 +38,8 @@
 - [Concluido em homologacao] Adicionar detalhe, correcao transacional, cancelamento e reativacao auditados, com protecao das parcelas pagas.
 - [Concluido no codigo e testes] Criar Kanban com cadastro, solicitacao,
   aprovacao, pedido, faturamento, recebimento e conclusao.
+- [Concluido no codigo e testes] Ampliar o Kanban para o espaco operacional,
+  usar colunas continuas e permitir retorno administrativo com motivo opcional por empresa.
 - [Concluido no codigo e testes] Configurar regras por valor, quorum de uma ou
   duas pessoas, aprovadores por empresa e historico imutavel das decisoes.
 - [Concluido no codigo e testes] Bloquear edicao e vinculacao fiscal antes da
@@ -61,6 +65,8 @@
   incluir a etapa nas exportacoes resumida e detalhada.
 - [Concluido no codigo e testes] Criar relatorio financeiro de contas a pagar
   com aberto, vencido, pago, sem programacao e previsoes de 7, 15 e 30 dias.
+- [Concluido no codigo e testes] Criar contas a receber com filtros, baixas
+  parciais, saldo auditavel, relatorio e exportacao Excel por empresa.
 
 ## Fase 3B: ciclo integrado NF-e, recebimento e pagamento
 
@@ -84,6 +90,9 @@
   situacao financeira e baixas nas exportacoes Excel.
 - [Pendente externo] Aplicar a migracao `202608010001_procure_to_pay_nfe` no
   Supabase de homologacao e executar a reconciliacao de dados migrados.
+- [Pendente externo] Aplicar a migracao
+  `202608010002_receivables_workflow_supplier_lookup` no Supabase de homologacao
+  e homologar contas a receber, consulta de CNPJ e configuracao de retorno.
 - [Pendente externo] Homologar A1 e SEFAZ em modo `SHADOW`, sem manifestacao ou
   vinculo automatico, usando uma empresa e certificado autorizados.
 - [Pendente externo] Liberar `EXACT_MATCH` somente depois de comparar capturas,

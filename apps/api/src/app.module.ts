@@ -17,6 +17,7 @@ import { PersistenceModule } from './persistence/persistence.module.js';
 import { PurchasesModule } from './purchases/purchases.module.js';
 import { ProcureToPayModule } from './procure-to-pay/procure-to-pay.module.js';
 import { ReportsModule } from './reports/reports.module.js';
+import { ReceivablesModule } from './receivables/receivables.module.js';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { ReportsModule } from './reports/reports.module.js';
     NotificationsModule,
     PurchasesModule,
     ProcureToPayModule,
+    ReceivablesModule,
     ReportsModule,
   ],
   controllers: [HealthController],

@@ -121,6 +121,7 @@ export const approvalSettingsSchema = z.object({
   financeChannel: notificationChannelSchema.nullable(),
   financeRecipient: z.string().max(255).nullable(),
   notifyFinanceOnApproval: z.boolean(),
+  requireStageReturnReason: z.boolean(),
   updatedAt: z.string().datetime().nullable(),
 });
 export type ApprovalSettings = z.infer<typeof approvalSettingsSchema>;
@@ -133,6 +134,7 @@ export const updateApprovalSettingsInputSchema = z
       z.string().trim().max(255).nullable(),
     ),
     notifyFinanceOnApproval: z.boolean(),
+    requireStageReturnReason: z.boolean().optional().default(false),
   })
   .superRefine((value, context) => {
     if ((value.financeChannel === null) !== (value.financeRecipient === null)) {

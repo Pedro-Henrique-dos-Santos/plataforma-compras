@@ -61,6 +61,7 @@ import {
   type PurchaseFilters,
   type SupplierFilters,
   type SupplierPriceFilters,
+  type WorkflowTransitionContext,
 } from './procurement.repository.js';
 
 const supplierInclude = {
@@ -312,6 +313,15 @@ export class PrismaProcurementRepository extends ProcurementRepository {
             defaultCostCenterId: input.defaultCostCenterId,
             email: input.email,
             phone: input.phone,
+            postalCode: input.postalCode ?? null,
+            street: input.street ?? null,
+            addressNumber: input.addressNumber ?? null,
+            addressComplement: input.addressComplement ?? null,
+            district: input.district ?? null,
+            city: input.city ?? null,
+            state: input.state ?? null,
+            registrationStatus: input.registrationStatus ?? null,
+            primaryActivity: input.primaryActivity ?? null,
             notes: input.notes,
           },
         });
@@ -868,6 +878,7 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     organizationId: string,
     id: string,
     input: ChangePurchaseWorkflowStageInput,
+    context: WorkflowTransitionContext = {},
   ): Promise<PurchaseDetail> {
     const current = await this.requirePurchaseDetailRecord(organizationId, id);
     if (current.status === 'CANCELLED') {
@@ -876,11 +887,19 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     if (current.workflowStage === input.stage) {
       return toPurchaseDetail(current);
     }
+    const settings = await this.getApprovalSettings(organizationId);
     assertManualStageTransition(
       current.workflowStage,
       input.stage,
       input.reason ?? null,
       current.invoiceDocuments.length > 0 || current.invoiceNumber !== null,
+      {
+        adminOverride:
+          actor.platformRoles.includes('PLATFORM_OWNER') ||
+          context.organizationRole === 'ORGANIZATION_ADMIN',
+        automated: context.automated === true,
+        requireReturnReason: settings.requireStageReturnReason,
+      },
     );
 
     await this.prisma.$transaction(async (transaction) => {
@@ -898,6 +917,15 @@ export class PrismaProcurementRepository extends ProcurementRepository {
       });
       if (updated.count !== 1) {
         throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
+      }
+      if (
+        current.workflowStage === 'AWAITING_APPROVAL' &&
+        workflowStageIndex(input.stage) < workflowStageIndex(current.workflowStage)
+      ) {
+        await transaction.purchaseApprovalRequest.updateMany({
+          where: { organizationId, purchaseId: id, status: 'PENDING' },
+          data: { resolvedAt: new Date(), status: 'CANCELLED' },
+        });
       }
       await transaction.purchaseStageHistory.create({
         data: {
@@ -1413,12 +1441,14 @@ export class PrismaProcurementRepository extends ProcurementRepository {
           financeChannel: settings.financeChannel,
           financeRecipient: settings.financeRecipient,
           notifyFinanceOnApproval: settings.notifyFinanceOnApproval,
+          requireStageReturnReason: settings.requireStageReturnReason,
           updatedAt: settings.updatedAt.toISOString(),
         }
       : {
           financeChannel: null,
           financeRecipient: null,
           notifyFinanceOnApproval: false,
+          requireStageReturnReason: false,
           updatedAt: null,
         };
   }
@@ -1445,6 +1475,7 @@ export class PrismaProcurementRepository extends ProcurementRepository {
             financeChannel: input.financeChannel,
             hasFinanceRecipient: input.financeRecipient !== null,
             notifyFinanceOnApproval: input.notifyFinanceOnApproval,
+            requireStageReturnReason: input.requireStageReturnReason,
           },
         },
       });
@@ -2126,6 +2157,15 @@ function toSupplier(supplier: SupplierRecord): Supplier {
     defaultCostCenterName: supplier.defaultCostCenter?.name ?? null,
     email: supplier.email,
     phone: supplier.phone,
+    postalCode: supplier.postalCode,
+    street: supplier.street,
+    addressNumber: supplier.addressNumber,
+    addressComplement: supplier.addressComplement,
+    district: supplier.district,
+    city: supplier.city,
+    state: supplier.state,
+    registrationStatus: supplier.registrationStatus,
+    primaryActivity: supplier.primaryActivity,
     status: supplier.status,
     notes: supplier.notes,
     priceCount: supplier._count.prices,
@@ -2676,7 +2716,20 @@ function assertManualStageTransition(
   to: PurchaseWorkflowStage,
   reason: string | null,
   invoiceLinked: boolean,
+  options: {
+    adminOverride: boolean;
+    automated: boolean;
+    requireReturnReason: boolean;
+  },
 ) {
+  const movingBackwards = workflowStageIndex(to) < workflowStageIndex(from);
+  if (options.automated) {
+    if (workflowStageIndex(to) !== workflowStageIndex(from) + 1) {
+      throw new BadRequestException('A automacao tentou ignorar uma etapa do fluxo de compras.');
+    }
+    return;
+  }
+
   const allowed: Record<PurchaseWorkflowStage, PurchaseWorkflowStage[]> = {
     REGISTRATION: ['REQUESTED'],
     REQUESTED: ['REGISTRATION'],
@@ -2686,7 +2739,7 @@ function assertManualStageTransition(
     RECEIVED: ['SUPPLIER_INVOICED', 'COMPLETED'],
     COMPLETED: ['RECEIVED'],
   };
-  if (!allowed[from].includes(to)) {
+  if (!allowed[from].includes(to) && !(options.adminOverride && movingBackwards)) {
     if (to === 'AWAITING_APPROVAL' || to === 'PURCHASE_ORDER') {
       throw new BadRequestException(
         'Use a acao de enviar para aprovacao; estas etapas nao podem ser ignoradas.',
@@ -2719,12 +2772,12 @@ function assertManualStageTransition(
       'Vincule uma nota fiscal antes de concluir esta etapa.',
     );
   }
-  if (to === 'REQUESTED' && invoiceLinked) {
+  if (workflowStageIndex(to) < workflowStageIndex('PURCHASE_ORDER') && invoiceLinked) {
     throw new BadRequestException(
-      'Uma compra com nota fiscal vinculada nao pode voltar para solicitacao.',
+      'Uma compra com nota fiscal vinculada nao pode voltar para antes do pedido de compra.',
     );
   }
-  if (workflowStageIndex(to) < workflowStageIndex(from) && !reason) {
+  if (movingBackwards && options.requireReturnReason && !reason) {
     throw new BadRequestException('Informe o motivo para retornar a compra de etapa.');
   }
 }

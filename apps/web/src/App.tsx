@@ -81,6 +81,11 @@ const FinancialWorkflowView = lazy(() =>
     default: module.FinancialWorkflowView,
   })),
 );
+const ReceivablesView = lazy(() =>
+  import('./components/ReceivablesView').then((module) => ({
+    default: module.ReceivablesView,
+  })),
+);
 const ApprovalSettingsView = lazy(() =>
   import('./components/ApprovalSettingsView').then((module) => ({
     default: module.ApprovalSettingsView,
@@ -520,6 +525,7 @@ export default function App() {
         {view === 'purchases' && (
           <PurchasesView
             accessToken={accessToken}
+            canManageWorkflow={capabilities.canManageApprovals}
             canWrite={capabilities.canWritePurchases}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}
@@ -538,6 +544,15 @@ export default function App() {
             canActOnApprovals={capabilities.canActOnPaymentApprovals}
             canSettle={capabilities.canSettlePayments}
             canWrite={capabilities.canWritePayables}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'receivables' && (
+          <ReceivablesView
+            accessToken={accessToken}
+            canSettle={capabilities.canSettleReceivables}
+            canWrite={capabilities.canWriteReceivables}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}
           />

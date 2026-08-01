@@ -42,6 +42,11 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
     throw new Error('SEFAZ_REQUEST_TIMEOUT_MS must be between 1000 and 120000.');
   }
   environment['SEFAZ_REQUEST_TIMEOUT_MS'] = String(sefazRequestTimeout);
+  const cnpjLookupTimeout = numberValue(raw['CNPJ_LOOKUP_TIMEOUT_MS'], 6_000);
+  if (cnpjLookupTimeout < 1_000 || cnpjLookupTimeout > 15_000) {
+    throw new Error('CNPJ_LOOKUP_TIMEOUT_MS must be between 1000 and 15000.');
+  }
+  environment['CNPJ_LOOKUP_TIMEOUT_MS'] = String(cnpjLookupTimeout);
   for (const key of [
     'SEFAZ_NFE_DISTRIBUTION_HOMOLOGATION_URL',
     'SEFAZ_NFE_DISTRIBUTION_PRODUCTION_URL',

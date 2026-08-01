@@ -63,6 +63,10 @@ const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
     title: 'Contas a pagar',
     subtitle: 'Vencimentos, pagamentos e previsao financeira',
   },
+  receivables: {
+    title: 'Contas a receber',
+    subtitle: 'Entradas previstas, vencimentos e baixas de recebimento',
+  },
   'approval-settings': {
     title: 'Regras de aprovacao',
     subtitle: 'Limites, quorum, aprovadores e notificacoes',
@@ -243,7 +247,7 @@ export function AppShell({
         />
       )}
 
-      <div className="workspace">
+      <div className={`workspace workspace-${view}`}>
         <header className="topbar">
           <div className="topbar-title">
             <button

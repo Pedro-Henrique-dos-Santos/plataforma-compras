@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import type {
   ChangePurchaseStatusInput,
   ChangePurchaseWorkflowStageInput,
+  ApprovalSettings,
   CostCenter,
   CreatePurchaseInput,
   CreateGoodsReceiptInput,
@@ -39,6 +40,7 @@ import { apiGet, apiPatch, apiPost } from '../lib/api';
 
 type PurchasesViewProps = {
   accessToken: string | null;
+  canManageWorkflow: boolean;
   canWrite: boolean;
   onChanged: () => void;
   organizationId: string;
@@ -79,6 +81,7 @@ const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: '
 
 export function PurchasesView({
   accessToken,
+  canManageWorkflow,
   canWrite,
   onChanged,
   organizationId,
@@ -87,6 +90,13 @@ export function PurchasesView({
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [payables, setPayables] = useState<PayableKanbanCard[]>([]);
+  const [approvalSettings, setApprovalSettings] = useState<ApprovalSettings>({
+    financeChannel: null,
+    financeRecipient: null,
+    notifyFinanceOnApproval: false,
+    requireStageReturnReason: false,
+    updatedAt: null,
+  });
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   const [search, setSearch] = useState('');
@@ -112,6 +122,8 @@ export function PurchasesView({
     target: PurchaseWorkflowStage;
   } | null>(null);
   const [moveReason, setMoveReason] = useState('');
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<PurchaseWorkflowStage | null>(null);
   const [form, setForm] = useState<PurchaseForm>(newPurchaseForm());
   const [items, setItems] = useState<PurchaseItemRow[]>([newPurchaseItem()]);
   const [installments, setInstallments] = useState<InstallmentRow[]>([]);
@@ -128,12 +140,18 @@ export function PurchasesView({
       apiGet<Supplier[]>('/suppliers', { token: accessToken, organizationId, signal: controller.signal }),
       apiGet<CostCenter[]>('/cost-centers?includeInactive=true', { token: accessToken, organizationId, signal: controller.signal }),
       apiGet<PayableKanbanCard[]>('/procure-to-pay/payables', { token: accessToken, organizationId, signal: controller.signal }),
+      apiGet<ApprovalSettings>('/approvals/settings', { token: accessToken, organizationId, signal: controller.signal }),
     ])
-      .then(([purchaseRows, supplierRows, centerRows, payableRows]) => {
+      .then(([purchaseRows, supplierRows, centerRows, payableRows, nextApprovalSettings]) => {
         setPurchases(purchaseRows);
         setSuppliers(supplierRows);
         setCostCenters(centerRows);
         setPayables(payableRows);
+        setApprovalSettings({
+          ...nextApprovalSettings,
+          requireStageReturnReason:
+            nextApprovalSettings.requireStageReturnReason ?? false,
+        });
       })
       .catch((requestError: unknown) => {
         if (!controller.signal.aborted) setError(errorMessage(requestError));
@@ -406,7 +424,7 @@ export function PurchasesView({
   ) {
     const backwards =
       workflowStageIndex(target) < workflowStageIndex(purchase.workflowStage);
-    if (backwards) {
+    if (backwards && approvalSettings.requireStageReturnReason) {
       setMoving({ purchase, target });
       setMoveReason('');
       setError(null);
@@ -422,6 +440,20 @@ export function PurchasesView({
   ) {
     setPendingId(purchase.id);
     setError(null);
+    setPurchases((current) =>
+      current.map((candidate) =>
+        candidate.id === purchase.id
+          ? {
+              ...candidate,
+              workflowStage: target,
+              status:
+                workflowStageIndex(target) >= workflowStageIndex('PURCHASE_ORDER')
+                  ? 'REGISTERED'
+                  : 'DRAFT',
+            }
+          : candidate,
+      ),
+    );
     try {
       const updated =
         target === 'AWAITING_APPROVAL'
@@ -444,6 +476,7 @@ export function PurchasesView({
       setRevision((current) => current + 1);
       onChanged();
     } catch (requestError) {
+      setPurchases((current) => replacePurchase(current, purchase));
       setError(errorMessage(requestError));
     } finally {
       setPendingId(null);
@@ -517,7 +550,7 @@ export function PurchasesView({
   }
 
   return (
-    <div className="management-layout">
+    <div className="management-layout purchase-workspace">
       <section className="section-heading">
         <span><p className="eyebrow">Operacao de compras</p><h2>Lancamentos registrados</h2></span>
         <span className="heading-actions">
@@ -544,15 +577,29 @@ export function PurchasesView({
           <section className="purchase-kanban" aria-label="Fluxo das compras">
             {workflowStages.map((stage) => {
               const stagePurchases = visiblePurchases.filter((purchase) => purchase.workflowStage === stage);
+              const draggedPurchase = purchases.find(
+                (candidate) => candidate.id === draggingId,
+              );
+              const acceptsDrop = Boolean(
+                draggedPurchase && canMoveTo(draggedPurchase, stage, canManageWorkflow),
+              );
               return (
                 <section
-                  className="kanban-lane"
+                  className={`kanban-lane ${dragOverStage === stage && acceptsDrop ? 'drop-target' : ''}`}
                   key={stage}
-                  onDragOver={(event) => event.preventDefault()}
+                  onDragEnter={() => setDragOverStage(acceptsDrop ? stage : null)}
+                  onDragOver={(event) => {
+                    if (acceptsDrop) {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = 'move';
+                    }
+                  }}
                   onDrop={(event) => {
                     event.preventDefault();
                     const purchase = purchases.find((candidate) => candidate.id === event.dataTransfer.getData('text/purchase-id'));
-                    if (purchase && canMoveTo(purchase.workflowStage, stage)) void requestMove(purchase, stage);
+                    setDragOverStage(null);
+                    setDraggingId(null);
+                    if (purchase && canMoveTo(purchase, stage, canManageWorkflow)) void requestMove(purchase, stage);
                   }}
                 >
                   <header className="kanban-lane-header">
@@ -567,10 +614,24 @@ export function PurchasesView({
                       const financial = financialByPurchase.get(purchase.id);
                       return (
                         <article
-                          className={`purchase-kanban-card ${purchase.status === 'CANCELLED' ? 'cancelled' : ''}`}
-                          draggable={canWrite && purchase.status !== 'CANCELLED' && purchase.workflowStage !== 'AWAITING_APPROVAL'}
+                          className={`purchase-kanban-card ${purchase.status === 'CANCELLED' ? 'cancelled' : ''} ${draggingId === purchase.id ? 'dragging' : ''}`}
+                          draggable={
+                            canWrite &&
+                            purchase.status !== 'CANCELLED' &&
+                            workflowStages.some((target) =>
+                              canMoveTo(purchase, target, canManageWorkflow),
+                            )
+                          }
                           key={purchase.id}
-                          onDragStart={(event) => event.dataTransfer.setData('text/purchase-id', purchase.id)}
+                          onDragEnd={() => {
+                            setDraggingId(null);
+                            setDragOverStage(null);
+                          }}
+                          onDragStart={(event) => {
+                            event.dataTransfer.effectAllowed = 'move';
+                            event.dataTransfer.setData('text/purchase-id', purchase.id);
+                            setDraggingId(purchase.id);
+                          }}
                         >
                           <header>
                             <span>
@@ -611,7 +672,12 @@ export function PurchasesView({
                                 <button
                                   aria-label="Voltar etapa"
                                   className="icon-button table-action"
-                                  disabled={!previous || pendingId === purchase.id || purchase.status === 'CANCELLED'}
+                                  disabled={
+                                    !previous ||
+                                    !canMoveTo(purchase, previous, canManageWorkflow) ||
+                                    pendingId === purchase.id ||
+                                    purchase.status === 'CANCELLED'
+                                  }
                                   onClick={() => previous && void requestMove(purchase, previous)}
                                   title={previous ? `Voltar para ${workflowStageLabel(previous)}` : 'Primeira etapa'}
                                   type="button"
@@ -631,7 +697,12 @@ export function PurchasesView({
                                 <button
                                   aria-label="Avancar etapa"
                                   className="icon-button table-action"
-                                  disabled={!next || pendingId === purchase.id || purchase.status === 'CANCELLED'}
+                                  disabled={
+                                    !next ||
+                                    !canMoveTo(purchase, next, canManageWorkflow) ||
+                                    pendingId === purchase.id ||
+                                    purchase.status === 'CANCELLED'
+                                  }
                                   onClick={() => next && void requestMove(purchase, next)}
                                   title={next ? `Avancar para ${workflowStageLabel(next)}` : 'Ultima etapa'}
                                   type="button"
@@ -1346,7 +1417,7 @@ function previousWorkflowStage(
   return {
     REGISTRATION: null,
     REQUESTED: 'REGISTRATION',
-    AWAITING_APPROVAL: null,
+    AWAITING_APPROVAL: 'REQUESTED',
     PURCHASE_ORDER: 'REQUESTED',
     SUPPLIER_INVOICED: 'PURCHASE_ORDER',
     RECEIVED: 'SUPPLIER_INVOICED',
@@ -1361,18 +1432,30 @@ function nextWorkflowStage(
     REGISTRATION: 'REQUESTED',
     REQUESTED: 'AWAITING_APPROVAL',
     AWAITING_APPROVAL: null,
-    PURCHASE_ORDER: 'SUPPLIER_INVOICED',
-    SUPPLIER_INVOICED: 'RECEIVED',
-    RECEIVED: 'COMPLETED',
+    PURCHASE_ORDER: null,
+    SUPPLIER_INVOICED: null,
+    RECEIVED: null,
     COMPLETED: null,
   }[stage] as PurchaseWorkflowStage | null;
 }
 
 function canMoveTo(
-  from: PurchaseWorkflowStage,
+  purchase: PurchaseSummary,
   to: PurchaseWorkflowStage,
+  canManageWorkflow: boolean,
 ): boolean {
-  return previousWorkflowStage(from) === to || nextWorkflowStage(from) === to;
+  const from = purchase.workflowStage;
+  if (from === to || purchase.status === 'CANCELLED') return false;
+  if (nextWorkflowStage(from) === to) return true;
+  if (workflowStageIndex(to) >= workflowStageIndex(from)) return false;
+  if (!canManageWorkflow && previousWorkflowStage(from) !== to) return false;
+  if (
+    purchase.invoiceLinked &&
+    workflowStageIndex(to) < workflowStageIndex('PURCHASE_ORDER')
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function canEditPurchase(purchase: PurchaseSummary): boolean {

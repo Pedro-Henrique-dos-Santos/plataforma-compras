@@ -55,7 +55,7 @@ describe('AppShell navigation permissions', () => {
     expect(purchases).toContain('purchases');
     expect(purchases).toContain('invoice-documents');
     expect(purchases).not.toContain('payables');
-    expect(finance).toEqual(['payables', 'financial-settings']);
+    expect(finance).toEqual(['payables', 'receivables', 'financial-settings']);
   });
 
   it('opens each module on an accessible default screen', () => {

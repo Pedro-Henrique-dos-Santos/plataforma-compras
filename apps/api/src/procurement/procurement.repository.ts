@@ -21,6 +21,7 @@ import type {
   PurchaseDetail,
   PurchaseSummary,
   PurchaseWorkflowStage,
+  OrganizationRole,
   ProcurementDetailedReport,
   ProcurementReport,
   ProcurementReportFilters,
@@ -67,6 +68,11 @@ export type PurchaseFilters = {
 export type PersistPurchaseInput = Omit<CreatePurchaseInput, 'issuedAt' | 'workflowStage'> & {
   issuedAt: string | null;
   workflowStage?: CreatePurchaseInput['workflowStage'];
+};
+
+export type WorkflowTransitionContext = {
+  automated?: boolean;
+  organizationRole?: OrganizationRole;
 };
 
 export abstract class ProcurementRepository {
@@ -166,6 +172,7 @@ export abstract class ProcurementRepository {
     organizationId: string,
     id: string,
     input: ChangePurchaseWorkflowStageInput,
+    context?: WorkflowTransitionContext,
   ): Promise<PurchaseDetail>;
 
   abstract submitPurchaseForApproval(

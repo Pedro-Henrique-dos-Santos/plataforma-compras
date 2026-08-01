@@ -24,6 +24,28 @@ const editableOptionalText = (maximum: number) =>
     z.string().trim().min(1).max(maximum).nullable(),
   ).optional();
 
+const optionalPostalCode = z.preprocess(
+  (value) =>
+    value === '' || value === undefined ? null : String(value).replace(/\D/g, ''),
+  z.string().length(8, 'Informe um CEP com 8 digitos.').nullable(),
+);
+
+const editableOptionalPostalCode = z.preprocess(
+  (value) => (value === '' ? null : String(value).replace(/\D/g, '')),
+  z.string().length(8, 'Informe um CEP com 8 digitos.').nullable(),
+).optional();
+
+const optionalState = z.preprocess(
+  (value) =>
+    value === '' || value === undefined ? null : String(value).trim().toUpperCase(),
+  z.string().length(2, 'Informe a UF com 2 letras.').regex(/^[A-Z]{2}$/).nullable(),
+);
+
+const editableOptionalState = z.preprocess(
+  (value) => (value === '' ? null : String(value).trim().toUpperCase()),
+  z.string().length(2, 'Informe a UF com 2 letras.').regex(/^[A-Z]{2}$/).nullable(),
+).optional();
+
 export const costCenterSchema = z.object({
   id: z.string().uuid(),
   code: z.string().trim().min(1).max(40),
@@ -109,6 +131,15 @@ export const supplierSchema = z.object({
   defaultCostCenterName: z.string().trim().max(120).nullable(),
   email: z.string().email().max(255).nullable(),
   phone: z.string().trim().max(30).nullable(),
+  postalCode: z.string().length(8).nullable(),
+  street: z.string().trim().max(160).nullable(),
+  addressNumber: z.string().trim().max(30).nullable(),
+  addressComplement: z.string().trim().max(100).nullable(),
+  district: z.string().trim().max(100).nullable(),
+  city: z.string().trim().max(100).nullable(),
+  state: z.string().length(2).nullable(),
+  registrationStatus: z.string().trim().max(80).nullable(),
+  primaryActivity: z.string().trim().max(240).nullable(),
   status: supplierStatusSchema,
   notes: z.string().max(2_000).nullable(),
   priceCount: z.number().int().nonnegative(),
@@ -145,6 +176,15 @@ export const createSupplierInputSchema = z
       z.string().trim().toLowerCase().email().max(255).nullable(),
     ),
     phone: optionalText(30),
+    postalCode: optionalPostalCode.optional(),
+    street: optionalText(160).optional(),
+    addressNumber: optionalText(30).optional(),
+    addressComplement: optionalText(100).optional(),
+    district: optionalText(100).optional(),
+    city: optionalText(100).optional(),
+    state: optionalState.optional(),
+    registrationStatus: optionalText(80).optional(),
+    primaryActivity: optionalText(240).optional(),
     notes: optionalText(2_000),
   })
   .superRefine(validatePixFields);
@@ -178,6 +218,15 @@ export const updateSupplierInputSchema = z
       z.string().trim().toLowerCase().email().max(255).nullable(),
     ).optional(),
     phone: editableOptionalText(30),
+    postalCode: editableOptionalPostalCode,
+    street: editableOptionalText(160),
+    addressNumber: editableOptionalText(30),
+    addressComplement: editableOptionalText(100),
+    district: editableOptionalText(100),
+    city: editableOptionalText(100),
+    state: editableOptionalState,
+    registrationStatus: editableOptionalText(80),
+    primaryActivity: editableOptionalText(240),
     notes: editableOptionalText(2_000),
     status: supplierStatusSchema.optional(),
   })
@@ -216,6 +265,26 @@ export const updateSupplierInputSchema = z
     }
   });
 export type UpdateSupplierInput = z.infer<typeof updateSupplierInputSchema>;
+
+export const supplierCnpjLookupSchema = z.object({
+  document: organizationDocumentSchema,
+  legalName: z.string().trim().min(2).max(160),
+  tradeName: z.string().trim().max(160).nullable(),
+  email: z.string().email().max(255).nullable(),
+  phone: z.string().trim().max(30).nullable(),
+  postalCode: z.string().length(8).nullable(),
+  street: z.string().trim().max(160).nullable(),
+  addressNumber: z.string().trim().max(30).nullable(),
+  addressComplement: z.string().trim().max(100).nullable(),
+  district: z.string().trim().max(100).nullable(),
+  city: z.string().trim().max(100).nullable(),
+  state: z.string().length(2).nullable(),
+  registrationStatus: z.string().trim().max(80).nullable(),
+  primaryActivity: z.string().trim().max(240).nullable(),
+  source: z.literal('BRASIL_API'),
+  queriedAt: z.string().datetime(),
+});
+export type SupplierCnpjLookup = z.infer<typeof supplierCnpjLookupSchema>;
 
 export const priceStatusSchema = z.enum(['ACTIVE', 'EXPIRED', 'INACTIVE']);
 export type PriceStatus = z.infer<typeof priceStatusSchema>;

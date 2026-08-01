@@ -304,6 +304,15 @@ export const REQUIRED_TENANT_RELATIONS = [
     deleteAction: 'NO ACTION',
     deleteSetColumns: [],
   },
+  {
+    name: 'receivable_settlements_organization_id_receivable_id_fkey',
+    tableName: 'receivable_settlements',
+    referencedTable: 'receivables',
+    sourceColumns: ['organization_id', 'receivable_id'],
+    targetColumns: ['organization_id', 'id'],
+    deleteAction: 'CASCADE',
+    deleteSetColumns: [],
+  },
 ];
 
 export function validateDatabaseSecuritySnapshot({

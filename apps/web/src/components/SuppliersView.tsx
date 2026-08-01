@@ -4,10 +4,11 @@ import type {
   CreateSupplierInput,
   PixKeyType,
   Supplier,
+  SupplierCnpjLookup,
   SupplierStatus,
   UpdateSupplierInput,
 } from '@compras/contracts';
-import { Pencil, Plus, Power, PowerOff, Search, Store, X } from 'lucide-react';
+import { LoaderCircle, Pencil, Plus, Power, PowerOff, Search, Store, X } from 'lucide-react';
 
 import { apiGet, apiPatch, apiPost } from '../lib/api';
 
@@ -19,9 +20,13 @@ type SuppliersViewProps = {
 };
 
 type SupplierForm = {
+  addressComplement: string;
+  addressNumber: string;
   category: string;
+  city: string;
   defaultCostCenterId: string;
   document: string;
+  district: string;
   email: string;
   legalName: string;
   notes: string;
@@ -29,17 +34,26 @@ type SupplierForm = {
   paymentMethod: string;
   paymentLink: string;
   phone: string;
+  postalCode: string;
+  primaryActivity: string;
   pixBeneficiaryDocument: string;
   pixBeneficiaryName: string;
   pixKey: string;
   pixKeyType: '' | PixKeyType;
+  registrationStatus: string;
+  state: string;
+  street: string;
   tradeName: string;
 };
 
 const emptyForm: SupplierForm = {
+  addressComplement: '',
+  addressNumber: '',
   category: '',
+  city: '',
   defaultCostCenterId: '',
   document: '',
+  district: '',
   email: '',
   legalName: '',
   notes: '',
@@ -47,10 +61,15 @@ const emptyForm: SupplierForm = {
   paymentMethod: '',
   paymentLink: '',
   phone: '',
+  postalCode: '',
+  primaryActivity: '',
   pixBeneficiaryDocument: '',
   pixBeneficiaryName: '',
   pixKey: '',
   pixKeyType: '',
+  registrationStatus: '',
+  state: '',
+  street: '',
   tradeName: '',
 };
 
@@ -70,6 +89,8 @@ export function SuppliersView({
   const [form, setForm] = useState<SupplierForm>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupMessage, setLookupMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -113,6 +134,7 @@ export function SuppliersView({
   function openCreate() {
     setEditing(null);
     setForm(emptyForm);
+    setLookupMessage(null);
     setError(null);
     setDialogOpen(true);
   }
@@ -120,9 +142,13 @@ export function SuppliersView({
   function openEdit(supplier: Supplier) {
     setEditing(supplier);
     setForm({
+      addressComplement: supplier.addressComplement ?? '',
+      addressNumber: supplier.addressNumber ?? '',
       category: supplier.category ?? '',
+      city: supplier.city ?? '',
       defaultCostCenterId: supplier.defaultCostCenterId ?? '',
       document: supplier.document ?? '',
+      district: supplier.district ?? '',
       email: supplier.email ?? '',
       legalName: supplier.legalName,
       notes: supplier.notes ?? '',
@@ -130,18 +156,62 @@ export function SuppliersView({
       paymentMethod: supplier.paymentMethod ?? '',
       paymentLink: supplier.paymentLink ?? '',
       phone: supplier.phone ?? '',
+      postalCode: supplier.postalCode ?? '',
+      primaryActivity: supplier.primaryActivity ?? '',
       pixBeneficiaryDocument: supplier.pixBeneficiaryDocument ?? '',
       pixBeneficiaryName: supplier.pixBeneficiaryName ?? '',
       pixKey: supplier.pixKey ?? '',
       pixKeyType: supplier.pixKeyType ?? '',
+      registrationStatus: supplier.registrationStatus ?? '',
+      state: supplier.state ?? '',
+      street: supplier.street ?? '',
       tradeName: supplier.tradeName ?? '',
     });
+    setLookupMessage(null);
     setError(null);
     setDialogOpen(true);
   }
 
   function field<K extends keyof SupplierForm>(key: K, value: SupplierForm[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function lookupCnpj() {
+    setLookupLoading(true);
+    setLookupMessage(null);
+    setError(null);
+    try {
+      const result = await apiGet<SupplierCnpjLookup>(
+        `/suppliers/cnpj/${encodeURIComponent(normalizeDocument(form.document))}`,
+        { token: accessToken, organizationId },
+      );
+      setForm((current) => ({
+        ...current,
+        addressComplement: result.addressComplement ?? current.addressComplement,
+        addressNumber: result.addressNumber ?? current.addressNumber,
+        city: result.city ?? current.city,
+        district: result.district ?? current.district,
+        document: formatCnpj(result.document),
+        email: result.email ?? current.email,
+        legalName: result.legalName,
+        phone: result.phone ?? current.phone,
+        postalCode: result.postalCode ? formatPostalCode(result.postalCode) : current.postalCode,
+        primaryActivity: result.primaryActivity ?? current.primaryActivity,
+        registrationStatus: result.registrationStatus ?? current.registrationStatus,
+        state: result.state ?? current.state,
+        street: result.street ?? current.street,
+        tradeName: result.tradeName ?? current.tradeName,
+      }));
+      setLookupMessage(
+        result.registrationStatus
+          ? `Dados localizados. Situacao cadastral: ${result.registrationStatus}.`
+          : 'Dados localizados e preenchidos para conferencia.',
+      );
+    } catch (requestError) {
+      setError(errorMessage(requestError));
+    } finally {
+      setLookupLoading(false);
+    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -286,10 +356,23 @@ export function SuppliersView({
             </header>
             <form className="management-form" onSubmit={(event) => void submit(event)}>
               <div className="form-grid two-columns">
-                <label>Razao social<input autoFocus maxLength={160} onChange={(event) => field('legalName', event.target.value)} required value={form.legalName} /></label>
+                <div className="cnpj-lookup-field">
+                  <label>CNPJ<input autoCapitalize="characters" autoFocus maxLength={18} onChange={(event) => field('document', event.target.value.toUpperCase())} placeholder="00.000.000/0000-00" value={form.document} /></label>
+                  <button
+                    className="secondary-button compact-button"
+                    disabled={lookupLoading || normalizeDocument(form.document).length !== 14}
+                    onClick={() => void lookupCnpj()}
+                    type="button"
+                  >
+                    {lookupLoading ? <LoaderCircle className="spin" size={15} /> : <Search size={15} />}
+                    Consultar CNPJ
+                  </button>
+                </div>
+                <label>Razao social<input maxLength={160} onChange={(event) => field('legalName', event.target.value)} required value={form.legalName} /></label>
                 <label>Nome fantasia<input maxLength={160} onChange={(event) => field('tradeName', event.target.value)} value={form.tradeName} /></label>
-                <label>CNPJ<input autoCapitalize="characters" maxLength={18} onChange={(event) => field('document', event.target.value.toUpperCase())} placeholder="AA.AAA.AAA/AAAA-00" value={form.document} /></label>
                 <label>Categoria<input maxLength={100} onChange={(event) => field('category', event.target.value)} value={form.category} /></label>
+                <label>Situacao cadastral<input maxLength={80} onChange={(event) => field('registrationStatus', event.target.value)} value={form.registrationStatus} /></label>
+                <label>Atividade principal<input maxLength={240} onChange={(event) => field('primaryActivity', event.target.value)} value={form.primaryActivity} /></label>
                 <label>Natureza da operacao<input maxLength={100} onChange={(event) => field('operationNature', event.target.value)} value={form.operationNature} /></label>
                 <label>Metodo de pagamento<input maxLength={80} onChange={(event) => field('paymentMethod', event.target.value)} value={form.paymentMethod} /></label>
                 <label>Tipo de chave Pix<select onChange={(event) => field('pixKeyType', event.target.value as SupplierForm['pixKeyType'])} value={form.pixKeyType}><option value="">Sem Pix cadastrado</option><option value="CNPJ">CNPJ</option><option value="CPF">CPF</option><option value="EMAIL">E-mail</option><option value="PHONE">Telefone</option><option value="RANDOM">Chave aleatoria</option></select></label>
@@ -300,7 +383,15 @@ export function SuppliersView({
                 <label>Centro de custo padrao<select onChange={(event) => field('defaultCostCenterId', event.target.value)} value={form.defaultCostCenterId}><option value="">Sem classificacao automatica</option>{costCenters.map((center) => <option key={center.id} value={center.id}>{center.code} | {center.name}</option>)}</select></label>
                 <label>E-mail<input maxLength={255} onChange={(event) => field('email', event.target.value)} type="email" value={form.email} /></label>
                 <label>Telefone<input maxLength={30} onChange={(event) => field('phone', event.target.value)} value={form.phone} /></label>
+                <label>CEP<input inputMode="numeric" maxLength={9} onChange={(event) => field('postalCode', event.target.value)} value={form.postalCode} /></label>
+                <label>Logradouro<input maxLength={160} onChange={(event) => field('street', event.target.value)} value={form.street} /></label>
+                <label>Numero<input maxLength={30} onChange={(event) => field('addressNumber', event.target.value)} value={form.addressNumber} /></label>
+                <label>Complemento<input maxLength={100} onChange={(event) => field('addressComplement', event.target.value)} value={form.addressComplement} /></label>
+                <label>Bairro<input maxLength={100} onChange={(event) => field('district', event.target.value)} value={form.district} /></label>
+                <label>Cidade<input maxLength={100} onChange={(event) => field('city', event.target.value)} value={form.city} /></label>
+                <label>UF<input maxLength={2} onChange={(event) => field('state', event.target.value.toUpperCase())} value={form.state} /></label>
               </div>
+              {lookupMessage && <div className="form-info">{lookupMessage}</div>}
               <label>Observacoes<textarea maxLength={2000} onChange={(event) => field('notes', event.target.value)} rows={3} value={form.notes} /></label>
               {error && <div className="form-error">{error}</div>}
               <footer className="modal-actions">
@@ -331,6 +422,15 @@ function toInput(form: SupplierForm): CreateSupplierInput {
     defaultCostCenterId: form.defaultCostCenterId || null,
     email: form.email || null,
     phone: form.phone || null,
+    postalCode: form.postalCode || null,
+    street: form.street || null,
+    addressNumber: form.addressNumber || null,
+    addressComplement: form.addressComplement || null,
+    district: form.district || null,
+    city: form.city || null,
+    state: form.state || null,
+    registrationStatus: form.registrationStatus || null,
+    primaryActivity: form.primaryActivity || null,
     notes: form.notes || null,
   };
 }
@@ -349,6 +449,14 @@ function normalize(value: string): string {
 
 function formatCnpj(value: string): string {
   return value.replace(/^([A-Z0-9]{2})([A-Z0-9]{3})([A-Z0-9]{3})([A-Z0-9]{4})(\d{2})$/i, '$1.$2.$3/$4-$5');
+}
+
+function normalizeDocument(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function formatPostalCode(value: string): string {
+  return value.replace(/^(\d{5})(\d{3})$/, '$1-$2');
 }
 
 function errorMessage(error: unknown): string {

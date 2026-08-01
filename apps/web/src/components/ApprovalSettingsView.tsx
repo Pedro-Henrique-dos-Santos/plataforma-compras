@@ -41,6 +41,7 @@ export function ApprovalSettingsView({
     financeChannel: null,
     financeRecipient: null,
     notifyFinanceOnApproval: false,
+    requireStageReturnReason: false,
     updatedAt: null,
   });
   const [loading, setLoading] = useState(true);
@@ -74,7 +75,10 @@ export function ApprovalSettingsView({
     ])
       .then(([ruleRows, nextSettings, memberRows]) => {
         setRules(ruleRows);
-        setSettings(nextSettings);
+        setSettings({
+          ...nextSettings,
+          requireStageReturnReason: nextSettings.requireStageReturnReason ?? false,
+        });
         setMembers(
           memberRows.filter(
             (member) =>
@@ -167,12 +171,16 @@ export function ApprovalSettingsView({
         financeChannel: settings.financeChannel,
         financeRecipient: settings.financeRecipient?.trim() || null,
         notifyFinanceOnApproval: settings.notifyFinanceOnApproval,
+        requireStageReturnReason: settings.requireStageReturnReason,
       };
       const saved = await apiPut<ApprovalSettings>('/approvals/settings', input, {
         token: accessToken,
         organizationId,
       });
-      setSettings(saved);
+      setSettings({
+        ...saved,
+        requireStageReturnReason: saved.requireStageReturnReason ?? false,
+      });
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {
@@ -264,6 +272,24 @@ export function ApprovalSettingsView({
       <form className="panel management-form settings-form" onSubmit={(event) => void saveSettings(event)}>
         <label className="toggle-row">
           <input
+            checked={Boolean(settings.requireStageReturnReason)}
+            onChange={(event) =>
+              setSettings((current) => ({
+                ...current,
+                requireStageReturnReason: event.target.checked,
+              }))
+            }
+            type="checkbox"
+          />
+          <span>
+            <strong>Exigir motivo ao retornar etapa</strong>
+            <small>
+              Quando desligado, administradores podem retornar cards diretamente no Kanban.
+            </small>
+          </span>
+        </label>
+        <label className="toggle-row">
+          <input
             checked={settings.notifyFinanceOnApproval}
             onChange={(event) =>
               setSettings((current) => ({
@@ -331,7 +357,7 @@ export function ApprovalSettingsView({
             type="submit"
           >
             <Save size={16} />
-            {submitting ? 'Salvando' : 'Salvar notificacao'}
+            {submitting ? 'Salvando' : 'Salvar configuracoes'}
           </button>
         </div>
       </form>
