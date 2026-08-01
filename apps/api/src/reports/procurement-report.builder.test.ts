@@ -63,6 +63,7 @@ function purchase(): ReportPurchaseInput {
     category: 'Materiais',
     source: 'MANUAL',
     status: 'REGISTERED',
+    workflowStage: 'SUPPLIER_INVOICED',
     itemCount: 2,
     total: 100,
     negotiatedSavings: 20,

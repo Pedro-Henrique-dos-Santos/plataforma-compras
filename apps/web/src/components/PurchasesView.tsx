@@ -1,20 +1,26 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import type {
   ChangePurchaseStatusInput,
+  ChangePurchaseWorkflowStageInput,
   CostCenter,
   CreatePurchaseInput,
   PurchaseDetail,
   PurchaseStatus,
   PurchaseSummary,
+  PurchaseWorkflowStage,
   Supplier,
   UpdatePurchaseInput,
 } from '@compras/contracts';
 import {
   CalendarPlus,
+  ChevronLeft,
+  ChevronRight,
   CircleX,
   GitBranch,
   Pencil,
   Plus,
+  Columns3,
+  List,
   ReceiptText,
   RotateCcw,
   Search,
@@ -42,7 +48,15 @@ type PurchaseItemRow = {
   unit: string;
   unitPrice: string;
 };
-type InstallmentRow = { amount: string; dueDate: string; id: string; paidAt: string | null };
+type InstallmentRow = {
+  amount: string;
+  dueDate: string;
+  id: string;
+  paidAt: string | null;
+  paymentChannel: '' | 'PIX' | 'CARD_LINK' | 'BOLETO' | 'BANK_TRANSFER' | 'OTHER';
+  paymentReference: string;
+  paymentNotes: string;
+};
 type PurchaseForm = {
   category: string;
   invoiceNumber: string;
@@ -69,11 +83,19 @@ export function PurchasesView({
   const [revision, setRevision] = useState(0);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'ALL' | PurchaseStatus>('ALL');
+  const [viewMode, setViewMode] = useState<'KANBAN' | 'TABLE'>('KANBAN');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PurchaseDetail | null>(null);
+  const [detailPurchase, setDetailPurchase] = useState<PurchaseDetail | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [lifecyclePurchase, setLifecyclePurchase] = useState<PurchaseDetail | null>(null);
   const [lifecycleReason, setLifecycleReason] = useState('');
   const [lifecycleOpen, setLifecycleOpen] = useState(false);
+  const [moving, setMoving] = useState<{
+    purchase: PurchaseSummary;
+    target: PurchaseWorkflowStage;
+  } | null>(null);
+  const [moveReason, setMoveReason] = useState('');
   const [form, setForm] = useState<PurchaseForm>(newPurchaseForm());
   const [items, setItems] = useState<PurchaseItemRow[]>([newPurchaseItem()]);
   const [installments, setInstallments] = useState<InstallmentRow[]>([]);
@@ -211,10 +233,89 @@ export function PurchasesView({
   }
 
   function addInstallment() {
-    setInstallments((current) => [...current, { amount: '', dueDate: form.issuedAt, id: crypto.randomUUID(), paidAt: null }]);
+    setInstallments((current) => [...current, {
+      amount: '',
+      dueDate: form.issuedAt,
+      id: crypto.randomUUID(),
+      paidAt: null,
+      paymentChannel: '',
+      paymentReference: '',
+      paymentNotes: '',
+    }]);
   }
 
-  function updateInstallment(id: string, field: 'amount' | 'dueDate', value: string) {
+  async function openDetails(purchase: PurchaseSummary) {
+    setPendingId(purchase.id);
+    setError(null);
+    try {
+      const detail = await apiGet<PurchaseDetail>(`/purchases/${purchase.id}`, {
+        token: accessToken,
+        organizationId,
+      });
+      setDetailPurchase(detail);
+      setDetailOpen(true);
+    } catch (requestError) {
+      setError(errorMessage(requestError));
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function requestMove(
+    purchase: PurchaseSummary,
+    target: PurchaseWorkflowStage,
+  ) {
+    const backwards =
+      workflowStageIndex(target) < workflowStageIndex(purchase.workflowStage);
+    if (backwards) {
+      setMoving({ purchase, target });
+      setMoveReason('');
+      setError(null);
+      return;
+    }
+    await movePurchase(purchase, target, null);
+  }
+
+  async function movePurchase(
+    purchase: PurchaseSummary,
+    target: PurchaseWorkflowStage,
+    reason: string | null,
+  ) {
+    setPendingId(purchase.id);
+    setError(null);
+    try {
+      const updated =
+        target === 'AWAITING_APPROVAL'
+          ? await apiPost<PurchaseDetail>(
+              `/purchases/${purchase.id}/submit-approval`,
+              { expectedUpdatedAt: purchase.updatedAt },
+              { token: accessToken, organizationId },
+            )
+          : await apiPatch<PurchaseDetail>(
+              `/purchases/${purchase.id}/workflow`,
+              {
+                expectedUpdatedAt: purchase.updatedAt,
+                stage: target,
+                reason,
+              } satisfies ChangePurchaseWorkflowStageInput,
+              { token: accessToken, organizationId },
+            );
+      setPurchases((current) => replacePurchase(current, updated));
+      setMoving(null);
+      setRevision((current) => current + 1);
+      onChanged();
+    } catch (requestError) {
+      setError(errorMessage(requestError));
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  function updateInstallment(
+    id: string,
+    field: 'amount' | 'dueDate' | 'paymentChannel' | 'paymentReference',
+    value: string,
+  ) {
     setInstallments((current) => current.map((installment) => installment.id === id ? { ...installment, [field]: value } : installment));
   }
 
@@ -280,7 +381,13 @@ export function PurchasesView({
     <div className="management-layout">
       <section className="section-heading">
         <span><p className="eyebrow">Operacao de compras</p><h2>Lancamentos registrados</h2></span>
-        {canWrite && <button className="primary-button" onClick={openCreate} type="button"><Plus size={16} />Nova compra</button>}
+        <span className="heading-actions">
+          <span className="segmented-control" aria-label="Visualizacao de compras">
+            <button aria-pressed={viewMode === 'KANBAN'} onClick={() => setViewMode('KANBAN')} title="Kanban" type="button"><Columns3 size={16} /><span>Kanban</span></button>
+            <button aria-pressed={viewMode === 'TABLE'} onClick={() => setViewMode('TABLE')} title="Tabela" type="button"><List size={16} /><span>Tabela</span></button>
+          </span>
+          {canWrite && <button className="primary-button" onClick={openCreate} type="button"><Plus size={16} />Nova compra</button>}
+        </span>
       </section>
 
       <section className="filter-bar panel">
@@ -289,37 +396,156 @@ export function PurchasesView({
         <span className="count-label">{visiblePurchases.length} compras</span>
       </section>
 
-      {error && !dialogOpen && !lifecycleOpen && <div className="inline-error">{error}</div>}
+      {error && !dialogOpen && !detailOpen && !lifecycleOpen && <div className="inline-error">{error}</div>}
 
-      <section className="panel table-panel">
-        {loading ? <div className="table-loading">Carregando compras</div> : (
-          <div className="table-scroll">
-            <table>
-              <thead><tr><th>Pedido</th><th>Fornecedor</th><th>Departamentos</th><th>Itens</th><th>Data</th><th>Status</th><th className="align-right">Economia</th><th className="align-right">Total</th>{canWrite && <th className="align-right">Acoes</th>}</tr></thead>
-              <tbody>
-                {visiblePurchases.length ? visiblePurchases.map((purchase) => (
-                  <tr className={purchase.status === 'CANCELLED' ? 'purchase-row-cancelled' : undefined} key={purchase.id}>
-                    <td className="order-id"><strong>{purchase.number}</strong><small>{purchase.invoiceNumber ? `NF ${purchase.invoiceNumber}` : 'Sem nota vinculada'}</small></td>
-                    <td>{purchase.supplierName}</td>
-                    <td>{purchase.departments.join(', ') || 'Nao classificado'}</td>
-                    <td>{purchase.itemCount}</td>
-                    <td>{formatDate(purchase.issuedAt)}</td>
-                    <td><span className={`status-label ${purchase.status === 'REGISTERED' ? 'active' : purchase.status === 'CANCELLED' ? 'cancelled' : 'warning'}`}>{purchaseStatusLabel(purchase.status)}</span></td>
-                    <td className="align-right savings-cell">{currency.format(purchase.negotiatedSavings)}</td>
-                    <td className="align-right amount-cell">{currency.format(purchase.total)}</td>
-                    {canWrite && (
+      {viewMode === 'KANBAN' ? (
+        loading ? <div className="panel table-loading">Carregando compras</div> : (
+          <section className="purchase-kanban" aria-label="Fluxo das compras">
+            {workflowStages.map((stage) => {
+              const stagePurchases = visiblePurchases.filter((purchase) => purchase.workflowStage === stage);
+              return (
+                <section
+                  className="kanban-lane"
+                  key={stage}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const purchase = purchases.find((candidate) => candidate.id === event.dataTransfer.getData('text/purchase-id'));
+                    if (purchase && canMoveTo(purchase.workflowStage, stage)) void requestMove(purchase, stage);
+                  }}
+                >
+                  <header className="kanban-lane-header">
+                    <strong>{workflowStageLabel(stage)}</strong>
+                    <span>{stagePurchases.length}</span>
+                  </header>
+                  <div className="kanban-card-list">
+                    {stagePurchases.map((purchase) => {
+                      const previous = previousWorkflowStage(purchase.workflowStage);
+                      const next = nextWorkflowStage(purchase.workflowStage);
+                      const editable = canEditPurchase(purchase);
+                      return (
+                        <article
+                          className={`purchase-kanban-card ${purchase.status === 'CANCELLED' ? 'cancelled' : ''}`}
+                          draggable={canWrite && purchase.status !== 'CANCELLED' && purchase.workflowStage !== 'AWAITING_APPROVAL'}
+                          key={purchase.id}
+                          onDragStart={(event) => event.dataTransfer.setData('text/purchase-id', purchase.id)}
+                        >
+                          <header>
+                            <span>
+                              <strong>{purchase.number}</strong>
+                              <small>{formatDate(purchase.issuedAt)}</small>
+                            </span>
+                            {purchase.invoiceLinked && <span className="invoice-badge">NF</span>}
+                          </header>
+                          <p>{purchase.supplierName}</p>
+                          <strong className="kanban-card-total">{currency.format(purchase.total)}</strong>
+                          <small>{purchase.departments.join(', ') || 'Sem centro de custo'}</small>
+                          {purchase.approval && (
+                            <div className={`kanban-approval ${purchase.approval.status.toLowerCase()}`}>
+                              <span>{purchase.approval.ruleName}</span>
+                              <strong>{purchase.approval.approvedCount}/{purchase.approval.requiredApprovals}</strong>
+                            </div>
+                          )}
+                          <footer>
+                            <button
+                              aria-label="Ver detalhes"
+                              className="icon-button table-action"
+                              disabled={pendingId === purchase.id}
+                              onClick={() => void openDetails(purchase)}
+                              title="Ver detalhes e historico"
+                              type="button"
+                            >
+                              <ReceiptText size={15} />
+                            </button>
+                            {canWrite && (
+                              <>
+                                <button
+                                  aria-label="Voltar etapa"
+                                  className="icon-button table-action"
+                                  disabled={!previous || pendingId === purchase.id || purchase.status === 'CANCELLED'}
+                                  onClick={() => previous && void requestMove(purchase, previous)}
+                                  title={previous ? `Voltar para ${workflowStageLabel(previous)}` : 'Primeira etapa'}
+                                  type="button"
+                                >
+                                  <ChevronLeft size={16} />
+                                </button>
+                                <button
+                                  aria-label="Editar compra"
+                                  className="icon-button table-action"
+                                  disabled={!editable || pendingId === purchase.id}
+                                  onClick={() => void openEdit(purchase)}
+                                  title={editable ? 'Editar compra' : 'Edicao encerrada apos envio para aprovacao'}
+                                  type="button"
+                                >
+                                  <Pencil size={15} />
+                                </button>
+                                <button
+                                  aria-label="Avancar etapa"
+                                  className="icon-button table-action"
+                                  disabled={!next || pendingId === purchase.id || purchase.status === 'CANCELLED'}
+                                  onClick={() => next && void requestMove(purchase, next)}
+                                  title={next ? `Avancar para ${workflowStageLabel(next)}` : 'Ultima etapa'}
+                                  type="button"
+                                >
+                                  <ChevronRight size={16} />
+                                </button>
+                                <button
+                                  aria-label={purchase.status === 'CANCELLED' ? 'Reativar compra' : 'Cancelar compra'}
+                                  className={`icon-button table-action ${purchase.status === 'CANCELLED' ? '' : 'danger-icon'}`}
+                                  disabled={pendingId === purchase.id}
+                                  onClick={() => void openLifecycle(purchase)}
+                                  title={purchase.status === 'CANCELLED' ? 'Reativar compra' : 'Cancelar compra'}
+                                  type="button"
+                                >
+                                  {purchase.status === 'CANCELLED' ? <RotateCcw size={15} /> : <CircleX size={15} />}
+                                </button>
+                              </>
+                            )}
+                          </footer>
+                        </article>
+                      );
+                    })}
+                    {!stagePurchases.length && <p className="kanban-empty">Nenhum pedido</p>}
+                  </div>
+                </section>
+              );
+            })}
+          </section>
+        )
+      ) : (
+        <section className="panel table-panel">
+          {loading ? <div className="table-loading">Carregando compras</div> : (
+            <div className="table-scroll">
+              <table>
+                <thead><tr><th>Pedido</th><th>Fornecedor</th><th>Departamentos</th><th>Itens</th><th>Data</th><th>Etapa</th><th className="align-right">Economia</th><th className="align-right">Total</th><th className="align-right">Acoes</th></tr></thead>
+                <tbody>
+                  {visiblePurchases.length ? visiblePurchases.map((purchase) => (
+                    <tr className={purchase.status === 'CANCELLED' ? 'purchase-row-cancelled' : undefined} key={purchase.id}>
+                      <td className="order-id"><strong>{purchase.number}</strong><small>{purchase.invoiceNumber ? `NF ${purchase.invoiceNumber}` : 'Sem nota vinculada'}</small></td>
+                      <td>{purchase.supplierName}</td>
+                      <td>{purchase.departments.join(', ') || 'Nao classificado'}</td>
+                      <td>{purchase.itemCount}</td>
+                      <td>{formatDate(purchase.issuedAt)}</td>
+                      <td><span className={`status-label ${purchase.status === 'CANCELLED' ? 'cancelled' : purchase.workflowStage === 'COMPLETED' ? 'active' : 'warning'}`}>{purchase.status === 'CANCELLED' ? 'Cancelada' : workflowStageLabel(purchase.workflowStage)}</span></td>
+                      <td className="align-right savings-cell">{currency.format(purchase.negotiatedSavings)}</td>
+                      <td className="align-right amount-cell">{currency.format(purchase.total)}</td>
                       <td className="align-right table-actions-cell">
-                        <button className="icon-button table-action" disabled={pendingId === purchase.id || purchase.status === 'CANCELLED'} onClick={() => void openEdit(purchase)} title={purchase.status === 'CANCELLED' ? 'Reative para editar' : 'Editar compra'} type="button"><Pencil size={16} /></button>
-                        <button className={`icon-button table-action ${purchase.status === 'CANCELLED' ? '' : 'danger-icon'}`} disabled={pendingId === purchase.id} onClick={() => void openLifecycle(purchase)} title={purchase.status === 'CANCELLED' ? 'Reativar compra' : 'Cancelar compra'} type="button">{purchase.status === 'CANCELLED' ? <RotateCcw size={16} /> : <CircleX size={16} />}</button>
+                        <button className="icon-button table-action" disabled={pendingId === purchase.id} onClick={() => void openDetails(purchase)} title="Ver detalhes e historico" type="button"><ReceiptText size={16} /></button>
+                        {canWrite && (
+                          <>
+                          <button className="icon-button table-action" disabled={pendingId === purchase.id || !canEditPurchase(purchase)} onClick={() => void openEdit(purchase)} title={canEditPurchase(purchase) ? 'Editar compra' : 'Edicao encerrada apos envio para aprovacao'} type="button"><Pencil size={16} /></button>
+                          <button className={`icon-button table-action ${purchase.status === 'CANCELLED' ? '' : 'danger-icon'}`} disabled={pendingId === purchase.id} onClick={() => void openLifecycle(purchase)} title={purchase.status === 'CANCELLED' ? 'Reativar compra' : 'Cancelar compra'} type="button">{purchase.status === 'CANCELLED' ? <RotateCcw size={16} /> : <CircleX size={16} />}</button>
+                          </>
+                        )}
                       </td>
-                    )}
-                  </tr>
-                )) : <tr><td className="empty-table-cell" colSpan={canWrite ? 9 : 8}>Nenhuma compra encontrada</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                    </tr>
+                  )) : <tr><td className="empty-table-cell" colSpan={9}>Nenhuma compra encontrada</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {dialogOpen && (
         <div className="modal-backdrop" role="presentation">
@@ -331,7 +557,6 @@ export function PurchasesView({
             <form className="management-form purchase-form" onSubmit={(event) => void submit(event)}>
               <div className="form-grid three-columns">
                 <label>Numero do pedido<input autoFocus maxLength={40} onChange={(event) => formField('number', event.target.value)} required value={form.number} /></label>
-                <label>Nota fiscal<input maxLength={60} onChange={(event) => formField('invoiceNumber', event.target.value)} value={form.invoiceNumber} /></label>
                 <label>Data de emissao<input onChange={(event) => formField('issuedAt', event.target.value)} required={!editing} type="date" value={form.issuedAt} /></label>
                 <label>Fornecedor<select onChange={(event) => formField('supplierId', event.target.value)} required value={form.supplierId}><option value="">Selecione</option>{suppliers.map((supplier) => <option disabled={supplier.status !== 'ACTIVE' && supplier.id !== form.supplierId} key={supplier.id} value={supplier.id}>{supplier.tradeName ?? supplier.legalName}{supplier.status !== 'ACTIVE' ? ' | Inativo' : ''}</option>)}</select></label>
                 <label>Categoria<input maxLength={100} onChange={(event) => formField('category', event.target.value)} placeholder={selectedSupplier?.category ?? 'Automatica pelo fornecedor'} value={form.category} /></label>
@@ -377,7 +602,7 @@ export function PurchasesView({
 
               <section className="form-section">
                 <header className="form-section-header"><span><strong>Parcelas</strong><small>Opcional; deixe vazio quando nao houver informacao</small></span><button className="secondary-button compact-button" onClick={addInstallment} type="button"><CalendarPlus size={15} />Adicionar parcela</button></header>
-                {installments.length > 0 && <div className="installment-list">{installments.map((installment, index) => <div className="installment-row" key={installment.id}><span>{index + 1}</span><label>Vencimento{installment.paidAt ? ` | Paga em ${formatDate(installment.paidAt)}` : ''}<input disabled={Boolean(installment.paidAt)} onChange={(event) => updateInstallment(installment.id, 'dueDate', event.target.value)} required type="date" value={installment.dueDate} /></label><label>Valor<input disabled={Boolean(installment.paidAt)} inputMode="decimal" onChange={(event) => updateInstallment(installment.id, 'amount', event.target.value)} placeholder="0,00" required value={installment.amount} /></label><button aria-label="Remover parcela" className="icon-button table-action" disabled={Boolean(installment.paidAt)} onClick={() => setInstallments((current) => current.filter((candidate) => candidate.id !== installment.id))} title={installment.paidAt ? 'Parcelas pagas nao podem ser removidas' : 'Remover parcela'} type="button"><Trash2 size={15} /></button></div>)}</div>}
+                {installments.length > 0 && <div className="installment-list">{installments.map((installment, index) => <div className="installment-row extended" key={installment.id}><span>{index + 1}</span><label>Vencimento{installment.paidAt ? ` | Paga em ${formatDate(installment.paidAt)}` : ''}<input disabled={Boolean(installment.paidAt)} onChange={(event) => updateInstallment(installment.id, 'dueDate', event.target.value)} required type="date" value={installment.dueDate} /></label><label>Valor<input disabled={Boolean(installment.paidAt)} inputMode="decimal" onChange={(event) => updateInstallment(installment.id, 'amount', event.target.value)} placeholder="0,00" required value={installment.amount} /></label><label>Canal<select onChange={(event) => updateInstallment(installment.id, 'paymentChannel', event.target.value)} value={installment.paymentChannel}><option value="">Automatico do fornecedor</option><option value="PIX">Pix</option><option value="BOLETO">Boleto</option><option value="CARD_LINK">Link de cartao</option><option value="BANK_TRANSFER">Transferencia</option><option value="OTHER">Outro</option></select></label><label>Referencia<input maxLength={500} onChange={(event) => updateInstallment(installment.id, 'paymentReference', event.target.value)} value={installment.paymentReference} /></label><button aria-label="Remover parcela" className="icon-button table-action" disabled={Boolean(installment.paidAt)} onClick={() => setInstallments((current) => current.filter((candidate) => candidate.id !== installment.id))} title={installment.paidAt ? 'Parcelas pagas nao podem ser removidas' : 'Remover parcela'} type="button"><Trash2 size={15} /></button></div>)}</div>}
               </section>
 
               <label>Observacoes<textarea maxLength={2000} onChange={(event) => formField('notes', event.target.value)} rows={3} value={form.notes} /></label>
@@ -386,6 +611,217 @@ export function PurchasesView({
               {error && <div className="form-error">{error}</div>}
               <footer className="modal-actions"><button className="secondary-button" onClick={() => setDialogOpen(false)} type="button">Fechar</button><button className="primary-button" disabled={submitting} type="submit">{editing ? <Pencil size={16} /> : <ReceiptText size={16} />}{submitting ? 'Salvando' : editing ? 'Salvar alteracoes' : 'Registrar compra'}</button></footer>
             </form>
+          </section>
+        </div>
+      )}
+
+      {detailOpen && detailPurchase && (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            aria-labelledby="purchase-detail-title"
+            aria-modal="true"
+            className="modal-panel modal-extra-wide purchase-detail-modal"
+            role="dialog"
+          >
+            <header className="modal-header">
+              <span>
+                <p className="eyebrow">Pedido de compra</p>
+                <h2 id="purchase-detail-title">{detailPurchase.number}</h2>
+              </span>
+              <button
+                className="icon-button"
+                onClick={() => setDetailOpen(false)}
+                title="Fechar"
+                type="button"
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <div className="purchase-detail-content">
+              <div className="purchase-detail-summary">
+                <span>
+                  <small>Fornecedor</small>
+                  <strong>{detailPurchase.supplierName}</strong>
+                </span>
+                <span>
+                  <small>Etapa</small>
+                  <strong>
+                    {detailPurchase.status === 'CANCELLED'
+                      ? 'Cancelada'
+                      : workflowStageLabel(detailPurchase.workflowStage)}
+                  </strong>
+                </span>
+                <span>
+                  <small>Total</small>
+                  <strong>{currency.format(detailPurchase.total)}</strong>
+                </span>
+                <span>
+                  <small>Emissao</small>
+                  <strong>{formatDate(detailPurchase.issuedAt)}</strong>
+                </span>
+                <span>
+                  <small>Nota fiscal</small>
+                  <strong>{detailPurchase.invoiceNumber ?? 'Nao vinculada'}</strong>
+                </span>
+                <span>
+                  <small>Categoria</small>
+                  <strong>{detailPurchase.category ?? 'Nao informada'}</strong>
+                </span>
+              </div>
+
+              <section className="purchase-detail-section">
+                <header>
+                  <strong>Itens e rateios</strong>
+                  <span>{detailPurchase.items.length} itens</span>
+                </header>
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Descricao</th>
+                        <th>Centro de custo</th>
+                        <th className="align-right">Quantidade</th>
+                        <th className="align-right">Preco</th>
+                        <th className="align-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailPurchase.items.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.description}</td>
+                          <td>
+                            {item.allocations.length
+                              ? item.allocations
+                                  .map(
+                                    (allocation) =>
+                                      `${allocation.costCenterName} (${allocation.percentage}%)`,
+                                  )
+                                  .join(', ')
+                              : item.costCenterName ?? 'Nao classificado'}
+                          </td>
+                          <td className="align-right">{item.quantity}</td>
+                          <td className="align-right">
+                            {currency.format(item.negotiatedPrice ?? item.unitPrice)}
+                          </td>
+                          <td className="align-right amount-cell">
+                            {currency.format(item.total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="purchase-detail-section">
+                <header>
+                  <strong>Parcelas e pagamento</strong>
+                  <span>{detailPurchase.installments.length} parcelas</span>
+                </header>
+                {detailPurchase.installments.length ? (
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Parcela</th>
+                          <th>Vencimento</th>
+                          <th>Canal</th>
+                          <th>Referencia</th>
+                          <th>Status</th>
+                          <th className="align-right">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detailPurchase.installments.map((installment) => (
+                          <tr key={installment.sequence}>
+                            <td>{installment.sequence}</td>
+                            <td>{formatDate(installment.dueDate)}</td>
+                            <td>{paymentChannelLabel(installment.paymentChannel)}</td>
+                            <td>{installment.paymentReference ?? 'Nao informada'}</td>
+                            <td>{installment.paidAt ? `Paga em ${formatDate(installment.paidAt)}` : 'Em aberto'}</td>
+                            <td className="align-right amount-cell">
+                              {currency.format(installment.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="detail-empty">Nenhuma parcela cadastrada.</p>
+                )}
+              </section>
+
+              {detailPurchase.approval && (
+                <section className="purchase-detail-section">
+                  <header>
+                    <strong>Aprovacao</strong>
+                    <span>{approvalStatusLabel(detailPurchase.approval.status)}</span>
+                  </header>
+                  <div className="approval-participant-list">
+                    {detailPurchase.approval.participants.map((participant) => (
+                      <div key={participant.userId}>
+                        <span>
+                          <strong>{participant.name}</strong>
+                          <small>
+                            {participant.decidedAt
+                              ? formatDateTime(participant.decidedAt)
+                              : 'Aguardando decisao'}
+                          </small>
+                        </span>
+                        <span className={`status-label ${participant.decision === 'APPROVED' ? 'active' : participant.decision === 'REJECTED' ? 'cancelled' : 'warning'}`}>
+                          {approvalDecisionLabel(participant.decision)}
+                        </span>
+                        {participant.comment && <p>{participant.comment}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section className="purchase-detail-section">
+                <header>
+                  <strong>Historico do fluxo</strong>
+                  <span>{detailPurchase.stageHistory.length} registros</span>
+                </header>
+                <ol className="stage-history-list">
+                  {[...detailPurchase.stageHistory].reverse().map((history) => (
+                    <li key={history.id}>
+                      <span className="stage-history-marker" />
+                      <div>
+                        <strong>
+                          {history.fromStage
+                            ? `${workflowStageLabel(history.fromStage)} para ${workflowStageLabel(history.toStage)}`
+                            : workflowStageLabel(history.toStage)}
+                        </strong>
+                        <small>
+                          {formatDateTime(history.createdAt)} | {history.changedByName}
+                        </small>
+                        {history.reason && <p>{history.reason}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+
+              {detailPurchase.notes && (
+                <section className="purchase-detail-section">
+                  <header>
+                    <strong>Observacoes</strong>
+                  </header>
+                  <p className="purchase-detail-notes">{detailPurchase.notes}</p>
+                </section>
+              )}
+            </div>
+            <footer className="modal-actions">
+              <button
+                className="primary-button"
+                onClick={() => setDetailOpen(false)}
+                type="button"
+              >
+                Fechar
+              </button>
+            </footer>
           </section>
         </div>
       )}
@@ -404,6 +840,26 @@ export function PurchasesView({
               <footer className="modal-actions">
                 <button className="secondary-button" onClick={() => setLifecycleOpen(false)} type="button">Fechar</button>
                 <button className={lifecyclePurchase.status === 'CANCELLED' ? 'primary-button' : 'danger-button'} disabled={submitting || lifecycleReason.trim().length < 3} onClick={() => void changeLifecycle()} type="button">{lifecyclePurchase.status === 'CANCELLED' ? <RotateCcw size={16} /> : <CircleX size={16} />}{submitting ? 'Salvando' : lifecyclePurchase.status === 'CANCELLED' ? 'Reativar compra' : 'Cancelar compra'}</button>
+              </footer>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {moving && (
+        <div className="modal-backdrop" role="presentation">
+          <section aria-labelledby="move-purchase-title" aria-modal="true" className="modal-panel" role="dialog">
+            <header className="modal-header">
+              <span><p className="eyebrow">Retorno de etapa</p><h2 id="move-purchase-title">{moving.purchase.number}</h2></span>
+              <button className="icon-button" onClick={() => setMoving(null)} title="Fechar" type="button"><X size={18} /></button>
+            </header>
+            <div className="management-form">
+              <p>O pedido retornara para {workflowStageLabel(moving.target)}.</p>
+              <label>Motivo<textarea autoFocus maxLength={500} minLength={3} onChange={(event) => setMoveReason(event.target.value)} required rows={4} value={moveReason} /></label>
+              {error && <div className="form-error">{error}</div>}
+              <footer className="modal-actions">
+                <button className="secondary-button" onClick={() => setMoving(null)} type="button">Fechar</button>
+                <button className="primary-button" disabled={pendingId === moving.purchase.id || moveReason.trim().length < 3} onClick={() => void movePurchase(moving.purchase, moving.target, moveReason.trim())} type="button"><RotateCcw size={16} />Confirmar retorno</button>
               </footer>
             </div>
           </section>
@@ -489,7 +945,13 @@ function toEditablePurchaseInput(
     paymentMethod: form.paymentMethod.trim() || null,
     notes: form.notes.trim() || null,
     items: parsedItems,
-    installments: installments.map((installment) => ({ dueDate: installment.dueDate, amount: parseMoney(installment.amount) })),
+    installments: installments.map((installment) => ({
+      dueDate: installment.dueDate,
+      amount: parseMoney(installment.amount),
+      paymentChannel: installment.paymentChannel || null,
+      paymentReference: installment.paymentReference.trim() || null,
+      paymentNotes: installment.paymentNotes.trim() || null,
+    })),
   };
 }
 
@@ -529,6 +991,9 @@ export function purchaseDetailToEditor(detail: PurchaseDetail): {
       dueDate: installment.dueDate,
       id: `${detail.id}-installment-${installment.sequence}`,
       paidAt: installment.paidAt,
+      paymentChannel: installment.paymentChannel ?? '',
+      paymentReference: installment.paymentReference ?? '',
+      paymentNotes: installment.paymentNotes ?? '',
     })),
   };
 }
@@ -541,8 +1006,107 @@ function replacePurchase(current: PurchaseSummary[], updated: PurchaseSummary): 
   return current.map((purchase) => (purchase.id === updated.id ? updated : purchase));
 }
 
-function purchaseStatusLabel(status: PurchaseStatus): string {
-  return { CANCELLED: 'Cancelada', DRAFT: 'Rascunho', REGISTERED: 'Registrada' }[status];
+function approvalStatusLabel(
+  status: NonNullable<PurchaseDetail['approval']>['status'],
+): string {
+  return {
+    PENDING: 'Aguardando aprovacao',
+    APPROVED: 'Aprovada',
+    REJECTED: 'Reprovada',
+    CANCELLED: 'Cancelada',
+  }[status];
+}
+
+function approvalDecisionLabel(
+  decision: NonNullable<PurchaseDetail['approval']>['participants'][number]['decision'],
+): string {
+  return {
+    PENDING: 'Pendente',
+    APPROVED: 'Aprovada',
+    REJECTED: 'Reprovada',
+  }[decision];
+}
+
+function paymentChannelLabel(
+  channel: PurchaseDetail['installments'][number]['paymentChannel'],
+): string {
+  if (!channel) return 'Automatico do fornecedor';
+  return {
+    PIX: 'Pix',
+    CARD_LINK: 'Link de cartao',
+    BOLETO: 'Boleto',
+    BANK_TRANSFER: 'Transferencia',
+    OTHER: 'Outro',
+  }[channel];
+}
+
+const workflowStages: PurchaseWorkflowStage[] = [
+  'REGISTRATION',
+  'REQUESTED',
+  'AWAITING_APPROVAL',
+  'PURCHASE_ORDER',
+  'SUPPLIER_INVOICED',
+  'RECEIVED',
+  'COMPLETED',
+];
+
+function workflowStageIndex(stage: PurchaseWorkflowStage): number {
+  return workflowStages.indexOf(stage);
+}
+
+function workflowStageLabel(stage: PurchaseWorkflowStage): string {
+  return {
+    REGISTRATION: 'Registro',
+    REQUESTED: 'Solicitacao',
+    AWAITING_APPROVAL: 'Aguardando aprovacao',
+    PURCHASE_ORDER: 'Pedido de compra',
+    SUPPLIER_INVOICED: 'Faturado pelo fornecedor',
+    RECEIVED: 'Recebido',
+    COMPLETED: 'Concluido',
+  }[stage];
+}
+
+function previousWorkflowStage(
+  stage: PurchaseWorkflowStage,
+): PurchaseWorkflowStage | null {
+  return {
+    REGISTRATION: null,
+    REQUESTED: 'REGISTRATION',
+    AWAITING_APPROVAL: null,
+    PURCHASE_ORDER: 'REQUESTED',
+    SUPPLIER_INVOICED: 'PURCHASE_ORDER',
+    RECEIVED: 'SUPPLIER_INVOICED',
+    COMPLETED: 'RECEIVED',
+  }[stage] as PurchaseWorkflowStage | null;
+}
+
+function nextWorkflowStage(
+  stage: PurchaseWorkflowStage,
+): PurchaseWorkflowStage | null {
+  return {
+    REGISTRATION: 'REQUESTED',
+    REQUESTED: 'AWAITING_APPROVAL',
+    AWAITING_APPROVAL: null,
+    PURCHASE_ORDER: 'SUPPLIER_INVOICED',
+    SUPPLIER_INVOICED: 'RECEIVED',
+    RECEIVED: 'COMPLETED',
+    COMPLETED: null,
+  }[stage] as PurchaseWorkflowStage | null;
+}
+
+function canMoveTo(
+  from: PurchaseWorkflowStage,
+  to: PurchaseWorkflowStage,
+): boolean {
+  return previousWorkflowStage(from) === to || nextWorkflowStage(from) === to;
+}
+
+function canEditPurchase(purchase: PurchaseSummary): boolean {
+  return (
+    purchase.status !== 'CANCELLED' &&
+    (purchase.workflowStage === 'REGISTRATION' ||
+      purchase.workflowStage === 'REQUESTED')
+  );
 }
 
 function calculateTotals(items: PurchaseItemRow[]) {
@@ -576,6 +1140,13 @@ function normalize(value: string): string {
 function formatDate(value: string | null): string {
   if (!value) return 'Sem data';
   return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value));
 }
 
 function errorMessage(error: unknown): string {

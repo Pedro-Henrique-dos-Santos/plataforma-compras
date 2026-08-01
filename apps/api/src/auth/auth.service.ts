@@ -51,6 +51,7 @@ export class AuthService {
       authUserId: DEMO_AUTH_USER_ID,
       email: demoUserContext.email,
       name: demoUserContext.name,
+      phone: demoUserContext.phone,
       termsAcceptedAt: demoUserContext.termsAcceptedAt,
       termsVersion: demoUserContext.termsVersion,
       privacyAcceptedAt: demoUserContext.privacyAcceptedAt,
@@ -157,6 +158,7 @@ export class AuthService {
         authUserId: user.authUserId,
         email: user.email,
         name: user.name,
+        phone: user.phone,
         termsAcceptedAt: user.termsAcceptedAt?.toISOString() ?? null,
         termsVersion: user.termsVersion,
         privacyAcceptedAt: user.privacyAcceptedAt?.toISOString() ?? null,
@@ -177,6 +179,7 @@ export class AuthService {
         where: { id: actor.id },
         data: {
           ...(input.name !== undefined && { name: input.name }),
+          ...(input.phone !== undefined && { phone: input.phone }),
           ...(input.acceptTerms && {
             termsAcceptedAt: now,
             termsVersion: CURRENT_TERMS_VERSION,
@@ -196,6 +199,7 @@ export class AuthService {
           ipAddress: request.ipAddress,
           metadata: {
             nameUpdated: input.name !== undefined,
+            phoneUpdated: input.phone !== undefined,
             ...(input.acceptTerms && { termsVersion: CURRENT_TERMS_VERSION }),
             ...(input.acceptPrivacy && { privacyVersion: CURRENT_PRIVACY_VERSION }),
             ...(request.userAgent && { userAgent: request.userAgent }),
@@ -208,6 +212,7 @@ export class AuthService {
     return {
       ...actor,
       name: user.name,
+      phone: user.phone,
       termsAcceptedAt: user.termsAcceptedAt?.toISOString() ?? null,
       termsVersion: user.termsVersion,
       privacyAcceptedAt: user.privacyAcceptedAt?.toISOString() ?? null,

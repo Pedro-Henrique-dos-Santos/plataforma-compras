@@ -1,8 +1,14 @@
 import { z } from 'zod';
 
 import { invoiceDocumentKindSchema, invoiceDocumentStatusSchema } from './invoices.js';
-import { isoDateSchema, monetaryValueSchema } from './master-data.js';
+import {
+  isoDateSchema,
+  monetaryValueSchema,
+  paymentChannelSchema,
+  pixKeyTypeSchema,
+} from './master-data.js';
 import { purchaseSourceSchema, purchaseStatusSchema } from './purchases.js';
+import { purchaseWorkflowStageSchema } from './workflow.js';
 
 export const procurementReportFiltersSchema = z
   .object({
@@ -11,7 +17,8 @@ export const procurementReportFiltersSchema = z
     supplierId: z.string().uuid().optional(),
     costCenterId: z.string().uuid().optional(),
     category: z.string().trim().min(1).max(100).optional(),
-    status: purchaseStatusSchema.optional().default('REGISTERED'),
+    status: purchaseStatusSchema.optional(),
+    workflowStage: purchaseWorkflowStageSchema.optional(),
   })
   .superRefine((value, context) => {
     if (value.dateFrom && value.dateTo && value.dateFrom > value.dateTo) {
@@ -44,6 +51,7 @@ export const procurementReportRowSchema = z.object({
   departments: z.array(z.string()),
   source: purchaseSourceSchema,
   status: purchaseStatusSchema,
+  workflowStage: purchaseWorkflowStageSchema,
   itemCount: z.number().int().nonnegative(),
   total: monetaryValueSchema,
   negotiatedSavings: monetaryValueSchema,
@@ -88,6 +96,9 @@ export const procurementDetailedSupplierSchema = z.object({
   category: z.string().nullable(),
   operationNature: z.string().nullable(),
   paymentMethod: z.string().nullable(),
+  pixKeyType: pixKeyTypeSchema.nullable(),
+  pixKey: z.string().nullable(),
+  paymentLink: z.string().nullable(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
   defaultCostCenter: detailedCostCenterSchema.nullable(),
@@ -120,6 +131,9 @@ export const procurementDetailedInstallmentSchema = z.object({
   dueDate: isoDateSchema,
   amount: monetaryValueSchema,
   paidAt: isoDateSchema.nullable(),
+  paymentChannel: paymentChannelSchema.nullable(),
+  paymentReference: z.string().nullable(),
+  paymentNotes: z.string().nullable(),
 });
 export type ProcurementDetailedInstallment = z.infer<
   typeof procurementDetailedInstallmentSchema
@@ -148,6 +162,7 @@ export const procurementDetailedPurchaseSchema = z.object({
   invoiceNumber: z.string().nullable(),
   issuedAt: isoDateSchema.nullable(),
   status: purchaseStatusSchema,
+  workflowStage: purchaseWorkflowStageSchema,
   category: z.string().nullable(),
   operationNature: z.string().nullable(),
   paymentMethod: z.string().nullable(),

@@ -48,6 +48,7 @@ describe('invoice document import reconciliation', () => {
       notes: null,
       source: 'MANUAL',
       sourceReference: null,
+      workflowStage: 'PURCHASE_ORDER',
       items: [
         {
           description: 'Material hospitalar',

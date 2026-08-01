@@ -1142,6 +1142,561 @@ td {
   gap: 12px;
 }
 
+.segmented-control {
+  height: 36px;
+  display: inline-flex;
+  align-items: stretch;
+  padding: 3px;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.segmented-control button {
+  min-width: 86px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.segmented-control button[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(25, 29, 31, 0.1);
+}
+
+.purchase-kanban {
+  min-width: 0;
+  min-height: 560px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(238px, 1fr);
+  gap: 10px;
+  overflow-x: auto;
+  padding: 0 0 10px;
+  overscroll-behavior-inline: contain;
+}
+
+.kanban-lane {
+  min-width: 238px;
+  display: grid;
+  grid-template-rows: 46px minmax(0, 1fr);
+  align-self: stretch;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.kanban-lane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 11px;
+  border-bottom: 1px solid var(--line);
+}
+
+.kanban-lane-header strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanban-lane-header span {
+  min-width: 24px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: var(--neutral-pill);
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.kanban-card-list {
+  min-height: 180px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 8px;
+}
+
+.purchase-kanban-card {
+  min-height: 178px;
+  display: grid;
+  grid-template-rows: auto auto auto auto 1fr auto;
+  gap: 7px;
+  padding: 11px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(25, 29, 31, 0.05);
+}
+
+.purchase-kanban-card[draggable="true"] {
+  cursor: grab;
+}
+
+.purchase-kanban-card.cancelled {
+  opacity: 0.58;
+}
+
+.purchase-kanban-card > header,
+.purchase-kanban-card > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.purchase-kanban-card > header span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.purchase-kanban-card > header strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.purchase-kanban-card small,
+.purchase-kanban-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.purchase-kanban-card p {
+  min-height: 24px;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.kanban-card-total {
+  font-size: 15px;
+}
+
+.invoice-badge {
+  min-width: 26px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--teal);
+  background: var(--teal-soft);
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.kanban-approval {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 7px;
+  color: var(--gold);
+  background: var(--gold-soft);
+  border-radius: 4px;
+  font-size: 8px;
+}
+
+.kanban-approval.approved {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.kanban-approval.rejected {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.purchase-kanban-card > footer {
+  justify-content: flex-end;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+}
+
+.purchase-kanban-card > footer .icon-button {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+}
+
+.kanban-empty {
+  margin: 14px 4px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+}
+
+.approval-progress,
+.inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.approval-progress {
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.payable-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.payable-metric {
+  min-width: 0;
+  min-height: 82px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  padding: 13px 16px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.payable-metric:last-child {
+  border-right: 0;
+}
+
+.payable-metric small {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.payable-metric strong {
+  overflow: hidden;
+  font-size: 18px;
+  text-overflow: ellipsis;
+}
+
+.payable-metric.danger strong {
+  color: var(--danger);
+}
+
+.payable-filter-bar {
+  grid-template-columns: minmax(240px, 1fr) repeat(4, minmax(130px, auto));
+}
+
+.table-secondary {
+  display: block;
+  max-width: 230px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-section-heading {
+  margin-top: 6px;
+}
+
+.settings-form {
+  display: grid;
+  gap: 16px;
+}
+
+.form-footer-inline {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.approver-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.approver-fieldset legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.approver-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.checkbox-option {
+  min-width: 0;
+  min-height: 54px;
+  display: grid !important;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px !important;
+  padding: 8px;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.checkbox-option input {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.checkbox-option span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.checkbox-option strong,
+.checkbox-option small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkbox-option strong {
+  font-size: 10px;
+}
+
+.checkbox-option small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.installment-row.extended {
+  max-width: none;
+  grid-template-columns: 28px minmax(135px, 0.7fr) minmax(120px, 0.6fr) minmax(145px, 0.7fr) minmax(180px, 1fr) 34px;
+}
+
+.installment-row select {
+  height: 38px;
+}
+
+.purchase-detail-modal {
+  width: min(1040px, 100%);
+}
+
+.purchase-detail-content {
+  display: grid;
+  padding: 0 20px;
+}
+
+.purchase-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.purchase-detail-summary > span {
+  min-width: 0;
+  min-height: 74px;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding: 12px 14px;
+  background: var(--surface);
+}
+
+.purchase-detail-summary small,
+.purchase-detail-section > header span,
+.approval-participant-list small,
+.stage-history-list small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.purchase-detail-summary strong {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.purchase-detail-section {
+  min-width: 0;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.purchase-detail-section:last-child {
+  border-bottom: 0;
+}
+
+.purchase-detail-section > header {
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.purchase-detail-section > header strong {
+  font-size: 12px;
+}
+
+.purchase-detail-section table {
+  min-width: 720px;
+}
+
+.detail-empty,
+.purchase-detail-notes {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.approval-participant-list {
+  display: grid;
+}
+
+.approval-participant-list > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.approval-participant-list > div:last-child {
+  border-bottom: 0;
+}
+
+.approval-participant-list > div > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.approval-participant-list p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.stage-history-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stage-history-list li {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  padding: 0 0 17px;
+}
+
+.stage-history-list li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 11px;
+  bottom: 0;
+  left: 5px;
+  width: 1px;
+  background: var(--line-strong);
+}
+
+.stage-history-marker {
+  position: relative;
+  z-index: 1;
+  width: 11px;
+  height: 11px;
+  margin-top: 3px;
+  background: var(--brand);
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--brand);
+}
+
+.stage-history-list div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.stage-history-list strong {
+  font-size: 10px;
+}
+
+.stage-history-list p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.purchase-detail-modal > .modal-actions {
+  margin: 0;
+}
+
+.approval-installment-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.approval-installment-list > span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--surface-alt);
+}
+
+.approval-installment-list strong {
+  font-size: 10px;
+}
+
+.approval-installment-list small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.approval-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 16px 20px;
+  background: var(--surface-alt);
+  border-top: 1px solid var(--line);
+}
+
 .icon-button {
   width: 36px;
   height: 36px;
@@ -3680,6 +4235,94 @@ td {
 
   .consent-panel {
     padding: 20px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .payable-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payable-metric:nth-child(2) {
+    border-right: 0;
+  }
+
+  .payable-metric:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .payable-filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payable-filter-bar .search-field {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .segmented-control,
+  .segmented-control button {
+    width: 100%;
+  }
+
+  .purchase-kanban {
+    min-height: 500px;
+    grid-auto-columns: minmax(82vw, 82vw);
+  }
+
+  .purchase-detail-content {
+    padding: 0 14px;
+  }
+
+  .purchase-detail-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .purchase-detail-summary > span {
+    min-height: 58px;
+  }
+
+  .approval-installment-list {
+    grid-template-columns: 1fr;
+  }
+
+  .approval-review-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .payable-metrics,
+  .payable-filter-bar,
+  .approver-options {
+    grid-template-columns: 1fr;
+  }
+
+  .payable-metric,
+  .payable-metric:nth-child(2) {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .payable-metric:last-child {
+    border-bottom: 0;
+  }
+
+  .payable-filter-bar .search-field {
+    grid-column: auto;
+  }
+
+  .inline-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .installment-row.extended {
+    grid-template-columns: 28px minmax(0, 1fr) 34px;
+  }
+
+  .installment-row.extended label {
+    grid-column: 2;
   }
 }
 

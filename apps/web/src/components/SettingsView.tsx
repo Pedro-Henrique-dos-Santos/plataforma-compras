@@ -7,6 +7,7 @@ import {
   MonitorCog,
   Save,
   ShieldCheck,
+  Smartphone,
   UserRound,
 } from 'lucide-react';
 
@@ -23,12 +24,14 @@ type SettingsViewProps = {
 
 export function SettingsView({ onProfileUpdate, onThemeChange, theme, user }: SettingsViewProps) {
   const [name, setName] = useState(user.name);
+  const [phone, setPhone] = useState(user.phone ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [legalDialog, setLegalDialog] = useState<LegalDocumentKind | null>(null);
 
   useEffect(() => setName(user.name), [user.name]);
+  useEffect(() => setPhone(user.phone ?? ''), [user.phone]);
 
   async function handleProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,8 +39,8 @@ export function SettingsView({ onProfileUpdate, onThemeChange, theme, user }: Se
     setMessage(null);
     setError(null);
     try {
-      await onProfileUpdate({ name });
-      setMessage('Nome da conta atualizado.');
+      await onProfileUpdate({ name, phone: phone.trim() || null });
+      setMessage('Dados da conta atualizados.');
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -81,6 +84,33 @@ export function SettingsView({ onProfileUpdate, onThemeChange, theme, user }: Se
             className="icon-button"
             disabled={submitting || name.trim() === user.name}
             title="Salvar nome"
+            type="submit"
+          >
+            <Save size={17} />
+          </button>
+        </form>
+
+        <form className="settings-row settings-form-row" onSubmit={(event) => void handleProfile(event)}>
+          <span className="settings-icon">
+            <Smartphone size={19} />
+          </span>
+          <span className="settings-copy">
+            <strong>WhatsApp</strong>
+            <small>Formato internacional para notificacoes</small>
+          </span>
+          <input
+            aria-label="WhatsApp"
+            className="settings-input"
+            maxLength={30}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="+5511999999999"
+            value={phone}
+          />
+          <button
+            aria-label="Salvar WhatsApp"
+            className="icon-button"
+            disabled={submitting || phone.trim() === (user.phone ?? '')}
+            title="Salvar WhatsApp"
             type="submit"
           >
             <Save size={17} />

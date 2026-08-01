@@ -18,6 +18,8 @@ import { SupplierPricesController } from '../master-data/supplier-prices.control
 import { SuppliersController } from '../master-data/suppliers.controller.js';
 import { MembersController } from '../organizations/members.controller.js';
 import { OrganizationsController } from '../organizations/organizations.controller.js';
+import { ApprovalsController } from '../purchases/approvals.controller.js';
+import { PayablesController } from '../purchases/payables.controller.js';
 import { PurchasesController } from '../purchases/purchases.controller.js';
 import { ReportsController } from '../reports/reports.controller.js';
 import { REQUIRED_PERMISSIONS_KEY } from './require-permission.decorator.js';
@@ -38,6 +40,8 @@ const tenantControllers: ControllerClass[] = [
   DashboardController,
   InvoiceDocumentsController,
   MembersController,
+  ApprovalsController,
+  PayablesController,
   PurchasesController,
   ReportsController,
   SupplierPricesController,
@@ -62,6 +66,8 @@ const expectedControllerFiles = [
   'master-data/suppliers.controller.ts',
   'organizations/members.controller.ts',
   'organizations/organizations.controller.ts',
+  'purchases/approvals.controller.ts',
+  'purchases/payables.controller.ts',
   'purchases/purchases.controller.ts',
   'reports/reports.controller.ts',
 ].sort();

@@ -117,6 +117,7 @@ function addPurchasesSheet(workbook: Workbook, purchases: ProcurementReportRow[]
     { header: 'Departamentos', key: 'departments', width: 24 },
     { header: 'Origem', key: 'source', width: 18 },
     { header: 'Status', key: 'status', width: 15 },
+    { header: 'Etapa', key: 'workflowStage', width: 28 },
     { header: 'Itens', key: 'items', width: 10 },
     { header: 'Total', key: 'total', width: 16 },
     { header: 'Economia', key: 'savings', width: 16 },
@@ -132,14 +133,15 @@ function addPurchasesSheet(workbook: Workbook, purchases: ProcurementReportRow[]
       departments: safeText(purchase.departments.join(', ')),
       source: sourceLabel(purchase.source),
       status: statusLabel(purchase.status),
+      workflowStage: workflowStageLabel(purchase.workflowStage),
       items: purchase.itemCount,
       total: purchase.total,
       savings: purchase.negotiatedSavings,
     });
     row.getCell(3).numFmt = 'dd/mm/yyyy';
-    row.getCell(9).numFmt = '0';
-    row.getCell(10).numFmt = MONEY_FORMAT;
+    row.getCell(10).numFmt = '0';
     row.getCell(11).numFmt = MONEY_FORMAT;
+    row.getCell(12).numFmt = MONEY_FORMAT;
     [4, 5, 6].forEach((column) => {
       row.getCell(column).alignment = { vertical: 'middle', wrapText: true };
     });
@@ -153,7 +155,7 @@ function addPurchasesSheet(workbook: Workbook, purchases: ProcurementReportRow[]
   });
   sheet.autoFilter = {
     from: { column: 1, row: 1 },
-    to: { column: 11, row: Math.max(1, purchases.length + 1) },
+    to: { column: 12, row: Math.max(1, purchases.length + 1) },
   };
 }
 
@@ -234,4 +236,16 @@ function statusLabel(status: ProcurementReportRow['status']): string {
     REGISTERED: 'Registrada',
     CANCELLED: 'Cancelada',
   }[status];
+}
+
+function workflowStageLabel(stage: ProcurementReportRow['workflowStage']): string {
+  return {
+    REGISTRATION: 'Registro',
+    REQUESTED: 'Solicitacao',
+    AWAITING_APPROVAL: 'Aguardando aprovacao',
+    PURCHASE_ORDER: 'Pedido de compra',
+    SUPPLIER_INVOICED: 'Faturado pelo fornecedor',
+    RECEIVED: 'Recebido',
+    COMPLETED: 'Concluido',
+  }[stage];
 }

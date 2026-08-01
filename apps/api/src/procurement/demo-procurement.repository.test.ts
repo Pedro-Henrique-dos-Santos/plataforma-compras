@@ -96,6 +96,7 @@ describe('DemoProcurementRepository', () => {
       notes: null,
       source: 'MANUAL',
       sourceReference: null,
+      workflowStage: 'PURCHASE_ORDER',
       items: [
         {
           description: 'Item rateado',
@@ -193,6 +194,7 @@ describe('DemoProcurementRepository', () => {
       notes: null,
       source: 'MANUAL' as const,
       sourceReference: null,
+      workflowStage: 'PURCHASE_ORDER' as const,
       installments: [],
     };
     await repository.createPurchase(actor, HUMAN_CLINIC_ID, {
@@ -363,10 +365,25 @@ describe('DemoProcurementRepository', () => {
         installments: [],
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      repository.updatePurchase(actor, HUMAN_CLINIC_ID, created.id, {
+        expectedUpdatedAt: detail.updatedAt,
+        number: detail.number,
+        invoiceNumber: 'NF-NAO-APROVADA',
+        supplierId: supplier.id,
+        issuedAt: detail.issuedAt,
+        category: detail.category,
+        operationNature: detail.operationNature,
+        paymentMethod: detail.paymentMethod,
+        notes: detail.notes,
+        items: detail.items,
+        installments: detail.installments,
+      }),
+    ).rejects.toThrow(/automacao documental/i);
     const updated = await repository.updatePurchase(actor, HUMAN_CLINIC_ID, created.id, {
       expectedUpdatedAt: detail.updatedAt,
       number: detail.number,
-      invoiceNumber: 'NF-EDIT-001',
+      invoiceNumber: null,
       supplierId: supplier.id,
       issuedAt: null,
       category: 'Categoria corrigida',
@@ -390,7 +407,7 @@ describe('DemoProcurementRepository', () => {
       installments: [{ dueDate: '2026-08-16', amount: 90 }],
     });
 
-    expect(updated.invoiceNumber).toBe('NF-EDIT-001');
+    expect(updated.invoiceNumber).toBeNull();
     expect(updated.issuedAt).toBeNull();
     expect(updated.total).toBe(90);
     expect(updated.items[0]?.allocations.map((allocation) => allocation.amount)).toEqual([45, 45]);
@@ -432,7 +449,7 @@ describe('DemoProcurementRepository', () => {
       supplierId: supplier.id,
     });
 
-    expect(beforeCancellation.registeredPurchases).toBe(1);
+    expect(beforeCancellation.registeredPurchases).toBe(0);
     expect(cancelled.status).toBe('CANCELLED');
     expect(afterCancellation.registeredPurchases).toBe(0);
     expect(cancelledReport.totals.purchased).toBe(90);

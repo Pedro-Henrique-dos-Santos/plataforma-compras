@@ -65,12 +65,33 @@ Configure os seguintes valores no gerenciador de segredos da hospedagem:
 | `TRUST_PROXY` | `true` apenas atras de proxy confiavel |
 | `INVOICE_STORAGE_BUCKET` | bucket privado, por padrao `invoice-documents` |
 | `OCR_LANGUAGE_DATA_PATH` | sobrescrita opcional; a imagem ja inclui o modelo portugues |
+| `NOTIFICATION_WORKER_ENABLED` | `true` para processar a outbox |
+| `NOTIFICATION_DELIVERY_MODE` | `log` para homologacao sem envio ou `live` para provedores reais |
+| `NOTIFICATION_POLL_INTERVAL_MS` | intervalo de consulta da fila |
+| `NOTIFICATION_REQUEST_TIMEOUT_MS` | limite de cada chamada ao provedor, por padrao 15 segundos |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` | conexao SMTP quando o modo for `smtp` |
+| `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | credenciais e remetente SMTP |
+| `WHATSAPP_ACCESS_TOKEN` | token da API oficial da Meta |
+| `WHATSAPP_PHONE_NUMBER_ID` | identificador do numero remetente |
+| `WHATSAPP_API_VERSION` | versao da Graph API |
+| `WHATSAPP_TEMPLATE_LANGUAGE` | idioma aprovado dos templates |
+| `WHATSAPP_APPROVAL_TEMPLATE` | template de solicitacao de aprovacao |
+| `WHATSAPP_REJECTION_TEMPLATE` | template de reprovacao |
+| `WHATSAPP_FINANCE_TEMPLATE` | template de liberacao financeira |
 
 Com `NODE_ENV=production`, a API encerra a inicializacao se `DEMO_MODE` nao for `false`, se `REQUIRE_VERIFIED_EMAIL` nao for `true` ou se qualquer entrada de `CORS_ORIGIN` usar HTTP. Essa verificacao ocorre antes de abrir a porta da aplicacao.
 
 Para Google Sheets, configure somente uma das variaveis `GOOGLE_SERVICE_ACCOUNT_JSON` ou `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64`. O JSON nunca deve ser montado na interface web ou gravado no banco.
 
 O modelo Tesseract em portugues e uma dependencia de producao da API. O container valida o arquivo com a rede desativada antes do smoke test, portanto a leitura de PDFs digitalizados nao depende de download em tempo de execucao.
+
+Em homologacao, use `NOTIFICATION_DELIVERY_MODE=log` ate que um provedor esteja
+configurado. O modo `live` exige pelo menos um provedor completo. Mensagens de
+canal `EMAIL` usam SMTP e mensagens de canal `WHATSAPP` usam a API da Meta; toda
+regra ativa precisa escolher um canal configurado no ambiente. WhatsApp exige
+token, numero e os tres templates previamente aprovados. As variaveis nao devem
+ser incorporadas na imagem nem expostas ao navegador. Consulte
+`docs/PURCHASE_APPROVALS.md` para os parametros de cada template.
 
 ## Publicacao versionada
 

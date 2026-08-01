@@ -56,6 +56,7 @@ export function buildProcurementCsv(report: ProcurementReport): string {
     purchase.departments.join(', '),
     sourceLabel(purchase.source),
     statusLabel(purchase.status),
+    workflowStageLabel(purchase.workflowStage),
     String(purchase.itemCount),
     money(purchase.total),
     money(purchase.negotiatedSavings),
@@ -69,6 +70,7 @@ export function buildProcurementCsv(report: ProcurementReport): string {
     'Departamentos',
     'Origem',
     'Status',
+    'Etapa',
     'Itens',
     'Total',
     'Economia negociada',
@@ -107,4 +109,18 @@ function statusLabel(status: ProcurementReport['purchases'][number]['status']): 
     REGISTERED: 'Registrada',
     CANCELLED: 'Cancelada',
   }[status];
+}
+
+function workflowStageLabel(
+  stage: ProcurementReport['purchases'][number]['workflowStage'],
+): string {
+  return {
+    REGISTRATION: 'Registro',
+    REQUESTED: 'Solicitacao',
+    AWAITING_APPROVAL: 'Aguardando aprovacao',
+    PURCHASE_ORDER: 'Pedido de compra',
+    SUPPLIER_INVOICED: 'Faturado pelo fornecedor',
+    RECEIVED: 'Recebido',
+    COMPLETED: 'Concluido',
+  }[stage];
 }

@@ -12,7 +12,9 @@ import {
 } from '@nestjs/common';
 import {
   changePurchaseStatusInputSchema,
+  changePurchaseWorkflowStageInputSchema,
   type ChangePurchaseStatusInput,
+  type ChangePurchaseWorkflowStageInput,
   createPurchaseInputSchema,
   type CreatePurchaseInput,
   isoDateSchema,
@@ -20,6 +22,9 @@ import {
   purchaseImportInputSchema,
   type PurchaseImportInput,
   purchaseStatusSchema,
+  purchaseWorkflowStageSchema,
+  submitPurchaseForApprovalInputSchema,
+  type SubmitPurchaseForApprovalInput,
   updatePurchaseInputSchema,
   type UpdatePurchaseInput,
 } from '@compras/contracts';
@@ -38,6 +43,7 @@ import { PurchasesService } from './purchases.service.js';
 const querySchema = z.object({
   search: z.string().trim().max(160).optional(),
   status: purchaseStatusSchema.optional(),
+  workflowStage: purchaseWorkflowStageSchema.optional(),
   dateFrom: isoDateSchema.optional(),
   dateTo: isoDateSchema.optional(),
 });
@@ -99,6 +105,35 @@ export class PurchasesController {
     input: ChangePurchaseStatusInput,
   ) {
     return this.purchases.changeStatus(actor, organization.id, id, input);
+  }
+
+  @Patch(':id/workflow')
+  @RequirePermission('purchase:write')
+  changeWorkflowStage(
+    @CurrentUser() actor: AuthenticatedIdentity,
+    @ActiveOrganization() organization: OrganizationSummary,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(changePurchaseWorkflowStageInputSchema))
+    input: ChangePurchaseWorkflowStageInput,
+  ) {
+    return this.purchases.changeWorkflowStage(actor, organization.id, id, input);
+  }
+
+  @Post(':id/submit-approval')
+  @RequirePermission('purchase:write')
+  submitForApproval(
+    @CurrentUser() actor: AuthenticatedIdentity,
+    @ActiveOrganization() organization: OrganizationSummary,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(submitPurchaseForApprovalInputSchema))
+    input: SubmitPurchaseForApprovalInput,
+  ) {
+    return this.purchases.submitForApproval(
+      actor,
+      organization.id,
+      id,
+      input.expectedUpdatedAt,
+    );
   }
 
   @Post('import')

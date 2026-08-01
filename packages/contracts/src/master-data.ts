@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { organizationDocumentSchema } from './organizations.js';
+import {
+  isValidCnpj,
+  organizationDocumentSchema,
+} from './organizations.js';
 
 export const isoDateSchema = z
   .string()
@@ -51,6 +54,44 @@ export type UpdateCostCenterInput = z.infer<typeof updateCostCenterInputSchema>;
 export const supplierStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
 export type SupplierStatus = z.infer<typeof supplierStatusSchema>;
 
+export const paymentChannelSchema = z.enum([
+  'PIX',
+  'CARD_LINK',
+  'BOLETO',
+  'BANK_TRANSFER',
+  'OTHER',
+]);
+export type PaymentChannel = z.infer<typeof paymentChannelSchema>;
+
+export const pixKeyTypeSchema = z.enum(['CPF', 'CNPJ', 'EMAIL', 'PHONE', 'RANDOM']);
+export type PixKeyType = z.infer<typeof pixKeyTypeSchema>;
+
+const paymentUrlSchema = z
+  .string()
+  .trim()
+  .url('Informe um link de pagamento valido.')
+  .max(500)
+  .refine(
+    (value) => {
+      try {
+        return new URL(value).protocol === 'https:';
+      } catch {
+        return false;
+      }
+    },
+    { message: 'O link de pagamento precisa usar HTTPS.' },
+  );
+
+const optionalUrl = z.preprocess(
+  (value) => (value === '' || value === undefined ? null : value),
+  paymentUrlSchema.nullable(),
+);
+
+const editableOptionalUrl = z.preprocess(
+  (value) => (value === '' ? null : value),
+  paymentUrlSchema.nullable(),
+).optional();
+
 export const supplierSchema = z.object({
   id: z.string().uuid(),
   legalName: z.string().trim().min(2).max(160),
@@ -59,6 +100,9 @@ export const supplierSchema = z.object({
   category: z.string().trim().max(100).nullable(),
   operationNature: z.string().trim().max(100).nullable(),
   paymentMethod: z.string().trim().max(80).nullable(),
+  pixKeyType: pixKeyTypeSchema.nullable(),
+  pixKey: z.string().trim().max(160).nullable(),
+  paymentLink: paymentUrlSchema.nullable(),
   defaultCostCenterId: z.string().uuid().nullable(),
   defaultCostCenterName: z.string().trim().max(120).nullable(),
   email: z.string().email().max(255).nullable(),
@@ -71,27 +115,35 @@ export const supplierSchema = z.object({
 });
 export type Supplier = z.infer<typeof supplierSchema>;
 
-export const createSupplierInputSchema = z.object({
-  legalName: z.string().trim().min(2).max(160),
-  tradeName: optionalText(160),
-  document: z.preprocess(
-    (value) => (value === '' || value === undefined ? null : value),
-    organizationDocumentSchema.nullable(),
-  ),
-  category: optionalText(100),
-  operationNature: optionalText(100),
-  paymentMethod: optionalText(80),
-  defaultCostCenterId: z.preprocess(
-    (value) => (value === '' || value === undefined ? null : value),
-    z.string().uuid().nullable(),
-  ),
-  email: z.preprocess(
-    (value) => (value === '' || value === undefined ? null : value),
-    z.string().trim().toLowerCase().email().max(255).nullable(),
-  ),
-  phone: optionalText(30),
-  notes: optionalText(2_000),
-});
+export const createSupplierInputSchema = z
+  .object({
+    legalName: z.string().trim().min(2).max(160),
+    tradeName: optionalText(160),
+    document: z.preprocess(
+      (value) => (value === '' || value === undefined ? null : value),
+      organizationDocumentSchema.nullable(),
+    ),
+    category: optionalText(100),
+    operationNature: optionalText(100),
+    paymentMethod: optionalText(80),
+    pixKeyType: z.preprocess(
+      (value) => (value === '' || value === undefined ? null : value),
+      pixKeyTypeSchema.nullable(),
+    ).optional(),
+    pixKey: optionalText(160).optional(),
+    paymentLink: optionalUrl.optional(),
+    defaultCostCenterId: z.preprocess(
+      (value) => (value === '' || value === undefined ? null : value),
+      z.string().uuid().nullable(),
+    ),
+    email: z.preprocess(
+      (value) => (value === '' || value === undefined ? null : value),
+      z.string().trim().toLowerCase().email().max(255).nullable(),
+    ),
+    phone: optionalText(30),
+    notes: optionalText(2_000),
+  })
+  .superRefine(validatePixFields);
 export type CreateSupplierInput = z.infer<typeof createSupplierInputSchema>;
 
 export const updateSupplierInputSchema = z
@@ -105,6 +157,12 @@ export const updateSupplierInputSchema = z
     category: editableOptionalText(100),
     operationNature: editableOptionalText(100),
     paymentMethod: editableOptionalText(80),
+    pixKeyType: z.preprocess(
+      (value) => (value === '' ? null : value),
+      pixKeyTypeSchema.nullable(),
+    ).optional(),
+    pixKey: editableOptionalText(160),
+    paymentLink: editableOptionalUrl,
     defaultCostCenterId: z.preprocess(
       (value) => (value === '' ? null : value),
       z.string().uuid().nullable(),
@@ -119,6 +177,24 @@ export const updateSupplierInputSchema = z
   })
   .refine((value) => Object.values(value).some((item) => item !== undefined), {
     message: 'Informe ao menos um campo para alterar.',
+  })
+  .superRefine((value, context) => {
+    const hasType = value.pixKeyType !== undefined;
+    const hasKey = value.pixKey !== undefined;
+    if (hasType !== hasKey) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Altere o tipo e a chave Pix em conjunto.',
+        path: hasType ? ['pixKey'] : ['pixKeyType'],
+      });
+      return;
+    }
+    if (hasType && hasKey) {
+      validatePixFields(
+        { pixKeyType: value.pixKeyType ?? null, pixKey: value.pixKey ?? null },
+        context,
+      );
+    }
   });
 export type UpdateSupplierInput = z.infer<typeof updateSupplierInputSchema>;
 
@@ -201,3 +277,60 @@ export const supplierPriceImportResultSchema = z.object({
   updated: z.number().int().nonnegative(),
 });
 export type SupplierPriceImportResult = z.infer<typeof supplierPriceImportResultSchema>;
+
+function validatePixFields(
+  value: {
+    pixKeyType?: PixKeyType | null;
+    pixKey?: string | null;
+  },
+  context: z.RefinementCtx,
+) {
+  const pixKeyType = value.pixKeyType ?? null;
+  const pixKey = value.pixKey ?? null;
+  if ((pixKeyType === null) !== (pixKey === null)) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Informe o tipo e a chave Pix em conjunto.',
+      path: pixKeyType === null ? ['pixKeyType'] : ['pixKey'],
+    });
+    return;
+  }
+  if (!pixKeyType || !pixKey) return;
+  const valid = {
+    CPF: isValidCpf(pixKey),
+    CNPJ: isValidCnpj(pixKey),
+    EMAIL: z.string().email().safeParse(pixKey).success,
+    PHONE: /^\+[1-9]\d{9,14}$/.test(pixKey),
+    RANDOM: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      pixKey,
+    ),
+  }[pixKeyType];
+  if (!valid) {
+    context.addIssue({
+      code: 'custom',
+      message: 'A chave Pix nao corresponde ao tipo selecionado.',
+      path: ['pixKey'],
+    });
+  }
+}
+
+function isValidCpf(value: string): boolean {
+  const digits = value.replace(/\D/g, '');
+  if (!/^\d{11}$/.test(digits) || /^(\d)\1{10}$/.test(digits)) return false;
+  const checkDigit = (length: number) => {
+    const sum = digits
+      .slice(0, length)
+      .split('')
+      .reduce(
+        (total, digit, index) =>
+          total + Number(digit) * (length + 1 - index),
+        0,
+      );
+    const remainder = (sum * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+  return (
+    checkDigit(9) === Number(digits[9]) &&
+    checkDigit(10) === Number(digits[10])
+  );
+}

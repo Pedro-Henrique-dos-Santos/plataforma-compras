@@ -169,6 +169,7 @@ export class PrismaOrganizationsRepository extends OrganizationsRepository {
           authUserId: user.authUserId,
           email: user.email,
           name: user.name,
+          phone: user.phone,
         }
       : null;
   }
@@ -298,13 +299,14 @@ export class PrismaOrganizationsRepository extends OrganizationsRepository {
     status: OrganizationMember['status'];
     createdAt: Date;
     updatedAt: Date;
-    user: { id: string; email: string; name: string };
+    user: { id: string; email: string; name: string; phone: string | null };
   }): OrganizationMember {
     return {
       id: membership.id,
       userId: membership.user.id,
       name: membership.user.name,
       email: membership.user.email,
+      phone: membership.user.phone,
       role: membership.role,
       status: membership.status,
       createdAt: membership.createdAt.toISOString(),

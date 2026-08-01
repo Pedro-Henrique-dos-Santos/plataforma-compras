@@ -2,14 +2,24 @@
 
 Data de referencia: 2026-07-23
 Versao auditada: `0.10.0`
-Base integrada na `main`: `3b5661ce5b3be157bd8d4633e0172dd8931a3f2d`
-Candidato empilhado: pull requests `10`, `11`, `12` e `13`
+Base integrada na `main`: pull requests `10`, `11`, `12` e `13`
+Candidato atual: `codex/purchase-approval-automation`
 
 ## Conclusao executiva
 
-As capacidades previstas para o codigo e para a homologacao do E-Gestao Compras estao implementadas e verificadas na base integrada e no candidato empilhado. A plataforma cobre identidade, empresas, cadastros mestres, tabela de precos, importacoes, compras, rateios, automacao documental, indicadores, relatorios, seguranca, recuperacao e empacotamento.
+As capacidades anteriores do E-Gestao Compras estao implementadas e verificadas
+na base integrada. O candidato atual acrescenta Kanban, regras de aprovacao por
+valor, quorum de uma ou duas pessoas, notificacoes duraveis, liberacao
+financeira e contas a pagar. Esses recursos possuem verificacao local de
+contratos, API, interface e infraestrutura, mas ainda nao foram promovidos ao
+Supabase de homologacao.
 
-Os pull requests `10` a `13` ainda nao pertencem a `main` e precisam ser incorporados em ordem depois de autorizacao explicita. Isso tambem nao significa que a plataforma esteja em producao. O conector permanente do Google, a revisao juridica, a infraestrutura publica, os segredos de producao, o backup de corte e a liberacao gradual ainda dependem de decisoes e recursos externos. O Apps Script deve permanecer disponivel ate a conclusao desses gates.
+Isso nao significa que a plataforma esteja em producao. O conector permanente
+do Google, a migracao e o aceite multiusuario da aprovacao, os provedores de
+notificacao, a revisao juridica, a infraestrutura publica, os segredos de
+producao, o backup de corte e a liberacao gradual ainda dependem de decisoes e
+recursos externos. O Apps Script deve permanecer disponivel ate a conclusao
+desses gates.
 
 ## Metodo
 
@@ -22,7 +32,7 @@ A auditoria deriva os requisitos de `PROJECT_CONTEXT.md`, `ARCHITECTURE.md` e `R
 | Base versionada e legado preservado | `legacy/`, monorepositorio, `README.md`, modo demonstrativo e workflows | Comprovado |
 | React, TypeScript, NestJS e PostgreSQL | `apps/web`, `apps/api`, `packages/contracts`, `packages/database` e ADR 0001 | Comprovado |
 | Identidade, perfil, LGPD e recuperacao de acesso | Modulo `auth`, contratos de acesso, telas de login, perfil, consentimento e documentos legais | Comprovado no codigo e em homologacao |
-| Multiempresa e papeis sem alcada de aprovacao | Matriz compartilhada entre API e interface, guardas de organizacao e permissao, contrato transversal de controllers, `OrganizationMembership`, papel global separado e ADR 0002 | Comprovado |
+| Multiempresa, papeis e aprovadores por empresa | Matriz compartilhada entre API e interface, guardas, `OrganizationMembership`, papel global separado, regras com membros ativos e ADRs 0002 e 0003 | Comprovado no codigo e testes |
 | Cadastro e edicao da empresa | Contratos de organizacao, repositorios, API e `OrganizationsView` | Comprovado no codigo e em homologacao |
 | Fornecedores e centros de custo | Controllers de dados mestres, repositorios Prisma e demo, telas e testes | Comprovado |
 | Tabela de precos e importacao em lote | `supplier-prices`, contratos de importacao, `PricesView` e testes por linha | Comprovado |
@@ -30,6 +40,9 @@ A auditoria deriva os requisitos de `PROJECT_CONTEXT.md`, `ARCHITECTURE.md` e `R
 | Dedupe e preservacao do historico | Conciliacao por chaves de negocio, complemento de nota, idempotencia e compras sem data | Comprovado em homologacao |
 | Compras, itens, rateios e parcelas | Contratos, endpoints, repositorios, `PurchasesView` e testes de calculo | Comprovado |
 | Edicao, cancelamento e reativacao | Controle concorrente, motivo obrigatorio, auditoria, protecao de parcelas pagas e testes multiempresa | Comprovado no codigo e em homologacao |
+| Kanban e aprovacao de compras | Sete etapas, regra por valor, quorum, fotografia imutavel, decisao serializavel, bloqueio fiscal e historico | Comprovado no codigo e testes; homologacao externa pendente |
+| Notificacoes | Outbox deduplicada, worker, repeticao, SMTP, templates da Meta e erro sanitizado | Comprovado no codigo e testes; provedores externos pendentes |
+| Contas a pagar | Parcelas, nao programadas, vencimentos, baixa, previsoes e Excel financeiro | Comprovado no codigo e testes; conciliacao externa pendente |
 | XML, PDF, OCR e revisao fiscal | Modulo `invoice-documents`, validadores, parser XML, extrator PDF, Tesseract, revisao e conciliacao | Comprovado |
 | Dashboard e gastos por departamento | Builder do dashboard, filtros, graficos e testes que evitam dupla contagem de rateios | Comprovado |
 | Relatorios CSV e Excel | Relatorio consolidado, Excel resumido, Excel detalhado, itens por mes e protecao contra formulas | Comprovado e inspecionado |
@@ -69,11 +82,30 @@ Na atualizacao de 2026-07-23:
 - `pnpm audit --prod --audit-level high` nao encontrou vulnerabilidades conhecidas;
 - os workflows `CI` e `Containers` permanecem obrigatorios para o commit de cabeca do pull request antes de qualquer merge.
 
+Na evolucao de aprovacao e financeiro de 2026-07-23:
+
+- a nona migracao acrescentou sete tabelas protegidas, estados do Kanban,
+  instrucoes de pagamento, restricoes de coerencia e cinco novas relacoes
+  multiempresa compostas;
+- a API passou a registrar regras, solicitacoes, participantes, decisoes,
+  historico e notificacoes na empresa ativa;
+- o Kanban, a caixa de aprovacoes, as configuracoes administrativas e contas a
+  pagar foram incorporados a interface;
+- as exportacoes operacionais passaram a identificar a etapa e o financeiro
+  recebeu um Excel proprio;
+- `pnpm db:validate`, `pnpm db:generate`, `pnpm typecheck` e a suite local
+  passaram com `39` testes de contratos, `113` da API, `15` da interface e `41`
+  verificadores de infraestrutura e release;
+- a migracao ainda nao foi aplicada ao Supabase de homologacao e nenhum envio
+  SMTP ou WhatsApp real foi declarado como concluido.
+
 ## Gates externos restantes
 
 | Gate | Evidencia necessaria para concluir |
 | --- | --- |
 | Google permanente | Conta de servico dedicada, planilha compartilhada e sincronizacao autenticada validada |
+| Workflow de aprovacao | Migracao aplicada, RLS verificada e aceite multiusuario com quorum simples e duplo |
+| Notificacoes | SMTP de homologacao ou templates oficiais da Meta configurados, entrega e repeticao comprovadas |
 | Revisao juridica | Termos, Aviso de privacidade, papeis LGPD, retencao e canal dos titulares aprovados |
 | Infraestrutura | Dominios HTTPS, API e web hospedadas, CORS, proxy, alertas e segredos configurados |
 | Corte de banco | Backup verificado, tag imutavel, workflow de producao aprovado e verificacao de RLS concluida |
@@ -82,4 +114,9 @@ Na atualizacao de 2026-07-23:
 
 ## Regra de conclusao
 
-O desenvolvimento e a homologacao funcional podem ser considerados concluidos para o candidato `0.10.0`. A base ate o pull request `7` esta integrada; a pilha `10` a `13` ainda exige merge autorizado e CI verde em cada cabeca. A implantacao integral somente pode ser declarada concluida quando todos os gates externos acima possuirem evidencia registrada. Ate la, nao criar a tag de producao, nao promover o banco e nao desligar o legado.
+O candidato `0.10.0` possui implementacao e verificacao local das novas
+capacidades. Sua homologacao so pode ser considerada concluida depois da
+migracao, do aceite multiusuario e da configuracao controlada do canal de
+notificacao. A implantacao integral somente pode ser declarada concluida quando
+todos os gates externos acima possuirem evidencia registrada. Ate la, nao criar
+a tag de producao, nao promover o banco e nao desligar o legado.

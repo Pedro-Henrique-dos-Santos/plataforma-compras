@@ -20,6 +20,7 @@ export function getOrganizationCapabilities(
 
   return {
     canManageMembers: allowed('member:manage'),
+    canManageApprovals: allowed('approval:manage'),
     canManageOrganization: allowed('organization:manage'),
     canManagePlatform: allowed('platform:manage'),
     canWriteCostCenters: allowed('cost-center:write'),
@@ -27,6 +28,8 @@ export function getOrganizationCapabilities(
     canWriteInvoices: allowed('invoice:write'),
     canWritePrices: allowed('price:write'),
     canWritePurchases: allowed('purchase:write'),
+    canActOnApprovals: allowed('approval:act'),
+    canWritePayables: allowed('payable:write'),
     canWriteSuppliers: allowed('supplier:write'),
   };
 }

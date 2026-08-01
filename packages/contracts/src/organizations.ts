@@ -89,6 +89,7 @@ export const userContextSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
   name: z.string().trim().min(2).max(120),
+  phone: z.string().trim().max(30).nullable(),
   termsAcceptedAt: z.string().datetime().nullable(),
   termsVersion: z.string().max(40).nullable(),
   privacyAcceptedAt: z.string().datetime().nullable(),
@@ -133,12 +134,16 @@ export type UpdateOrganizationInput = z.infer<typeof updateOrganizationInputSche
 export const updateUserProfileInputSchema = z
   .object({
     name: z.string().trim().min(2).max(120).optional(),
+    phone: nullableText(30).optional(),
     acceptTerms: z.literal(true).optional(),
     acceptPrivacy: z.literal(true).optional(),
   })
   .refine(
     (value) =>
-      value.name !== undefined || value.acceptTerms === true || value.acceptPrivacy === true,
+      value.phone !== undefined ||
+        value.name !== undefined ||
+        value.acceptTerms === true ||
+        value.acceptPrivacy === true,
     { message: 'Informe ao menos uma alteracao de perfil.' },
   );
 export type UpdateUserProfileInput = z.infer<typeof updateUserProfileInputSchema>;
@@ -162,6 +167,7 @@ export const organizationMemberSchema = z.object({
   userId: z.string().uuid(),
   name: z.string().trim().min(2).max(120),
   email: z.string().email(),
+  phone: z.string().trim().max(30).nullable(),
   role: organizationRoleSchema,
   status: membershipStatusSchema,
   createdAt: z.string().datetime(),

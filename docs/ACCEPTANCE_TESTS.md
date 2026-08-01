@@ -98,7 +98,46 @@ As credenciais do Supabase devem existir somente no ambiente local protegido ou 
 12. Cancelar com motivo e confirmar que a compra sai dos indicadores registrados sem ser apagada.
 13. Filtrar as canceladas, reativar com motivo e confirmar o retorno aos indicadores e os eventos de auditoria.
 
-## 5. Automacao documental
+## 5. Kanban, aprovacoes e financeiro
+
+1. Criar uma compra manual e confirmar a entrada na coluna `Cadastro`.
+2. Mover para `Solicitacao` e confirmar o evento no historico detalhado.
+3. Tentar vincular uma nota antes da aprovacao e confirmar o bloqueio.
+4. Como administrador, criar regras sinteticas para R$ 0, R$ 5.000 e
+   R$ 10.000, deixando a ultima com quorum dois.
+5. Confirmar que um leitor de relatorios nao aparece como aprovador e que um
+   usuario de outra empresa e rejeitado pela API.
+6. Enviar uma compra de cada faixa e confirmar a escolha da regra de maior
+   limite aplicavel.
+7. Confirmar que o total, regra, canal, nomes e destinos ficam congelados na
+   solicitacao mesmo depois de editar a regra.
+8. Aprovar uma compra de quorum simples e confirmar a promocao para
+   `Pedido de compra`.
+9. Registrar a primeira aprovacao de uma regra dupla e confirmar que o pedido
+   permanece pendente; registrar a segunda e confirmar a promocao.
+10. Tentar decidir duas vezes ou usar uma versao concorrente e confirmar a
+    rejeicao sem duplicidade.
+11. Reprovar com comentario, confirmar o retorno para `Solicitacao` e a
+    notificacao correspondente.
+12. Cancelar uma compra em aprovacao e confirmar o encerramento da solicitacao
+    pendente sem apagar o historico.
+13. No modo de entrega `log`, confirmar as mensagens de aprovacao, reprovacao e
+    financeiro na outbox, com chaves de deduplicacao diferentes.
+14. Em SMTP de homologacao, provocar uma falha temporaria e confirmar nova
+    tentativa sem desfazer a decisao da compra.
+15. Configurar o destino financeiro e confirmar que a mensagem aprovada inclui
+    parcelas, vencimentos e Pix, boleto ou link disponivel.
+16. Abrir Contas a pagar e conferir compras sem programacao, parcelas abertas,
+    vencidas e pagas.
+17. Agendar uma compra aprovada sem parcelas e confirmar a criacao de uma conta
+    unica pelo total integral.
+18. Alterar vencimento, referencia e baixa, recarregar e confirmar a
+    persistencia e o controle concorrente.
+19. Exportar o Excel financeiro e reconciliar aberto, vencido, pago, sem
+    programacao e previsoes de 7, 15 e 30 dias.
+20. Confirmar que nenhuma acao do sistema tenta executar pagamento bancario.
+
+## 6. Automacao documental
 
 Use os arquivos sinteticos em `apps/api/src/invoices/__fixtures__/` e `legacy/samples/`.
 
@@ -114,7 +153,7 @@ Use os arquivos sinteticos em `apps/api/src/invoices/__fixtures__/` e `legacy/sa
 10. Para fornecedor e valor ja existentes, confirmar o complemento da nota na compra encontrada.
 11. Confirmar no workflow `Containers` que o modelo portugues e localizado com a rede desativada e sistema de arquivos somente leitura.
 
-## 6. Dashboard e relatorios
+## 7. Dashboard e relatorios
 
 1. Conferir comprado no periodo, economia, fornecedores e compras.
 2. Conferir evolucao mensal e distribuicao por categoria.
@@ -124,14 +163,15 @@ Use os arquivos sinteticos em `apps/api/src/invoices/__fixtures__/` e `legacy/sa
 6. Desmarcar a inclusao de pedidos sem data e confirmar a alteracao da contagem e dos totais.
 7. Informar data inicial e final, conferir as variacoes contra o intervalo imediatamente anterior de mesma duracao e confirmar que fornecedor, departamento e categoria permanecem aplicados.
 8. Usar um periodo anterior sem valor e confirmar que o sistema nao apresenta um percentual inventado.
-9. Aplicar no relatorio filtros de periodo, fornecedor, departamento, categoria e status.
+9. Aplicar no relatorio filtros de periodo, fornecedor, departamento, categoria,
+   status e etapa do Kanban.
 10. Exportar CSV e abrir no Excel sem execucao de formulas originadas dos dados.
 11. Exportar o Excel resumido e conferir as seis abas gerenciais.
 12. Exportar o Excel detalhado e conferir compras, itens, rateios, parcelas, documentos e fornecedores.
 13. Na aba `Itens por mes`, reconciliar quantidade, numero de compras, fornecedores, gasto, economia e preco medio com os itens de origem.
 14. Confirmar que compras sem data aparecem no grupo `Sem data` e nao entram em um mes artificial.
 
-## 7. Responsividade e acessibilidade
+## 8. Responsividade e acessibilidade
 
 1. Validar desktop em largura minima de 1280 pixels.
 2. Validar dispositivo movel em 390 por 844 pixels.
@@ -139,7 +179,7 @@ Use os arquivos sinteticos em `apps/api/src/invoices/__fixtures__/` e `legacy/sa
 4. Confirmar que formularios, tabelas e graficos nao causam sobreposicao incoerente.
 5. Confirmar nomes acessiveis nos botoes, campos, graficos e navegacao principal.
 
-## 8. Liberacao externa
+## 9. Liberacao externa
 
 Antes da producao:
 
@@ -148,5 +188,8 @@ Antes da producao:
 3. Executar `Supabase Staging` com a confirmacao exigida.
 4. Validar login real, isolamento e bucket privado no Supabase.
 5. Executar backup e restauracao com dados sinteticos na homologacao.
-6. Publicar web e API em dominios HTTPS separados.
-7. Repetir este roteiro antes da migracao controlada dos dados reais.
+6. Aplicar a migracao de workflow e confirmar RLS nas sete tabelas novas.
+7. Configurar SMTP ou manter explicitamente o modo `log`; WhatsApp somente com
+   templates e credenciais oficiais aprovados.
+8. Publicar web e API em dominios HTTPS separados.
+9. Repetir este roteiro antes da migracao controlada dos dados reais.

@@ -151,6 +151,49 @@ describe('validateEnvironment', () => {
       }),
     ).toThrow(/valid private bucket name/);
   });
+
+  it('requires a complete provider when live notifications are enabled', () => {
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'development',
+        NOTIFICATION_DELIVERY_MODE: 'live',
+      }),
+    ).toThrow(/requires SMTP or WhatsApp/);
+
+    const environment = validateEnvironment({
+      NODE_ENV: 'development',
+      NOTIFICATION_DELIVERY_MODE: 'live',
+      SMTP_FROM: 'E-Gestao Compras <compras@example.com>',
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+    });
+    expect(environment['NOTIFICATION_DELIVERY_MODE']).toBe('live');
+  });
+
+  it('limits notification provider request timeouts', () => {
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'development',
+        NOTIFICATION_REQUEST_TIMEOUT_MS: '999',
+      }),
+    ).toThrow(/between 1000 and 120000/);
+
+    expect(
+      validateEnvironment({
+        NODE_ENV: 'development',
+        NOTIFICATION_REQUEST_TIMEOUT_MS: '20000',
+      })['NOTIFICATION_REQUEST_TIMEOUT_MS'],
+    ).toBe('20000');
+  });
+
+  it('rejects partial WhatsApp provider configuration', () => {
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'development',
+        WHATSAPP_ACCESS_TOKEN: 'token-example',
+      }),
+    ).toThrow(/WhatsApp configuration is incomplete/);
+  });
 });
 
 function productionEnvironment() {

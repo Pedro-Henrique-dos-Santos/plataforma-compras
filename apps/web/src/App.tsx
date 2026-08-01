@@ -64,6 +64,21 @@ const PurchasesView = lazy(() =>
     default: module.PurchasesView,
   })),
 );
+const ApprovalsView = lazy(() =>
+  import('./components/ApprovalsView').then((module) => ({
+    default: module.ApprovalsView,
+  })),
+);
+const PayablesView = lazy(() =>
+  import('./components/PayablesView').then((module) => ({
+    default: module.PayablesView,
+  })),
+);
+const ApprovalSettingsView = lazy(() =>
+  import('./components/ApprovalSettingsView').then((module) => ({
+    default: module.ApprovalSettingsView,
+  })),
+);
 const SuppliersView = lazy(() =>
   import('./components/SuppliersView').then((module) => ({
     default: module.SuppliersView,
@@ -444,6 +459,27 @@ export default function App() {
             accessToken={accessToken}
             canWrite={capabilities.canWritePurchases}
             onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'approvals' && capabilities.canActOnApprovals && (
+          <ApprovalsView
+            accessToken={accessToken}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'payables' && (
+          <PayablesView
+            accessToken={accessToken}
+            canWrite={capabilities.canWritePayables}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'approval-settings' && capabilities.canManageApprovals && (
+          <ApprovalSettingsView
+            accessToken={accessToken}
             organizationId={activeOrganization.id}
           />
         )}

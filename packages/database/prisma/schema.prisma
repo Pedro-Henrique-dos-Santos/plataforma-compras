@@ -40,6 +40,57 @@ enum PurchaseStatus {
   CANCELLED
 }
 
+enum PurchaseWorkflowStage {
+  REGISTRATION
+  REQUESTED
+  AWAITING_APPROVAL
+  PURCHASE_ORDER
+  SUPPLIER_INVOICED
+  RECEIVED
+  COMPLETED
+}
+
+enum ApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ApprovalDecisionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+enum PaymentChannel {
+  PIX
+  CARD_LINK
+  BOLETO
+  BANK_TRANSFER
+  OTHER
+}
+
+enum PixKeyType {
+  CPF
+  CNPJ
+  EMAIL
+  PHONE
+  RANDOM
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -84,6 +135,7 @@ model User {
   authUserId               String                   @unique @map("auth_user_id") @db.Uuid
   email                    String                   @unique @db.VarChar(255)
   name                     String                   @db.VarChar(120)
+  phone                    String?                  @db.VarChar(30)
   active                   Boolean                  @default(true)
   termsAcceptedAt          DateTime?                @map("terms_accepted_at")
   termsVersion             String?                  @map("terms_version") @db.VarChar(40)
@@ -99,6 +151,10 @@ model User {
   createdInvoiceDocuments  InvoiceDocument[]        @relation("InvoiceDocumentCreator")
   reviewedInvoiceDocuments InvoiceDocument[]        @relation("InvoiceDocumentReviewer")
   importedInvoiceDocuments InvoiceDocument[]        @relation("InvoiceDocumentImporter")
+  approvalRuleAssignments  ApprovalRuleApprover[]
+  submittedApprovals       PurchaseApprovalRequest[] @relation("ApprovalRequestSubmitter")
+  approvalParticipations   PurchaseApprovalParticipant[]
+  purchaseStageChanges     PurchaseStageHistory[]    @relation("PurchaseStageChangedBy")
 
   @@map("users")
 }
@@ -143,6 +199,13 @@ model Organization {
   auditLogs               AuditLog[]
   googleSheetsIntegration GoogleSheetsIntegration?
   sheetSyncRuns           SheetSyncRun[]
+  approvalSettings        ApprovalSettings?
+  approvalRules           ApprovalRule[]
+  approvalRuleApprovers   ApprovalRuleApprover[]
+  approvalRequests        PurchaseApprovalRequest[]
+  approvalParticipants    PurchaseApprovalParticipant[]
+  purchaseStageHistory    PurchaseStageHistory[]
+  notificationOutbox      NotificationOutbox[]
 
   @@map("organizations")
 }
@@ -191,6 +254,9 @@ model Supplier {
   category            String?         @db.VarChar(100)
   operationNature     String?         @map("operation_nature") @db.VarChar(100)
   paymentMethod       String?         @map("payment_method") @db.VarChar(80)
+  pixKeyType          PixKeyType?     @map("pix_key_type")
+  pixKey              String?         @map("pix_key") @db.VarChar(160)
+  paymentLink         String?         @map("payment_link") @db.VarChar(500)
   defaultCostCenterId String?         @map("default_cost_center_id") @db.Uuid
   email               String?         @db.VarChar(255)
   phone               String?         @db.VarChar(30)
@@ -243,7 +309,8 @@ model Purchase {
   number            String            @db.VarChar(40)
   invoiceNumber     String?           @map("invoice_number") @db.VarChar(60)
   issuedAt          DateTime?         @map("issued_at") @db.Date
-  status            PurchaseStatus    @default(REGISTERED)
+  status            PurchaseStatus    @default(DRAFT)
+  workflowStage     PurchaseWorkflowStage @default(REGISTRATION) @map("workflow_stage")
   category          String?           @db.VarChar(100)
   operationNature   String?           @map("operation_nature") @db.VarChar(100)
   paymentMethod     String?           @map("payment_method") @db.VarChar(80)
@@ -259,6 +326,8 @@ model Purchase {
   items             PurchaseItem[]
   installments      Installment[]
   invoiceDocuments  InvoiceDocument[]
+  approvalRequests  PurchaseApprovalRequest[]
+  stageHistory      PurchaseStageHistory[]
 
   @@unique([organizationId, number])
   @@unique([organizationId, id])
@@ -266,6 +335,7 @@ model Purchase {
   @@unique([organizationId, source, sourceReference])
   @@index([organizationId, issuedAt])
   @@index([organizationId, supplierId])
+  @@index([organizationId, workflowStage, updatedAt])
   @@map("purchases")
 }
 
@@ -362,11 +432,149 @@ model Installment {
   dueDate        DateTime  @map("due_date") @db.Date
   amount         Decimal   @db.Decimal(14, 2)
   paidAt         DateTime? @map("paid_at") @db.Date
+  paymentChannel PaymentChannel? @map("payment_channel")
+  paymentReference String? @map("payment_reference") @db.VarChar(500)
+  paymentNotes   String?   @map("payment_notes") @db.VarChar(500)
   purchase       Purchase  @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
 
   @@unique([purchaseId, sequence])
   @@index([organizationId, dueDate])
   @@map("installments")
+}
+
+model ApprovalSettings {
+  organizationId         String               @id @map("organization_id") @db.Uuid
+  financeChannel         NotificationChannel? @map("finance_channel")
+  financeRecipient       String?              @map("finance_recipient") @db.VarChar(255)
+  notifyFinanceOnApproval Boolean              @default(false) @map("notify_finance_on_approval")
+  createdAt              DateTime             @default(now()) @map("created_at")
+  updatedAt              DateTime             @updatedAt @map("updated_at")
+  organization           Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("approval_settings")
+}
+
+model ApprovalRule {
+  id                  String              @id @default(uuid()) @db.Uuid
+  organizationId      String              @map("organization_id") @db.Uuid
+  name                String              @db.VarChar(120)
+  minimumAmount       Decimal             @map("minimum_amount") @db.Decimal(14, 2)
+  requiredApprovals   Int                 @map("required_approvals")
+  notificationChannel NotificationChannel @default(EMAIL) @map("notification_channel")
+  active              Boolean             @default(true)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  organization        Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approvers           ApprovalRuleApprover[]
+  requests            PurchaseApprovalRequest[]
+
+  @@unique([organizationId, minimumAmount])
+  @@unique([organizationId, id])
+  @@index([organizationId, active, minimumAmount])
+  @@map("approval_rules")
+}
+
+model ApprovalRuleApprover {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ruleId         String       @map("rule_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rule           ApprovalRule @relation(fields: [organizationId, ruleId], references: [organizationId, id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, ruleId, userId])
+  @@index([organizationId, userId])
+  @@map("approval_rule_approvers")
+}
+
+model PurchaseApprovalRequest {
+  id                String                @id @default(uuid()) @db.Uuid
+  organizationId    String                @map("organization_id") @db.Uuid
+  purchaseId        String                @map("purchase_id") @db.Uuid
+  ruleId            String                @map("rule_id") @db.Uuid
+  submittedById     String                @map("submitted_by_id") @db.Uuid
+  ruleNameSnapshot  String                @map("rule_name_snapshot") @db.VarChar(120)
+  notificationChannel NotificationChannel @map("notification_channel")
+  amountSnapshot    Decimal               @map("amount_snapshot") @db.Decimal(14, 2)
+  requiredApprovals Int                   @map("required_approvals")
+  status            ApprovalRequestStatus @default(PENDING)
+  submittedAt       DateTime              @default(now()) @map("submitted_at")
+  resolvedAt        DateTime?             @map("resolved_at")
+  organization      Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase          Purchase              @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  rule              ApprovalRule          @relation(fields: [organizationId, ruleId], references: [organizationId, id], onDelete: Restrict)
+  submittedBy       User                  @relation("ApprovalRequestSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
+  participants      PurchaseApprovalParticipant[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, purchaseId, status])
+  @@index([organizationId, submittedAt])
+  @@map("purchase_approval_requests")
+}
+
+model PurchaseApprovalParticipant {
+  id             String                 @id @default(uuid()) @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  requestId      String                 @map("request_id") @db.Uuid
+  userId         String                 @map("user_id") @db.Uuid
+  nameSnapshot   String                 @map("name_snapshot") @db.VarChar(120)
+  recipientSnapshot String              @map("recipient_snapshot") @db.VarChar(255)
+  channel        NotificationChannel
+  decision       ApprovalDecisionStatus @default(PENDING)
+  comment        String?                @db.VarChar(500)
+  decidedAt      DateTime?              @map("decided_at")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request        PurchaseApprovalRequest @relation(fields: [organizationId, requestId], references: [organizationId, id], onDelete: Cascade)
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, requestId, userId])
+  @@index([organizationId, userId, decision])
+  @@map("purchase_approval_participants")
+}
+
+model PurchaseStageHistory {
+  id             String                 @id @default(uuid()) @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  purchaseId     String                 @map("purchase_id") @db.Uuid
+  fromStage      PurchaseWorkflowStage? @map("from_stage")
+  toStage        PurchaseWorkflowStage  @map("to_stage")
+  changedById    String                 @map("changed_by_id") @db.Uuid
+  reason         String?                @db.VarChar(500)
+  createdAt      DateTime               @default(now()) @map("created_at")
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase       Purchase               @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  changedBy      User                   @relation("PurchaseStageChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, purchaseId, createdAt])
+  @@map("purchase_stage_history")
+}
+
+model NotificationOutbox {
+  id                String                     @id @default(uuid()) @db.Uuid
+  organizationId    String                     @map("organization_id") @db.Uuid
+  deduplicationKey  String                     @map("deduplication_key") @db.VarChar(220)
+  eventType         String                     @map("event_type") @db.VarChar(80)
+  channel           NotificationChannel
+  recipient         String                     @db.VarChar(255)
+  subject           String?                    @db.VarChar(200)
+  payload           Json
+  status            NotificationDeliveryStatus @default(PENDING)
+  attempts          Int                        @default(0)
+  availableAt       DateTime                   @default(now()) @map("available_at")
+  sentAt            DateTime?                  @map("sent_at")
+  lastError         String?                    @map("last_error") @db.VarChar(1000)
+  providerMessageId String?                    @map("provider_message_id") @db.VarChar(255)
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+  organization      Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, deduplicationKey])
+  @@index([status, availableAt])
+  @@index([organizationId, createdAt])
+  @@map("notification_outbox")
 }
 
 model InvoiceDocument {

@@ -14,6 +14,12 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 - Centros de custo e fornecedores possuem cadastro por empresa, status e regras padrao.
 - A tabela de precos aceita varias linhas e importacao CSV idempotente por fornecedor.
 - Compras suportam varios itens, economia negociada, centro automatico, rateios e parcelas opcionais.
+- O Kanban acompanha cadastro, solicitacao, aprovacao, pedido, faturamento,
+  recebimento e conclusao, com historico por compra.
+- Regras por valor selecionam aprovadores da empresa e aceitam quorum de uma ou
+  duas pessoas, com notificacoes duraveis por e-mail ou WhatsApp oficial.
+- O financeiro recebe os dados aprovados e acompanha contas nao programadas,
+  abertas, vencidas e pagas, com previsoes e exportacao Excel.
 - O dashboard abre em todo o historico, filtra periodo, fornecedor, centro de custo e categoria e inclui gastos por categoria e departamento.
 - Os relatorios filtram compras por periodo, fornecedor, departamento, categoria e status, com CSV, Excel resumido e Excel detalhado com itens por mes.
 - As compras possuem detalhe, correcao transacional, cancelamento e reativacao auditados; parcelas pagas permanecem protegidas.
@@ -62,10 +68,12 @@ pnpm check
 Esse comando executa lint, verificacao de tipos, testes e build de todos os pacotes.
 
 Na versao `0.10.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
-importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets e
-automacao documental com revisao obrigatoria, relatorios filtrados, exportacao segura em CSV e XLSX e
-edicao concorrente e ciclo auditado das compras, alem da prontidao operacional. O CI aplica todas as migracoes em um PostgreSQL descartavel e executa
-testes de isolamento dos repositorios, das protecoes RLS e de recuperacao completa do banco.
+importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets,
+automacao documental com revisao obrigatoria, Kanban, aprovacao por valor, notificacoes,
+contas a pagar, relatorios filtrados, exportacao segura em CSV e XLSX, edicao concorrente e
+ciclo auditado das compras, alem da prontidao operacional. O CI aplica todas as migracoes em
+um PostgreSQL descartavel e executa testes de isolamento dos repositorios, das protecoes RLS
+e de recuperacao completa do banco.
 Um workflow manual protegido prepara e valida o Supabase de homologacao sem armazenar segredos no codigo.
 
 O roteiro reproduzivel de validacao esta em `docs/ACCEPTANCE_TESTS.md`.
@@ -82,6 +90,7 @@ Nunca envie `.env`, chaves do Supabase, tokens do Google ou chaves da OpenAI ao 
 - [Contexto e decisoes confirmadas](docs/PROJECT_CONTEXT.md)
 - [Integracao com Google Sheets](docs/GOOGLE_SHEETS_INTEGRATION.md)
 - [Automacao de documentos fiscais](docs/INVOICE_AUTOMATION.md)
+- [Compras, aprovacoes e contas a pagar](docs/PURCHASE_APPROVALS.md)
 - [Relatorios operacionais](docs/REPORTS.md)
 - [Prontidao para producao](docs/PRODUCTION_READINESS.md)
 - [Recuperacao e backups](docs/RECOVERY_RUNBOOK.md)

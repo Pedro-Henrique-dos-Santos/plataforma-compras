@@ -57,12 +57,14 @@ export class DemoOrganizationsRepository extends OrganizationsRepository {
       authUserId: DEMO_AUTH_USER_ID,
       email: demoUserContext.email,
       name: demoUserContext.name,
+      phone: demoUserContext.phone,
     },
     {
       id: BUYER_USER_ID,
       authUserId: BUYER_AUTH_USER_ID,
       email: 'compras@humanclinic.com.br',
       name: 'Equipe de Compras',
+      phone: '+5511988888888',
     },
   ];
 
@@ -311,6 +313,7 @@ export class DemoOrganizationsRepository extends OrganizationsRepository {
       userId: user.id,
       name: user.name,
       email: user.email,
+      phone: user.phone ?? null,
       role: membership.role,
       status: membership.status,
       createdAt: membership.createdAt,

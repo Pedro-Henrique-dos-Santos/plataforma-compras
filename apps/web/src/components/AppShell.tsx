@@ -12,6 +12,7 @@ import {
   FileScan,
   FileText,
   Landmark,
+  ListChecks,
   LogOut,
   Menu,
   PanelLeftClose,
@@ -21,6 +22,7 @@ import {
   ShoppingCart,
   Store,
   Tags,
+  WalletCards,
   Workflow,
   X,
 } from 'lucide-react';
@@ -31,6 +33,9 @@ export type ViewId =
   | 'dashboard'
   | 'reports'
   | 'purchases'
+  | 'approvals'
+  | 'payables'
+  | 'approval-settings'
   | 'suppliers'
   | 'prices'
   | 'cost-centers'
@@ -64,6 +69,8 @@ const navigation: Array<{
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, permission: 'dashboard:read' },
   { id: 'reports', label: 'Relatorios', icon: FileText, permission: 'purchase:read' },
   { id: 'purchases', label: 'Compras', icon: ShoppingCart, permission: 'purchase:read' },
+  { id: 'approvals', label: 'Aprovacoes', icon: ListChecks, permission: 'approval:act' },
+  { id: 'payables', label: 'Contas a pagar', icon: WalletCards, permission: 'payable:read' },
   { id: 'suppliers', label: 'Fornecedores', icon: Store, permission: 'supplier:read' },
   { id: 'prices', label: 'Tabela de precos', icon: Tags, permission: 'price:read' },
   {
@@ -91,6 +98,12 @@ const navigation: Array<{
     permission: 'organization:manage',
   },
   { id: 'access', label: 'Acessos', icon: ShieldCheck, permission: 'member:manage' },
+  {
+    id: 'approval-settings',
+    label: 'Regras de aprovacao',
+    icon: Workflow,
+    permission: 'approval:manage',
+  },
 ];
 
 const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
@@ -104,7 +117,19 @@ const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
   },
   purchases: {
     title: 'Compras',
-    subtitle: 'Lancamentos, itens e rateios por departamento',
+    subtitle: 'Fluxo, pedidos, itens e rateios por departamento',
+  },
+  approvals: {
+    title: 'Aprovacoes',
+    subtitle: 'Solicitacoes pendentes da sua decisao',
+  },
+  payables: {
+    title: 'Contas a pagar',
+    subtitle: 'Vencimentos, pagamentos e previsao financeira',
+  },
+  'approval-settings': {
+    title: 'Regras de aprovacao',
+    subtitle: 'Limites, quorum, aprovadores e notificacoes',
   },
   suppliers: {
     title: 'Fornecedores',

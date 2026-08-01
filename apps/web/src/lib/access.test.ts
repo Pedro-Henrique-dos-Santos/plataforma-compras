@@ -10,12 +10,15 @@ describe('organization capabilities', () => {
     );
 
     expect(capabilities).toEqual({
+      canActOnApprovals: true,
+      canManageApprovals: true,
       canManageMembers: true,
       canManageOrganization: true,
       canManagePlatform: false,
       canWriteCostCenters: true,
       canWriteIntegrations: true,
       canWriteInvoices: true,
+      canWritePayables: true,
       canWritePrices: true,
       canWritePurchases: true,
       canWriteSuppliers: true,
@@ -33,6 +36,9 @@ describe('organization capabilities', () => {
     expect(capabilities.canWritePrices).toBe(true);
     expect(capabilities.canWriteCostCenters).toBe(true);
     expect(capabilities.canWriteInvoices).toBe(true);
+    expect(capabilities.canWritePayables).toBe(true);
+    expect(capabilities.canActOnApprovals).toBe(true);
+    expect(capabilities.canManageApprovals).toBe(false);
     expect(capabilities.canWriteIntegrations).toBe(false);
     expect(capabilities.canManageOrganization).toBe(false);
     expect(capabilities.canManageMembers).toBe(false);

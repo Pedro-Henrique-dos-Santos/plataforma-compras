@@ -3,7 +3,20 @@
 ## Nao publicado
 
 - Adicionadas chaves estrangeiras compostas que impedem relacionamentos entre empresas diferentes mesmo em gravacoes que contornem a API.
-- Ampliada a verificacao do banco e o teste PostgreSQL para comprovar dez vinculos operacionais protegidos por `organization_id`.
+- Ampliada a verificacao do banco e o teste PostgreSQL para comprovar quinze vinculos operacionais protegidos por `organization_id`.
+- Adicionado Kanban de compras com cadastro, solicitacao, aprovacao, pedido,
+  faturamento, recebimento, conclusao e historico auditavel.
+- Adicionadas regras de aprovacao por valor, quorum de uma ou duas pessoas,
+  responsaveis por empresa, fotografia imutavel e decisao serializavel.
+- Bloqueadas edicoes e vinculacoes fiscais em etapas incompativeis, com
+  reprovacao motivada e encerramento da solicitacao no cancelamento.
+- Adicionada outbox deduplicada para notificacoes por log, SMTP ou templates
+  oficiais do WhatsApp, com repeticao e sanitizacao de erros.
+- Adicionada notificacao financeira com parcelas e instrucoes de Pix, boleto,
+  cartao ou link do fornecedor.
+- Adicionados painel e Excel de contas a pagar com itens nao programados,
+  pendentes, vencidos, pagos e previsoes de 7, 15 e 30 dias.
+- Adicionados filtro e coluna da etapa do Kanban nos relatorios operacionais.
 - Validado o cabecalho `x-organization-id` como UUID antes de consultar o banco, com testes diretos dos guardas de tenant e permissoes.
 - Adicionado contrato transversal que classifica todos os controllers e rejeita novas rotas operacionais sem autenticacao, tenant e permissao explicita.
 - Alinhados menu e controles de escrita da interface a mesma matriz de permissoes usada pela API, sem expor sincronizacao a compradores sem `integration:write`.

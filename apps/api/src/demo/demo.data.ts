@@ -53,6 +53,7 @@ export const demoUserContext: UserContext = {
   id: DEMO_USER_ID,
   email: 'proprietario@plataforma.local',
   name: 'Proprietario da plataforma',
+  phone: '+5511999999999',
   termsAcceptedAt: INITIAL_ACCEPTANCE_DATE,
   termsVersion: CURRENT_TERMS_VERSION,
   privacyAcceptedAt: INITIAL_ACCEPTANCE_DATE,

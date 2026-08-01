@@ -7,6 +7,7 @@ Navegador
   -> React/Vite (Supabase Auth)
   -> API NestJS (identidade, tenant e permissoes)
   -> PostgreSQL/Supabase (dados operacionais)
+  -> Worker de notificacoes (SMTP ou WhatsApp oficial)
   -> Google Sheets API (conciliacao durante a transicao)
   -> Google Drive para documentos durante a transicao
 ```
@@ -40,7 +41,12 @@ API e interface consomem a mesma matriz compartilhada de permissoes. O menu usa 
 | `BUYER` | Empresa | Opera compras, fornecedores, precos e notas |
 | `REPORT_VIEWER` | Empresa | Consulta dashboards e relatorios |
 
-Nao existe papel de aprovador nesta fase.
+O aprovador nao e um papel global adicional. Cada regra seleciona membros ativos
+da empresa com papel `ORGANIZATION_ADMIN` ou `BUYER`; o `PLATFORM_OWNER`
+tambem pode participar quando possui vinculo ativo com a empresa. O
+`ORGANIZATION_ADMIN` configura as regras da propria empresa e o
+`PLATFORM_OWNER` pode administra-las globalmente; `REPORT_VIEWER` permanece
+somente leitura.
 
 ## Persistencia
 
@@ -48,9 +54,20 @@ O schema PostgreSQL usa chaves UUID, valores monetarios em `Decimal`, datas de a
 
 O modo `demo` usa repositorios em memoria com os mesmos contratos das implementacoes Prisma. Em homologacao e producao, os repositorios Prisma sao selecionados automaticamente e persistem usuarios, empresas, vinculos, centros de custo, fornecedores, precos, compras, itens, rateios, parcelas e auditoria no PostgreSQL.
 
+O workflow acrescenta configuracoes e regras de aprovacao, responsaveis,
+solicitacoes, decisoes, historico de etapas e uma outbox de notificacoes. As
+solicitacoes conservam fotografias do total, regra, canal e destinatarios usados
+naquele envio, evitando que uma configuracao futura altere a auditoria passada.
+
 O cadastro da organizacao mantem nome exibido, razao social, CNPJ, contato e endereco. Esses dados pertencem ao tenant e somente o proprietario global ou um administrador da propria empresa pode altera-los.
 
-As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor. Relacoes operacionais tambem usam chaves estrangeiras compostas por `organization_id` e pelo identificador do registro, impedindo que fornecedor, centro de custo, compra, item, rateio, parcela, nota fiscal ou sincronizacao seja ligado a outra empresa mesmo por uma gravacao direta no banco.
+As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor.
+
+Relacoes operacionais tambem usam chaves estrangeiras compostas por
+`organization_id` e pelo identificador do registro. Quinze relacoes criticas
+impedem que fornecedor, centro de custo, compra, item, rateio, parcela, nota
+fiscal, sincronizacao, regra, solicitacao, participante ou historico seja ligado
+a outra empresa mesmo por uma gravacao direta no banco.
 
 ## Sincronizacao com Google Sheets
 
@@ -78,7 +95,50 @@ A consulta detalhada de uma compra devolve itens, rateios, parcelas, observacoes
 
 Toda edicao exige o `updatedAt` lido pelo usuario. Se outra operacao alterar a compra antes da gravacao, a API rejeita a versao antiga e exige recarregamento. Parcelas pagas permanecem no banco e nao podem ter valor, vencimento, ordem ou existencia alterados pela edicao da compra.
 
-Cancelamento e reativacao exigem motivo, atualizam o estado sem apagar o historico e geram evento de auditoria. Compras canceladas permanecem consultaveis por filtro e nos relatorios de cancelamento, mas nao entram nos indicadores de compras registradas. Nao existe alcada de aprovacao neste ciclo.
+O Kanban usa `Cadastro`, `Solicitacao`, `Aguardando aprovacao`,
+`Pedido de compra`, `Faturado pelo fornecedor`, `Recebido` e `Concluido`.
+Compras manuais iniciam em cadastro; importacoes historicas iniciam como pedido
+formalizado; uma nota fiscal importada inicia como faturada. Cada movimento gera
+historico com autor, instante e motivo quando exigido.
+
+Ao enviar uma compra para aprovacao, a API escolhe a regra ativa de maior valor
+minimo aplicavel ao total. A regra admite quorum de uma ou duas pessoas. A
+decisao ocorre em transacao serializavel; uma reprovacao exige comentario e
+devolve a compra para solicitacao, enquanto o quorum concluido promove o pedido.
+Edicoes ficam bloqueadas depois do envio e uma nota nao pode ser vinculada antes
+da aprovacao.
+
+Cancelamento e reativacao exigem motivo, atualizam o estado sem apagar o
+historico e geram evento de auditoria. O cancelamento tambem encerra uma
+solicitacao pendente. Compras canceladas permanecem consultaveis por filtro e
+nos relatorios de cancelamento, mas nao entram nos indicadores de compras
+registradas.
+
+## Notificacoes
+
+Eventos de aprovacao, reprovacao e liberacao para o financeiro sao persistidos
+em uma outbox na mesma transacao da operacao. Um worker separado reivindica as
+mensagens, entrega por SMTP ou por templates da API oficial do WhatsApp,
+registra sucesso ou falha e repete erros transitorios com espera exponencial.
+Chaves de deduplicacao evitam reenvios do mesmo evento.
+
+O modo `log` permite homologar sem provedor externo. Tokens, senhas SMTP e
+identificadores da Meta existem somente no ambiente da API. O destino usado em
+cada solicitacao fica congelado para auditoria, mas credenciais nunca sao
+persistidas.
+
+## Contas a pagar
+
+A aprovacao da compra e o controle financeiro sao fluxos separados. Depois do
+quorum, uma notificacao opcional envia ao financeiro o pedido, fornecedor,
+total, parcelas e as instrucoes de Pix, boleto, cartao ou link disponiveis.
+
+O modulo de contas a pagar deriva seus registros das parcelas da compra e
+identifica contas nao programadas, pendentes, vencidas e pagas. Uma compra
+aprovada sem parcelas pode receber uma conta unica pelo total integral. A API
+nao movimenta dinheiro nem acessa conta bancaria nesta fase; DDA, token
+financeiro, webhooks, aprovacao de pagamento e conciliacao bancaria pertencem a
+uma integracao futura.
 
 ## Indicadores
 
@@ -88,9 +148,22 @@ Quando o filtro informa data inicial e final, os indicadores de valor comprado e
 
 ## Relatorios
 
-Os relatorios usam as compras como fonte unica e aplicam o `organizationId` antes de qualquer filtro. A API consolida valores, economia, ticket medio e contagens e devolve agrupamentos por fornecedor, categoria, departamento e mes. Os valores departamentais usam os montantes exatos dos rateios e mantem itens sem classificacao visiveis.
+Os relatorios usam as compras como fonte unica e aplicam o `organizationId`
+antes de qualquer filtro. A API consolida valores, economia, ticket medio e
+contagens e devolve agrupamentos por fornecedor, categoria, departamento e mes.
+Status operacional e etapa do workflow sao filtros independentes. Os valores
+departamentais usam os montantes exatos dos rateios e mantem itens sem
+classificacao visiveis.
 
-As exportacoes CSV e XLSX repetem os filtros da consulta e neutralizam celulas iniciadas por caracteres de formula. O CSV usa separador compativel com Excel em `pt_BR`. O Excel resumido entrega indicadores, compras e agrupamentos por departamento, fornecedor, categoria e mes. O Excel detalhado acrescenta itens, consolidacao mensal de itens, rateios, parcelas, notas fiscais e dados cadastrais dos fornecedores. Datas, quantidades e valores monetarios permanecem tipados; nenhuma agregacao e calculada no navegador.
+As exportacoes CSV e XLSX repetem os filtros da consulta e neutralizam celulas
+iniciadas por caracteres de formula. O CSV usa separador compativel com Excel em
+`pt_BR`. O Excel resumido entrega indicadores, compras e agrupamentos por
+departamento, fornecedor, categoria e mes. O Excel detalhado acrescenta itens,
+consolidacao mensal de itens, rateios, parcelas, notas fiscais e dados
+cadastrais dos fornecedores. Ambos identificam a etapa da compra. O Excel de
+contas a pagar entrega resumo financeiro e titulos filtrados. Datas, quantidades
+e valores monetarios permanecem tipados; nenhuma agregacao e calculada no
+navegador.
 
 ## Interface
 

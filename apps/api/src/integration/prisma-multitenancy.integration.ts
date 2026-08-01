@@ -51,6 +51,14 @@ describe('Prisma multi-company security', () => {
         },
       ],
     });
+    await prisma.organizationMembership.createMany({
+      data: organizationIds.map((organizationId) => ({
+        organizationId,
+        userId,
+        role: 'ORGANIZATION_ADMIN',
+        status: 'ACTIVE',
+      })),
+    });
   });
 
   afterAll(async () => {
@@ -85,16 +93,23 @@ describe('Prisma multi-company security', () => {
     `;
 
     expect(tables.map((table) => table.tableName)).toEqual([
+      'approval_rule_approvers',
+      'approval_rules',
+      'approval_settings',
       'audit_logs',
       'cost_allocations',
       'cost_centers',
       'google_sheets_integrations',
       'installments',
       'invoice_documents',
+      'notification_outbox',
       'organization_memberships',
       'organizations',
       'platform_role_assignments',
+      'purchase_approval_participants',
+      'purchase_approval_requests',
       'purchase_items',
+      'purchase_stage_history',
       'purchases',
       'sheet_sync_runs',
       'supplier_prices',
@@ -133,6 +148,22 @@ describe('Prisma multi-company security', () => {
       organizationBId,
       purchaseInput('DB-GUARD-B', supplierB.id, centerB.id, 10, 9),
     );
+    const ruleA = await prisma.approvalRule.create({
+      data: {
+        organizationId: organizationAId,
+        name: 'Database Guard Approval A',
+        minimumAmount: 0,
+        requiredApprovals: 1,
+      },
+    });
+    const ruleB = await prisma.approvalRule.create({
+      data: {
+        organizationId: organizationBId,
+        name: 'Database Guard Approval B',
+        minimumAmount: 0,
+        requiredApprovals: 1,
+      },
+    });
     const itemA = await prisma.purchaseItem.findFirstOrThrow({
       where: { organizationId: organizationAId, purchaseId: purchaseA.id },
     });
@@ -260,6 +291,40 @@ describe('Prisma multi-company security', () => {
           mimeType: 'application/pdf',
           kind: 'PDF',
           storagePath: `${organizationAId}/cross-company.pdf`,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.approvalRuleApprover.create({
+        data: {
+          organizationId: organizationAId,
+          ruleId: ruleB.id,
+          userId,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.purchaseApprovalRequest.create({
+        data: {
+          organizationId: organizationAId,
+          purchaseId: purchaseB.id,
+          ruleId: ruleA.id,
+          submittedById: userId,
+          ruleNameSnapshot: ruleA.name,
+          notificationChannel: 'EMAIL',
+          amountSnapshot: 9,
+          requiredApprovals: 1,
+        },
+      }),
+    );
+    await expectForeignKeyViolation(
+      prisma.purchaseStageHistory.create({
+        data: {
+          organizationId: organizationAId,
+          purchaseId: purchaseB.id,
+          changedById: userId,
+          fromStage: 'REGISTRATION',
+          toStage: 'REQUESTED',
         },
       }),
     );
@@ -412,7 +477,15 @@ describe('Prisma multi-company security', () => {
     const created = await repository.createPurchase(
       actor,
       organizationAId,
-      purchaseInput('LIFECYCLE-001', supplier.id, center.id, 100, 80),
+      purchaseInput(
+        'LIFECYCLE-001',
+        supplier.id,
+        center.id,
+        100,
+        80,
+        new Date().toISOString().slice(0, 10),
+        'REGISTRATION',
+      ),
     );
     const detail = await repository.getPurchase(organizationAId, created.id);
 
@@ -423,7 +496,7 @@ describe('Prisma multi-company security', () => {
     const updated = await repository.updatePurchase(actor, organizationAId, created.id, {
       expectedUpdatedAt: detail.updatedAt,
       number: detail.number,
-      invoiceNumber: 'NF-LIFECYCLE-001',
+      invoiceNumber: null,
       supplierId: supplier.id,
       issuedAt: null,
       category: 'Lifecycle Category',
@@ -541,8 +614,8 @@ describe('Prisma multi-company security', () => {
       select: { action: true, metadata: true, resource: true },
     });
 
-    expect(restored.status).toBe('REGISTERED');
-    expect(restoredDashboard.totalPurchased.value).toBe(75);
+    expect(restored.status).toBe('DRAFT');
+    expect(restoredDashboard.totalPurchased.value).toBe(0);
     expect(purchaseAudit.map((event) => event.resource)).toEqual([
       'purchase',
       'purchase',
@@ -579,6 +652,7 @@ function purchaseInput(
   unitPrice: number,
   negotiatedPrice: number,
   issuedAt = new Date().toISOString().slice(0, 10),
+  workflowStage: 'REGISTRATION' | 'PURCHASE_ORDER' = 'PURCHASE_ORDER',
 ) {
   return {
     number,
@@ -591,6 +665,7 @@ function purchaseInput(
     notes: null,
     source: 'MANUAL' as const,
     sourceReference: null,
+    workflowStage,
     items: [
       {
         description: 'Integration item',

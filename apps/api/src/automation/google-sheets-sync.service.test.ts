@@ -20,6 +20,9 @@ const supplier: Supplier = {
   category: null,
   operationNature: null,
   paymentMethod: null,
+  pixKeyType: null,
+  pixKey: null,
+  paymentLink: null,
   defaultCostCenterId: null,
   defaultCostCenterName: null,
   email: null,
@@ -152,6 +155,9 @@ function existingPurchase(): PurchaseSummary {
     supplierName: supplier.legalName,
     issuedAt: '2026-07-10',
     status: 'REGISTERED',
+    workflowStage: 'PURCHASE_ORDER',
+    invoiceLinked: false,
+    approval: null,
     category: 'Servicos',
     paymentMethod: null,
     total: 600,
@@ -161,5 +167,6 @@ function existingPurchase(): PurchaseSummary {
     source: 'MANUAL',
     sourceReference: null,
     createdAt: '2026-07-10T12:00:00.000Z',
+    updatedAt: '2026-07-10T12:00:00.000Z',
   };
 }

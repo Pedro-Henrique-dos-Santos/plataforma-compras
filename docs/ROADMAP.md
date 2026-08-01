@@ -14,7 +14,7 @@
 - [Concluido em homologacao] Adicionar criacao de conta com nome exibido, aceite versionado dos Termos de uso e do Aviso de privacidade e bloqueio da API enquanto o consentimento estiver pendente ou desatualizado.
 - [Concluido] Criar organizacoes, convites, vinculos e troca de empresa ativa.
 - [Concluido no codigo] Permitir editar nome, CNPJ, contato e endereco da empresa.
-- [Concluido] Aplicar papeis e auditoria sem fluxo de aprovacao.
+- [Concluido] Aplicar papeis, permissoes e auditoria multiempresa.
 - [Concluido no codigo e testes] Derivar menu e controles de escrita da interface pela mesma matriz de permissoes usada na API.
 - [Concluido] Criar identidade E-Gestao, tres temas e barra lateral recolhivel.
 - [Concluido] Bloquear acesso direto do navegador as tabelas operacionais.
@@ -31,6 +31,18 @@
 
 - [Concluido] Migrar cadastro de compras, itens, rateios e parcelas.
 - [Concluido em homologacao] Adicionar detalhe, correcao transacional, cancelamento e reativacao auditados, com protecao das parcelas pagas.
+- [Concluido no codigo e testes] Criar Kanban com cadastro, solicitacao,
+  aprovacao, pedido, faturamento, recebimento e conclusao.
+- [Concluido no codigo e testes] Configurar regras por valor, quorum de uma ou
+  duas pessoas, aprovadores por empresa e historico imutavel das decisoes.
+- [Concluido no codigo e testes] Bloquear edicao e vinculacao fiscal antes da
+  aprovacao, tratar reprovacao e encerrar solicitacoes no cancelamento.
+- [Concluido no codigo e testes] Criar outbox duravel e entrega por log, SMTP ou
+  templates oficiais do WhatsApp.
+- [Concluido no codigo e testes] Notificar o financeiro depois da aprovacao com
+  parcelas e instrucoes de pagamento do fornecedor.
+- [Concluido no codigo e testes] Criar contas a pagar, faixas de vencimento,
+  agendamento de compra sem parcelas, baixa e exportacao Excel.
 - [Concluido] Incorporar notas fiscais XML e PDF, OCR gratuito, revisao e conciliacao no fluxo externo.
 - [Concluido no codigo e CI] Empacotar o modelo OCR em portugues e eliminar downloads durante a execucao.
 - [Concluido] Garantir idempotencia, isolamento por empresa e auditoria das gravacoes.
@@ -42,6 +54,10 @@
 - [Concluido no codigo e testes] Consolidar economia negociada, comparacao com o intervalo anterior e gastos por departamento.
 - [Concluido em homologacao] Exibir todo o historico por padrao e filtrar dashboard por periodo, fornecedor, centro de custo e categoria.
 - [Concluido em homologacao] Separar Excel resumido e detalhado, incluindo consolidacao mensal dos itens comprados.
+- [Concluido no codigo e testes] Filtrar relatorios por etapa do Kanban e
+  incluir a etapa nas exportacoes resumida e detalhada.
+- [Concluido no codigo e testes] Criar relatorio financeiro de contas a pagar
+  com aberto, vencido, pago, sem programacao e previsoes de 7, 15 e 30 dias.
 
 ## Fase 5: producao
 
@@ -66,6 +82,14 @@
 - [Concluido] Aprovar e mesclar o pull request 7 na `main` com CI verde.
 - [Concluido no codigo] Validar credencial, compartilhamento e abas do Google Sheets com escopo somente leitura antes da previa.
 - [Pendente externo] Configurar a conta de servico permanente do Google e validar a sincronizacao autenticada.
+- [Pendente externo] Aplicar a migracao de aprovacao no Supabase de homologacao
+  e executar o aceite multiusuario.
+- [Pendente externo] Configurar SMTP de homologacao e comprovar entrega,
+  repeticao e deduplicacao.
+- [Pendente externo] Aprovar templates da Meta e configurar o WhatsApp oficial,
+  caso esse canal seja habilitado.
+- [Pendente futuro] Escolher provedor bancario para DDA, webhooks, aprovacao de
+  pagamento e conciliacao. Nenhum pagamento sera executado antes dessa fase.
 - [Pendente externo] Aprovar juridicamente os Termos de uso, o Aviso de privacidade e o processo LGPD.
 - [Pendente externo] Configurar hospedagem, dominios HTTPS, ambientes protegidos, segredos e alertas de producao.
 - [Pendente externo] Criar backup de corte, publicar a tag imutavel e executar a implantacao controlada.

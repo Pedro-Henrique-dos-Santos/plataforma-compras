@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import type {
   CostCenter,
   CreateSupplierInput,
+  PixKeyType,
   Supplier,
   SupplierStatus,
   UpdateSupplierInput,
@@ -26,7 +27,10 @@ type SupplierForm = {
   notes: string;
   operationNature: string;
   paymentMethod: string;
+  paymentLink: string;
   phone: string;
+  pixKey: string;
+  pixKeyType: '' | PixKeyType;
   tradeName: string;
 };
 
@@ -39,7 +43,10 @@ const emptyForm: SupplierForm = {
   notes: '',
   operationNature: '',
   paymentMethod: '',
+  paymentLink: '',
   phone: '',
+  pixKey: '',
+  pixKeyType: '',
   tradeName: '',
 };
 
@@ -117,7 +124,10 @@ export function SuppliersView({
       notes: supplier.notes ?? '',
       operationNature: supplier.operationNature ?? '',
       paymentMethod: supplier.paymentMethod ?? '',
+      paymentLink: supplier.paymentLink ?? '',
       phone: supplier.phone ?? '',
+      pixKey: supplier.pixKey ?? '',
+      pixKeyType: supplier.pixKeyType ?? '',
       tradeName: supplier.tradeName ?? '',
     });
     setError(null);
@@ -276,6 +286,9 @@ export function SuppliersView({
                 <label>Categoria<input maxLength={100} onChange={(event) => field('category', event.target.value)} value={form.category} /></label>
                 <label>Natureza da operacao<input maxLength={100} onChange={(event) => field('operationNature', event.target.value)} value={form.operationNature} /></label>
                 <label>Metodo de pagamento<input maxLength={80} onChange={(event) => field('paymentMethod', event.target.value)} value={form.paymentMethod} /></label>
+                <label>Tipo de chave Pix<select onChange={(event) => field('pixKeyType', event.target.value as SupplierForm['pixKeyType'])} value={form.pixKeyType}><option value="">Sem Pix cadastrado</option><option value="CNPJ">CNPJ</option><option value="CPF">CPF</option><option value="EMAIL">E-mail</option><option value="PHONE">Telefone</option><option value="RANDOM">Chave aleatoria</option></select></label>
+                <label>Chave Pix<input disabled={!form.pixKeyType} maxLength={160} onChange={(event) => field('pixKey', event.target.value)} value={form.pixKey} /></label>
+                <label>Link de pagamento<input maxLength={500} onChange={(event) => field('paymentLink', event.target.value)} placeholder="https://" type="url" value={form.paymentLink} /></label>
                 <label>Centro de custo padrao<select onChange={(event) => field('defaultCostCenterId', event.target.value)} value={form.defaultCostCenterId}><option value="">Sem classificacao automatica</option>{costCenters.map((center) => <option key={center.id} value={center.id}>{center.code} | {center.name}</option>)}</select></label>
                 <label>E-mail<input maxLength={255} onChange={(event) => field('email', event.target.value)} type="email" value={form.email} /></label>
                 <label>Telefone<input maxLength={30} onChange={(event) => field('phone', event.target.value)} value={form.phone} /></label>
@@ -302,6 +315,9 @@ function toInput(form: SupplierForm): CreateSupplierInput {
     category: form.category || null,
     operationNature: form.operationNature || null,
     paymentMethod: form.paymentMethod || null,
+    pixKeyType: form.pixKeyType || null,
+    pixKey: form.pixKey || null,
+    paymentLink: form.paymentLink || null,
     defaultCostCenterId: form.defaultCostCenterId || null,
     email: form.email || null,
     phone: form.phone || null,
