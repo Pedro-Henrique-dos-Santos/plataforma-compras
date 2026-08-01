@@ -10,6 +10,7 @@ const workflows = await Promise.all(
     source: await readFile(new URL(name, workflowsDirectory), 'utf8'),
   })),
 );
+const ciWorkflow = workflows.find(({ name }) => name === 'ci.yml');
 
 test('declares explicit permissions in every GitHub Actions workflow', () => {
   assert.ok(workflows.length > 0, 'At least one workflow is required.');
@@ -38,4 +39,18 @@ test('pins every external GitHub Action to a full commit SHA', () => {
   }
 
   assert.ok(externalActionCount > 0, 'At least one external action is required.');
+});
+
+test('prepares Supabase roles before applying migrations in plain PostgreSQL CI', () => {
+  assert.ok(ciWorkflow, 'ci.yml is required.');
+
+  const rolePreparationIndex = ciWorkflow.source.indexOf(
+    '- name: Prepare Supabase-compatible database roles',
+  );
+  const migrationIndex = ciWorkflow.source.indexOf('- name: Apply database migrations');
+
+  assert.ok(rolePreparationIndex >= 0, 'CI must prepare the Supabase database roles.');
+  assert.ok(migrationIndex > rolePreparationIndex, 'CI must prepare roles before migrations.');
+  assert.match(ciWorkflow.source, /CREATE ROLE anon NOLOGIN NOINHERIT/);
+  assert.match(ciWorkflow.source, /CREATE ROLE authenticated NOLOGIN NOINHERIT/);
 });
