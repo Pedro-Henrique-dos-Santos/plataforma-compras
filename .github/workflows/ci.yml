@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 20
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compras?schema=public
+      DATABASE_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/compras
     services:
       postgres:
         image: postgres:16-alpine
@@ -57,7 +58,7 @@ jobs:
       - name: Prepare Supabase-compatible database roles
         run: |
           # Supabase provides these roles; the disposable PostgreSQL service does not.
-          psql "$DATABASE_URL" --set ON_ERROR_STOP=1 \
+          psql "$DATABASE_ADMIN_URL" --set ON_ERROR_STOP=1 \
             --command "CREATE ROLE anon NOLOGIN NOINHERIT" \
             --command "CREATE ROLE authenticated NOLOGIN NOINHERIT"
 
