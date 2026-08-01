@@ -59,6 +59,37 @@
 - [Concluido no codigo e testes] Criar relatorio financeiro de contas a pagar
   com aberto, vencido, pago, sem programacao e previsoes de 7, 15 e 30 dias.
 
+## Fase 3B: ciclo integrado NF-e, recebimento e pagamento
+
+- [Concluido no codigo e testes] Substituir o vinculo singular por relacao
+  auditavel de varias NF-e por compra, preservando os campos legados derivados.
+- [Concluido no codigo e testes] Registrar recebimentos parciais por item, linha
+  fiscal, responsavel e centro de custo, com validacao de saldo e concorrencia.
+- [Concluido no codigo e testes] Criar Kanban financeiro por titulo, baixas
+  parciais com comprovante privado e saldo calculado.
+- [Concluido no codigo e testes] Implementar os modos `DISABLED`, `PER_TITLE` e
+  `PER_PURCHASE_SNAPSHOT`, regras por valor e quorum separado da compra.
+- [Concluido no codigo e testes] Adicionar instrucao Pix versionada, validacao
+  EMV/CRC/beneficiario e invalidacao de aprovacao quando os dados mudarem.
+- [Concluido no codigo e testes] Adicionar papel `FINANCE`, permissoes proprias,
+  responsabilidade de recebimento e segregacao opcional de funcoes.
+- [Concluido no codigo e testes] Criar integracao A1 por tenant, worker com NSU,
+  idempotencia, espera adaptativa e manifestacao manual.
+- [Concluido no codigo e testes] Integrar upload XML/PDF e OCR ao mesmo vinculo
+  fiscal auditavel como alternativa a Distribuicao DF-e.
+- [Concluido no codigo e testes] Incluir documentos, recebimentos, saldo,
+  situacao financeira e baixas nas exportacoes Excel.
+- [Pendente externo] Aplicar a migracao `202608010001_procure_to_pay_nfe` no
+  Supabase de homologacao e executar a reconciliacao de dados migrados.
+- [Pendente externo] Homologar A1 e SEFAZ em modo `SHADOW`, sem manifestacao ou
+  vinculo automatico, usando uma empresa e certificado autorizados.
+- [Pendente externo] Liberar `EXACT_MATCH` somente depois de comparar capturas,
+  totais e documentos sem correspondencia com a operacao real.
+- [Pendente externo] Avaliar `AUTO_SCIENCE` por empresa; eventos conclusivos
+  continuarao exigindo confirmacao humana.
+- [Pendente futuro] Implementar adaptadores separados para NFS-e nacional e
+  municipal, CT-e, DDA e integracao bancaria.
+
 ## Fase 5: producao
 
 - [Concluido no codigo] Testes de carga, seguranca e recuperacao.
@@ -88,8 +119,8 @@
   repeticao e deduplicacao.
 - [Pendente externo] Aprovar templates da Meta e configurar o WhatsApp oficial,
   caso esse canal seja habilitado.
-- [Pendente futuro] Escolher provedor bancario para DDA, webhooks, aprovacao de
-  pagamento e conciliacao. Nenhum pagamento sera executado antes dessa fase.
+- [Pendente futuro] Escolher provedor bancario para DDA, webhooks, execucao e
+  conciliacao bancaria. Nenhum pagamento sera executado antes dessa fase.
 - [Pendente externo] Aprovar juridicamente os Termos de uso, o Aviso de privacidade e o processo LGPD.
 - [Pendente externo] Configurar hospedagem, dominios HTTPS, ambientes protegidos, segredos e alertas de producao.
 - [Pendente externo] Criar backup de corte, publicar a tag imutavel e executar a implantacao controlada.

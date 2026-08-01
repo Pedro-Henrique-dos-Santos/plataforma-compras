@@ -30,6 +30,10 @@ export function getOrganizationCapabilities(
     canWritePurchases: allowed('purchase:write'),
     canActOnApprovals: allowed('approval:act'),
     canWritePayables: allowed('payable:write'),
+    canSettlePayments: allowed('payment:settle'),
+    canActOnPaymentApprovals: allowed('payment-approval:act'),
+    canManagePaymentApprovals: allowed('payment-approval:manage'),
+    canManageFiscalIntegration: allowed('fiscal-integration:manage'),
     canWriteSuppliers: allowed('supplier:write'),
   };
 }

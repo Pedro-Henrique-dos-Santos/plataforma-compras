@@ -64,6 +64,15 @@ Configure os seguintes valores no gerenciador de segredos da hospedagem:
 | `REQUIRE_VERIFIED_EMAIL` | `true` |
 | `TRUST_PROXY` | `true` apenas atras de proxy confiavel |
 | `INVOICE_STORAGE_BUCKET` | bucket privado, por padrao `invoice-documents` |
+| `FISCAL_CREDENTIAL_ENCRYPTION_KEY` | exatamente 32 bytes em base64; nunca reutilizar chave do banco ou do Supabase |
+| `FISCAL_ROLLOUT_MODE` | iniciar em `SHADOW`; depois `EXACT_MATCH` e opcionalmente `AUTO_SCIENCE` |
+| `FISCAL_SYNC_WORKER_ENABLED` | `false` ate concluir migracao e homologacao do A1 |
+| `FISCAL_SYNC_POLL_INTERVAL_MS` | intervalo de varredura entre 60000 e 3600000 ms |
+| `SEFAZ_REQUEST_TIMEOUT_MS` | limite entre 1000 e 120000 ms |
+| `SEFAZ_NFE_DISTRIBUTION_HOMOLOGATION_URL` | endpoint oficial autorizado para Distribuicao DF-e em homologacao |
+| `SEFAZ_NFE_DISTRIBUTION_PRODUCTION_URL` | endpoint oficial autorizado para Distribuicao DF-e em producao |
+| `SEFAZ_NFE_MANIFESTATION_HOMOLOGATION_URL` | endpoint oficial autorizado para eventos em homologacao |
+| `SEFAZ_NFE_MANIFESTATION_PRODUCTION_URL` | endpoint oficial autorizado para eventos em producao |
 | `OCR_LANGUAGE_DATA_PATH` | sobrescrita opcional; a imagem ja inclui o modelo portugues |
 | `NOTIFICATION_WORKER_ENABLED` | `true` para processar a outbox |
 | `NOTIFICATION_DELIVERY_MODE` | `log` para homologacao sem envio ou `live` para provedores reais |
@@ -78,6 +87,7 @@ Configure os seguintes valores no gerenciador de segredos da hospedagem:
 | `WHATSAPP_APPROVAL_TEMPLATE` | template de solicitacao de aprovacao |
 | `WHATSAPP_REJECTION_TEMPLATE` | template de reprovacao |
 | `WHATSAPP_FINANCE_TEMPLATE` | template de liberacao financeira |
+| `WHATSAPP_FISCAL_TEMPLATE` | template de divergencia ou revisao fiscal |
 
 Com `NODE_ENV=production`, a API encerra a inicializacao se `DEMO_MODE` nao for `false`, se `REQUIRE_VERIFIED_EMAIL` nao for `true` ou se qualquer entrada de `CORS_ORIGIN` usar HTTP. Essa verificacao ocorre antes de abrir a porta da aplicacao.
 
@@ -104,8 +114,8 @@ pnpm release:verify
 Depois do merge aprovado na `main`, crie uma tag imutavel correspondente:
 
 ```bash
-git tag v0.10.0
-git push origin v0.10.0
+git tag v0.11.0
+git push origin v0.11.0
 ```
 
 O workflow `Publish Container Images` valida a tag e publica no GHCR:
@@ -127,11 +137,14 @@ O identificador de backup serve como barreira operacional; o arquivo real deve p
 2. Gerar e verificar um backup fora do GitHub.
 3. Criar a tag semantica e aguardar as duas imagens no GHCR.
 4. Executar `Supabase Production` com aprovacao do ambiente.
-5. Implantar a API e aguardar `/api/health/ready` retornar `ready`.
-6. Implantar a web com os dominios definitivos.
-7. Testar login, empresa ativa, escrita, nota fiscal e relatorios.
-8. Comparar totais entre PostgreSQL e a planilha.
-9. Liberar um grupo pequeno de usuarios mantendo o Apps Script disponivel.
+5. Manter o worker fiscal desabilitado e reconciliar a migracao de compras,
+   parcelas, notas e baixas existentes.
+6. Implantar a API e aguardar `/api/health/ready` retornar `ready`.
+7. Implantar a web com os dominios definitivos.
+8. Testar login, empresa ativa, escrita, nota fiscal e relatorios.
+9. Habilitar o worker somente em `SHADOW` e acompanhar NSU, erros e duplicidade.
+10. Comparar totais entre PostgreSQL, documentos capturados e a planilha.
+11. Liberar um grupo pequeno de usuarios mantendo o Apps Script disponivel.
 
 ## Reversao
 

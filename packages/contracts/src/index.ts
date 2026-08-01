@@ -8,4 +8,5 @@ export * from './reports.js';
 export * from './automation.js';
 export * from './workflow.js';
 export * from './payables.js';
+export * from './procure-to-pay.js';
 

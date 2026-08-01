@@ -9,26 +9,27 @@ export const membershipStatusSchema = z.enum(['INVITED', 'ACTIVE', 'SUSPENDED'])
 export type MembershipStatus = z.infer<typeof membershipStatusSchema>;
 
 export function normalizeBrazilianDocument(value: string): string {
-  return value.replace(/\D/g, '');
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
 export function isValidCnpj(value: string): boolean {
-  const digits = normalizeBrazilianDocument(value);
-  if (digits.length !== 14 || /^(\d)\1{13}$/.test(digits)) {
+  const document = normalizeBrazilianDocument(value);
+  if (!/^[A-Z0-9]{12}\d{2}$/.test(document) || /^(\d)\1{13}$/.test(document)) {
     return false;
   }
 
   const calculateDigit = (length: number) => {
     const weights = length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
     const sum = weights.reduce(
-      (total, weight, index) => total + Number(digits[index]) * weight,
+      (total, weight, index) =>
+        total + (document.charCodeAt(index) - 48) * weight,
       0,
     );
     const remainder = sum % 11;
     return remainder < 2 ? 0 : 11 - remainder;
   };
 
-  return Number(digits[12]) === calculateDigit(12) && Number(digits[13]) === calculateDigit(13);
+  return Number(document[12]) === calculateDigit(12) && Number(document[13]) === calculateDigit(13);
 }
 
 export const organizationDocumentSchema = z

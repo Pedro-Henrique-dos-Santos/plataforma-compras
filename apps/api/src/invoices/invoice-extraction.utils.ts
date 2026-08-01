@@ -1,7 +1,9 @@
-import type {
-  InvoiceExtraction,
-  InvoiceExtractionItem,
-  InvoiceTriageStatus,
+import {
+  isValidCnpj,
+  normalizeBrazilianDocument,
+  type InvoiceExtraction,
+  type InvoiceExtractionItem,
+  type InvoiceTriageStatus,
 } from '@compras/contracts';
 
 export type InvoiceExtractionResult = {
@@ -17,7 +19,8 @@ export function digits(value: unknown): string {
 }
 
 export function normalizeDocument(value: unknown): string | null {
-  const normalized = digits(value);
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const normalized = normalizeBrazilianDocument(String(value));
   if (normalized.length === 14 && isValidCnpj(normalized)) return normalized;
   if (normalized.length === 11 && isValidCpf(normalized)) return normalized;
   return null;
@@ -169,21 +172,6 @@ function calculateConfidence(
     (extraction.total !== null ? 0.2 : 0) +
     (extraction.items.length ? 0.15 : 0);
   return Math.round(Math.min(1, score) * 100) / 100;
-}
-
-function isValidCnpj(value: string): boolean {
-  if (!/^\d{14}$/.test(value) || /^(\d)\1+$/.test(value)) return false;
-  const calculate = (length: number): number => {
-    let weight = length - 7;
-    let sum = 0;
-    for (let index = 0; index < length; index += 1) {
-      sum += Number(value[index]) * weight;
-      weight = weight === 2 ? 9 : weight - 1;
-    }
-    const remainder = sum % 11;
-    return remainder < 2 ? 0 : 11 - remainder;
-  };
-  return calculate(12) === Number(value[12]) && calculate(13) === Number(value[13]);
 }
 
 function isValidCpf(value: string): boolean {

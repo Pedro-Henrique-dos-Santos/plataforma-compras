@@ -2,6 +2,29 @@
 
 ## Nao publicado
 
+## 0.11.0 - 2026-08-01
+
+- Adicionados Kanban financeiro, aprovacao por titulo ou fotografia do pedido,
+  regras por valor, quorum separado e segregacao opcional de funcoes.
+- Adicionados recebimentos parciais por item e linha fiscal, com responsavel,
+  controle de saldo e conclusao condicionada ao recebimento e pagamento.
+- Substituido o vinculo singular por relacao auditavel de varias NF-e por pedido,
+  preservando os campos legados como compatibilidade derivada.
+- Adicionada integracao NF-e modelo 55 por empresa com certificado A1 cifrado,
+  cursor de NSU, worker idempotente, espera adaptativa e rollout em modo sombra.
+- Adicionada conciliacao fiscal exata com revisao humana obrigatoria para CNPJ,
+  referencia, item, quantidade ou valor divergente.
+- Adicionados snapshots de instrucao Pix com validacao EMV, CRC e beneficiario,
+  alem de invalidacao de aprovacao quando os dados mudam.
+- Adicionadas baixas parciais com comprovante privado, saldo calculado e bloqueio
+  da marcacao legada de pagamento sem evidencia.
+- Adicionados papel empresarial `FINANCE`, permissoes fiscais e financeiras,
+  links temporarios e controle otimista nos novos fluxos.
+- Ampliadas notificacoes e exportacoes Excel com conciliacao, recebimentos,
+  titulos, saldos, baixas e situacao financeira.
+- Documentado o rollout `SHADOW`, `EXACT_MATCH` e `AUTO_SCIENCE`, mantendo NFS-e,
+  CT-e, DDA e integracao bancaria como adaptadores futuros.
+
 - Adicionadas chaves estrangeiras compostas que impedem relacionamentos entre empresas diferentes mesmo em gravacoes que contornem a API.
 - Ampliada a verificacao do banco e o teste PostgreSQL para comprovar quinze vinculos operacionais protegidos por `organization_id`.
 - Adicionado Kanban de compras com cadastro, solicitacao, aprovacao, pedido,

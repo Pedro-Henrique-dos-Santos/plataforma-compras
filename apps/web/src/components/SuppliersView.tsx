@@ -29,6 +29,8 @@ type SupplierForm = {
   paymentMethod: string;
   paymentLink: string;
   phone: string;
+  pixBeneficiaryDocument: string;
+  pixBeneficiaryName: string;
   pixKey: string;
   pixKeyType: '' | PixKeyType;
   tradeName: string;
@@ -45,6 +47,8 @@ const emptyForm: SupplierForm = {
   paymentMethod: '',
   paymentLink: '',
   phone: '',
+  pixBeneficiaryDocument: '',
+  pixBeneficiaryName: '',
   pixKey: '',
   pixKeyType: '',
   tradeName: '',
@@ -126,6 +130,8 @@ export function SuppliersView({
       paymentMethod: supplier.paymentMethod ?? '',
       paymentLink: supplier.paymentLink ?? '',
       phone: supplier.phone ?? '',
+      pixBeneficiaryDocument: supplier.pixBeneficiaryDocument ?? '',
+      pixBeneficiaryName: supplier.pixBeneficiaryName ?? '',
       pixKey: supplier.pixKey ?? '',
       pixKeyType: supplier.pixKeyType ?? '',
       tradeName: supplier.tradeName ?? '',
@@ -282,12 +288,14 @@ export function SuppliersView({
               <div className="form-grid two-columns">
                 <label>Razao social<input autoFocus maxLength={160} onChange={(event) => field('legalName', event.target.value)} required value={form.legalName} /></label>
                 <label>Nome fantasia<input maxLength={160} onChange={(event) => field('tradeName', event.target.value)} value={form.tradeName} /></label>
-                <label>CNPJ<input inputMode="numeric" maxLength={18} onChange={(event) => field('document', event.target.value)} placeholder="00.000.000/0000-00" value={form.document} /></label>
+                <label>CNPJ<input autoCapitalize="characters" maxLength={18} onChange={(event) => field('document', event.target.value.toUpperCase())} placeholder="AA.AAA.AAA/AAAA-00" value={form.document} /></label>
                 <label>Categoria<input maxLength={100} onChange={(event) => field('category', event.target.value)} value={form.category} /></label>
                 <label>Natureza da operacao<input maxLength={100} onChange={(event) => field('operationNature', event.target.value)} value={form.operationNature} /></label>
                 <label>Metodo de pagamento<input maxLength={80} onChange={(event) => field('paymentMethod', event.target.value)} value={form.paymentMethod} /></label>
                 <label>Tipo de chave Pix<select onChange={(event) => field('pixKeyType', event.target.value as SupplierForm['pixKeyType'])} value={form.pixKeyType}><option value="">Sem Pix cadastrado</option><option value="CNPJ">CNPJ</option><option value="CPF">CPF</option><option value="EMAIL">E-mail</option><option value="PHONE">Telefone</option><option value="RANDOM">Chave aleatoria</option></select></label>
                 <label>Chave Pix<input disabled={!form.pixKeyType} maxLength={160} onChange={(event) => field('pixKey', event.target.value)} value={form.pixKey} /></label>
+                <label>Beneficiario Pix<input disabled={!form.pixKeyType} maxLength={160} onChange={(event) => field('pixBeneficiaryName', event.target.value)} value={form.pixBeneficiaryName} /></label>
+                <label>CPF ou CNPJ do beneficiario<input autoCapitalize="characters" disabled={!form.pixKeyType} maxLength={18} onChange={(event) => field('pixBeneficiaryDocument', event.target.value.toUpperCase())} value={form.pixBeneficiaryDocument} /></label>
                 <label>Link de pagamento<input maxLength={500} onChange={(event) => field('paymentLink', event.target.value)} placeholder="https://" type="url" value={form.paymentLink} /></label>
                 <label>Centro de custo padrao<select onChange={(event) => field('defaultCostCenterId', event.target.value)} value={form.defaultCostCenterId}><option value="">Sem classificacao automatica</option>{costCenters.map((center) => <option key={center.id} value={center.id}>{center.code} | {center.name}</option>)}</select></label>
                 <label>E-mail<input maxLength={255} onChange={(event) => field('email', event.target.value)} type="email" value={form.email} /></label>
@@ -317,6 +325,8 @@ function toInput(form: SupplierForm): CreateSupplierInput {
     paymentMethod: form.paymentMethod || null,
     pixKeyType: form.pixKeyType || null,
     pixKey: form.pixKey || null,
+    pixBeneficiaryName: form.pixBeneficiaryName || null,
+    pixBeneficiaryDocument: form.pixBeneficiaryDocument || null,
     paymentLink: form.paymentLink || null,
     defaultCostCenterId: form.defaultCostCenterId || null,
     email: form.email || null,
@@ -338,7 +348,7 @@ function normalize(value: string): string {
 }
 
 function formatCnpj(value: string): string {
-  return value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  return value.replace(/^([A-Z0-9]{2})([A-Z0-9]{3})([A-Z0-9]{3})([A-Z0-9]{4})(\d{2})$/i, '$1.$2.$3/$4-$5');
 }
 
 function errorMessage(error: unknown): string {

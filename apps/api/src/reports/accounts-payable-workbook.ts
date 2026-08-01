@@ -128,14 +128,20 @@ function addPayablesSheet(
     ['Pago em', 15],
     ['Etapa', 24],
     ['Observacoes', 38],
+    ['Valor baixado', 16],
+    ['Saldo', 16],
+    ['Fluxo financeiro', 24],
+    ['Recebimento', 16],
+    ['Adiantamento', 16],
+    ['Baixas', 10],
   ] as const;
   sheet.columns = columns.map(([header, width]) => ({ header, width }));
-  sheet.mergeCells('A1:L1');
+  sheet.mergeCells('A1:R1');
   sheet.getCell('A1').value = 'Contas a pagar e previsao de desembolso';
   sheet.getCell('A1').font = { bold: true, color: { argb: colors.white }, size: 14 };
   sheet.getCell('A1').fill = solidFill(colors.dark);
   sheet.getRow(1).height = 30;
-  sheet.mergeCells('A2:L2');
+  sheet.mergeCells('A2:R2');
   sheet.getCell('A2').value = `Fonte: ${report.dataSource === 'DATABASE' ? 'Banco de dados' : 'Demonstracao'} | ${formatDateTime(report.generatedAt)}`;
   sheet.getCell('A2').font = { color: { argb: '68737A' }, size: 9 };
 
@@ -151,7 +157,7 @@ function addPayablesSheet(
   for (const payable of report.rows) {
     const row = sheet.addRow([
       safeText(payable.purchaseNumber),
-      safeText(payable.invoiceNumber ?? ''),
+      safeText(payable.invoiceNumbers.join(', ') || payable.invoiceNumber || ''),
       safeText(payable.supplierName),
       payable.sequence || null,
       excelDate(payable.dueDate),
@@ -162,10 +168,18 @@ function addPayablesSheet(
       excelDate(payable.paidAt),
       workflowStageLabel(payable.workflowStage),
       safeText(payable.paymentNotes ?? ''),
+      payable.paidAmount,
+      payable.balance,
+      paymentWorkflowStageLabel(payable.paymentWorkflowStage),
+      payable.received ? 'Confirmado' : 'Pendente ou parcial',
+      payable.advancePayment ? 'Sim' : 'Nao',
+      payable.settlementCount,
     ]);
     row.getCell(5).numFmt = 'dd/mm/yyyy';
     row.getCell(9).numFmt = 'R$ #,##0.00';
     row.getCell(10).numFmt = 'dd/mm/yyyy';
+    row.getCell(13).numFmt = 'R$ #,##0.00';
+    row.getCell(14).numFmt = 'R$ #,##0.00';
     row.eachCell((cell) => {
       cell.border = thinBorder();
       cell.alignment = { vertical: 'middle', wrapText: true };
@@ -185,11 +199,11 @@ function addPayablesSheet(
   }
   if (!report.rows.length) {
     sheet.addRow(['Nenhuma conta encontrada para os filtros informados.']);
-    sheet.mergeCells('A4:L4');
+    sheet.mergeCells('A4:R4');
   }
   sheet.autoFilter = {
     from: { row: 3, column: 1 },
-    to: { row: Math.max(3, sheet.rowCount), column: 12 },
+    to: { row: Math.max(3, sheet.rowCount), column: 18 },
   };
   sheet.pageSetup = {
     fitToPage: true,
@@ -224,10 +238,25 @@ function formatDateTime(value: string): string {
 function payableStatusLabel(status: AccountsPayableReport['rows'][number]['status']) {
   return {
     OVERDUE: 'Vencido',
+    PARTIALLY_PAID: 'Parcialmente pago',
     PAID: 'Pago',
     PENDING: 'Pendente',
     UNSCHEDULED: 'Sem vencimento',
   }[status];
+}
+
+function paymentWorkflowStageLabel(
+  stage: AccountsPayableReport['rows'][number]['paymentWorkflowStage'],
+) {
+  if (!stage) return 'Sem titulo';
+  return {
+    MATCHING_REQUIRED: 'A conciliar',
+    AWAITING_APPROVAL: 'Aguardando aprovacao',
+    READY_TO_PAY: 'Liberado para pagamento',
+    PARTIALLY_PAID: 'Parcialmente pago',
+    PAID: 'Pago',
+    CANCELLED: 'Cancelado',
+  }[stage];
 }
 
 function paymentChannelLabel(

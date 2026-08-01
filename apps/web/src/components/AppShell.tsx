@@ -20,6 +20,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  SlidersHorizontal,
   Store,
   Tags,
   WalletCards,
@@ -36,6 +37,7 @@ export type ViewId =
   | 'approvals'
   | 'payables'
   | 'approval-settings'
+  | 'financial-settings'
   | 'suppliers'
   | 'prices'
   | 'cost-centers'
@@ -104,6 +106,12 @@ const navigation: Array<{
     icon: Workflow,
     permission: 'approval:manage',
   },
+  {
+    id: 'financial-settings',
+    label: 'Regras financeiras',
+    icon: SlidersHorizontal,
+    permission: 'payment-approval:manage',
+  },
 ];
 
 const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
@@ -130,6 +138,10 @@ const viewTitles: Record<ViewId, { title: string; subtitle: string }> = {
   'approval-settings': {
     title: 'Regras de aprovacao',
     subtitle: 'Limites, quorum, aprovadores e notificacoes',
+  },
+  'financial-settings': {
+    title: 'Regras financeiras',
+    subtitle: 'Aprovacoes, segregacao e responsaveis pelo recebimento',
   },
   suppliers: {
     title: 'Fornecedores',
@@ -338,6 +350,7 @@ function accountRole(isPlatformOwner: boolean, role: OrganizationSummary['role']
   return {
     ORGANIZATION_ADMIN: 'Administrador',
     BUYER: 'Comprador',
+    FINANCE: 'Financeiro',
     REPORT_VIEWER: 'Relatorios',
   }[role];
 }

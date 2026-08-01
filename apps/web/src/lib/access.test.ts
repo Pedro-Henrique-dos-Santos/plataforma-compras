@@ -11,10 +11,14 @@ describe('organization capabilities', () => {
 
     expect(capabilities).toEqual({
       canActOnApprovals: true,
+      canActOnPaymentApprovals: true,
       canManageApprovals: true,
+      canManageFiscalIntegration: true,
       canManageMembers: true,
       canManageOrganization: true,
+      canManagePaymentApprovals: true,
       canManagePlatform: false,
+      canSettlePayments: true,
       canWriteCostCenters: true,
       canWriteIntegrations: true,
       canWriteInvoices: true,
@@ -42,6 +46,21 @@ describe('organization capabilities', () => {
     expect(capabilities.canWriteIntegrations).toBe(false);
     expect(capabilities.canManageOrganization).toBe(false);
     expect(capabilities.canManageMembers).toBe(false);
+  });
+
+  it('limits finance users to payment operations', () => {
+    const capabilities = getOrganizationCapabilities(
+      { platformRoles: [] },
+      { role: 'FINANCE' },
+    );
+
+    expect(capabilities.canWritePayables).toBe(true);
+    expect(capabilities.canActOnPaymentApprovals).toBe(true);
+    expect(capabilities.canSettlePayments).toBe(true);
+    expect(capabilities.canWritePurchases).toBe(false);
+    expect(capabilities.canManagePaymentApprovals).toBe(false);
+    expect(capabilities.canManageFiscalIntegration).toBe(false);
+    expect(capabilities.canManageOrganization).toBe(false);
   });
 
   it('keeps report viewers read-only', () => {

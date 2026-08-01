@@ -171,7 +171,39 @@ Use os arquivos sinteticos em `apps/api/src/invoices/__fixtures__/` e `legacy/sa
 13. Na aba `Itens por mes`, reconciliar quantidade, numero de compras, fornecedores, gasto, economia e preco medio com os itens de origem.
 14. Confirmar que compras sem data aparecem no grupo `Sem data` e nao entram em um mes artificial.
 
-## 8. Responsividade e acessibilidade
+## 8. NF-e, recebimento e pagamento integrado
+
+1. Aplicar a migracao em uma copia descartavel e comparar compras, documentos,
+   parcelas, baixas, contagens e valores antes e depois.
+2. Repetir um lote SEFAZ e confirmar que NSU, chave e hash nao criam duplicatas.
+3. Interromper o worker entre dois NSU e confirmar que a retomada preserva o
+   cursor e processa documentos fora de ordem sem saltos silenciosos.
+4. Testar A1 invalido, senha incorreta, CNPJ divergente, vencimento e alerta de
+   expiracao sem expor certificado ou senha na resposta.
+5. Em `SHADOW`, confirmar que a captura nao vincula nem manifesta documentos.
+6. Em `EXACT_MATCH`, vincular automaticamente apenas a correspondencia unica e
+   integral; divergencias de CNPJ, pedido, item, quantidade ou valor devem ir
+   para revisao.
+7. Usar uma compra com duas NF-e e registrar dois recebimentos parciais por
+   linha fiscal, sem ultrapassar saldo do pedido ou da nota.
+8. Configurar responsavel por centro de custo e confirmar o acesso somente no
+   tenant correto.
+9. Testar `DISABLED`, `PER_TITLE` e `PER_PURCHASE_SNAPSHOT`; no modo agrupado,
+   criar um titulo posterior e confirmar que ele nao herdou a aprovacao antiga.
+10. Testar regra de uma pessoa e dupla aprovacao concorrente sem decisao
+    duplicada.
+11. Validar Pix correto, CRC incorreto, chave divergente, beneficiario divergente
+    e alteracao da instrucao depois da aprovacao.
+12. Registrar duas baixas com comprovantes diferentes e confirmar os estados
+    `PARTIALLY_PAID` e `PAID` pelo saldo.
+13. Ativar segregacao e confirmar que aprovador da compra nao aprova pagamento
+    e que aprovador financeiro nao registra a propria baixa.
+14. Confirmar que `COMPLETED` somente ocorre com recebimento integral,
+    conciliacao e saldo financeiro zero.
+15. Exportar os Excel resumido, detalhado e financeiro e reconciliar NF-e,
+    recebido, pago, saldo e quantidade de baixas.
+
+## 9. Responsividade e acessibilidade
 
 1. Validar desktop em largura minima de 1280 pixels.
 2. Validar dispositivo movel em 390 por 844 pixels.
@@ -179,7 +211,7 @@ Use os arquivos sinteticos em `apps/api/src/invoices/__fixtures__/` e `legacy/sa
 4. Confirmar que formularios, tabelas e graficos nao causam sobreposicao incoerente.
 5. Confirmar nomes acessiveis nos botoes, campos, graficos e navegacao principal.
 
-## 9. Liberacao externa
+## 10. Liberacao externa
 
 Antes da producao:
 
@@ -188,7 +220,8 @@ Antes da producao:
 3. Executar `Supabase Staging` com a confirmacao exigida.
 4. Validar login real, isolamento e bucket privado no Supabase.
 5. Executar backup e restauracao com dados sinteticos na homologacao.
-6. Aplicar a migracao de workflow e confirmar RLS nas sete tabelas novas.
+6. Aplicar todas as migracoes pendentes e confirmar RLS, privilegios e chaves
+   compostas em todas as tabelas operacionais.
 7. Configurar SMTP ou manter explicitamente o modo `log`; WhatsApp somente com
    templates e credenciais oficiais aprovados.
 8. Publicar web e API em dominios HTTPS separados.

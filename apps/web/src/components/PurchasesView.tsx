@@ -4,20 +4,27 @@ import type {
   ChangePurchaseWorkflowStageInput,
   CostCenter,
   CreatePurchaseInput,
+  CreateGoodsReceiptInput,
+  GoodsReceipt,
+  PayableKanbanCard,
   PurchaseDetail,
   PurchaseStatus,
   PurchaseSummary,
   PurchaseWorkflowStage,
+  ReceiptFiscalItemOption,
   Supplier,
   UpdatePurchaseInput,
 } from '@compras/contracts';
 import {
+  Banknote,
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
   CircleX,
+  FileCheck2,
   GitBranch,
   Pencil,
+  PackageCheck,
   Plus,
   Columns3,
   List,
@@ -79,6 +86,7 @@ export function PurchasesView({
   const [purchases, setPurchases] = useState<PurchaseSummary[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+  const [payables, setPayables] = useState<PayableKanbanCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   const [search, setSearch] = useState('');
@@ -88,6 +96,14 @@ export function PurchasesView({
   const [editing, setEditing] = useState<PurchaseDetail | null>(null);
   const [detailPurchase, setDetailPurchase] = useState<PurchaseDetail | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [goodsReceipts, setGoodsReceipts] = useState<GoodsReceipt[]>([]);
+  const [receiptPurchase, setReceiptPurchase] = useState<PurchaseDetail | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [receiptDate, setReceiptDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [receiptNotes, setReceiptNotes] = useState('');
+  const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
+  const [receiptFiscalItems, setReceiptFiscalItems] = useState<ReceiptFiscalItemOption[]>([]);
+  const [receiptFiscalSelections, setReceiptFiscalSelections] = useState<Record<string, string>>({});
   const [lifecyclePurchase, setLifecyclePurchase] = useState<PurchaseDetail | null>(null);
   const [lifecycleReason, setLifecycleReason] = useState('');
   const [lifecycleOpen, setLifecycleOpen] = useState(false);
@@ -111,11 +127,13 @@ export function PurchasesView({
       apiGet<PurchaseSummary[]>('/purchases', { token: accessToken, organizationId, signal: controller.signal }),
       apiGet<Supplier[]>('/suppliers', { token: accessToken, organizationId, signal: controller.signal }),
       apiGet<CostCenter[]>('/cost-centers?includeInactive=true', { token: accessToken, organizationId, signal: controller.signal }),
+      apiGet<PayableKanbanCard[]>('/procure-to-pay/payables', { token: accessToken, organizationId, signal: controller.signal }),
     ])
-      .then(([purchaseRows, supplierRows, centerRows]) => {
+      .then(([purchaseRows, supplierRows, centerRows, payableRows]) => {
         setPurchases(purchaseRows);
         setSuppliers(supplierRows);
         setCostCenters(centerRows);
+        setPayables(payableRows);
       })
       .catch((requestError: unknown) => {
         if (!controller.signal.aborted) setError(errorMessage(requestError));
@@ -137,6 +155,10 @@ export function PurchasesView({
 
   const selectedSupplier = suppliers.find((supplier) => supplier.id === form.supplierId) ?? null;
   const totals = useMemo(() => calculateTotals(items), [items]);
+  const financialByPurchase = useMemo(() => summarizePayables(payables), [payables]);
+  const detailFinancial = detailPurchase
+    ? financialByPurchase.get(detailPurchase.id)
+    : undefined;
 
   function openCreate() {
     setEditing(null);
@@ -248,16 +270,133 @@ export function PurchasesView({
     setPendingId(purchase.id);
     setError(null);
     try {
-      const detail = await apiGet<PurchaseDetail>(`/purchases/${purchase.id}`, {
-        token: accessToken,
-        organizationId,
-      });
+      const [detail, receipts] = await Promise.all([
+        apiGet<PurchaseDetail>(`/purchases/${purchase.id}`, {
+          token: accessToken,
+          organizationId,
+        }),
+        apiGet<GoodsReceipt[]>(`/procure-to-pay/purchases/${purchase.id}/receipts`, {
+          token: accessToken,
+          organizationId,
+        }),
+      ]);
       setDetailPurchase(detail);
+      setGoodsReceipts(receipts);
       setDetailOpen(true);
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {
       setPendingId(null);
+    }
+  }
+
+  async function openReceipt(purchase: PurchaseDetail) {
+    setPendingId(purchase.id);
+    setError(null);
+    try {
+      const fiscalItems = await apiGet<ReceiptFiscalItemOption[]>(
+        `/procure-to-pay/purchases/${purchase.id}/receipt-fiscal-items`,
+        { token: accessToken, organizationId },
+      );
+      const received = receivedQuantityByItem(goodsReceipts);
+      const selections: Record<string, string> = {};
+      const quantities: Record<string, string> = {};
+      for (const item of purchase.items) {
+        const purchaseRemaining = Math.max(
+          0,
+          item.quantity - (received.get(item.id) ?? 0),
+        );
+        const available = fiscalItems.filter(
+          (fiscalItem) =>
+            fiscalItem.purchaseItemId === item.id && fiscalItem.remainingQuantity > 0.0001,
+        );
+        if (available.length === 1) {
+          selections[item.id] = available[0]!.id;
+          quantities[item.id] = editableNumber(
+            Math.min(purchaseRemaining, available[0]!.remainingQuantity),
+          );
+        } else {
+          quantities[item.id] = available.length
+            ? ''
+            : editableNumber(purchaseRemaining);
+        }
+      }
+      setReceiptPurchase(purchase);
+      setReceiptFiscalItems(fiscalItems);
+      setReceiptFiscalSelections(selections);
+      setReceiptDate(new Date().toISOString().slice(0, 10));
+      setReceiptNotes('');
+      setReceiptQuantities(quantities);
+      setDetailOpen(false);
+      setReceiptOpen(true);
+    } catch (requestError) {
+      setError(errorMessage(requestError));
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function saveReceipt() {
+    if (!receiptPurchase) return;
+    const receiptItems = receiptPurchase.items
+      .map((item) => ({
+        purchaseItemId: item.id,
+        invoiceDocumentItemId: receiptFiscalSelections[item.id] || null,
+        quantity: Number((receiptQuantities[item.id] ?? '').replace(',', '.')),
+      }))
+      .filter((item) => Number.isFinite(item.quantity) && item.quantity > 0);
+    if (!receiptItems.length) {
+      setError('Informe ao menos uma quantidade recebida.');
+      return;
+    }
+    const itemWithoutFiscalSelection = receiptItems.find(
+      (item) =>
+        receiptFiscalItems.some(
+          (fiscalItem) => fiscalItem.purchaseItemId === item.purchaseItemId,
+        ) && !item.invoiceDocumentItemId,
+    );
+    if (itemWithoutFiscalSelection) {
+      setError('Selecione a NF-e correspondente para cada quantidade recebida.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const input: CreateGoodsReceiptInput = {
+        expectedPurchaseUpdatedAt: receiptPurchase.updatedAt,
+        receivedAt: receiptDate,
+        notes: receiptNotes.trim() || null,
+        items: receiptItems,
+      };
+      await apiPost<GoodsReceipt>(
+        `/procure-to-pay/purchases/${receiptPurchase.id}/receipts`,
+        input,
+        { token: accessToken, organizationId },
+      );
+      const [detail, receipts] = await Promise.all([
+        apiGet<PurchaseDetail>(`/purchases/${receiptPurchase.id}`, {
+          token: accessToken,
+          organizationId,
+        }),
+        apiGet<GoodsReceipt[]>(
+          `/procure-to-pay/purchases/${receiptPurchase.id}/receipts`,
+          { token: accessToken, organizationId },
+        ),
+      ]);
+      setPurchases((current) => replacePurchase(current, detail));
+      setDetailPurchase(detail);
+      setGoodsReceipts(receipts);
+      setReceiptOpen(false);
+      setReceiptPurchase(null);
+      setReceiptFiscalItems([]);
+      setReceiptFiscalSelections({});
+      setDetailOpen(true);
+      setRevision((current) => current + 1);
+      onChanged();
+    } catch (requestError) {
+      setError(errorMessage(requestError));
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -396,7 +535,9 @@ export function PurchasesView({
         <span className="count-label">{visiblePurchases.length} compras</span>
       </section>
 
-      {error && !dialogOpen && !detailOpen && !lifecycleOpen && <div className="inline-error">{error}</div>}
+      {error && !dialogOpen && !detailOpen && !lifecycleOpen && !receiptOpen && (
+        <div className="inline-error">{error}</div>
+      )}
 
       {viewMode === 'KANBAN' ? (
         loading ? <div className="panel table-loading">Carregando compras</div> : (
@@ -423,6 +564,7 @@ export function PurchasesView({
                       const previous = previousWorkflowStage(purchase.workflowStage);
                       const next = nextWorkflowStage(purchase.workflowStage);
                       const editable = canEditPurchase(purchase);
+                      const financial = financialByPurchase.get(purchase.id);
                       return (
                         <article
                           className={`purchase-kanban-card ${purchase.status === 'CANCELLED' ? 'cancelled' : ''}`}
@@ -440,6 +582,13 @@ export function PurchasesView({
                           <p>{purchase.supplierName}</p>
                           <strong className="kanban-card-total">{currency.format(purchase.total)}</strong>
                           <small>{purchase.departments.join(', ') || 'Sem centro de custo'}</small>
+                          {financial && (
+                            <div className="purchase-financial-status">
+                              <span><PackageCheck size={13} />{financial.received ? 'Recebido' : 'Recebimento pendente'}</span>
+                              <span><FileCheck2 size={13} />{financial.invoiceCount} NF-e</span>
+                              <span><Banknote size={13} />{currency.format(financial.balance)} em aberto</span>
+                            </div>
+                          )}
                           {purchase.approval && (
                             <div className={`kanban-approval ${purchase.approval.status.toLowerCase()}`}>
                               <span>{purchase.approval.ruleName}</span>
@@ -652,6 +801,18 @@ export function PurchasesView({
                   </strong>
                 </span>
                 <span>
+                  <small>Recebimento</small>
+                  <strong>{detailFinancial?.received ? 'Integral' : 'Pendente ou parcial'}</strong>
+                </span>
+                <span>
+                  <small>Notas vinculadas</small>
+                  <strong>{detailFinancial?.invoiceCount ?? (detailPurchase.invoiceLinked ? 1 : 0)}</strong>
+                </span>
+                <span>
+                  <small>Saldo financeiro</small>
+                  <strong>{currency.format(detailFinancial?.balance ?? detailPurchase.total)}</strong>
+                </span>
+                <span>
                   <small>Total</small>
                   <strong>{currency.format(detailPurchase.total)}</strong>
                 </span>
@@ -711,6 +872,36 @@ export function PurchasesView({
                     </tbody>
                   </table>
                 </div>
+              </section>
+
+              <section className="purchase-detail-section">
+                <header>
+                  <strong>Recebimentos</strong>
+                  <span>{goodsReceipts.length} conferencia(s)</span>
+                </header>
+                {goodsReceipts.length ? (
+                  <div className="receipt-history-list">
+                    {goodsReceipts.map((receipt) => (
+                      <div className="receipt-history-row" key={receipt.id}>
+                        <span>
+                          <strong>{formatDate(receipt.receivedAt)}</strong>
+                          <small>{receipt.confirmedByName}</small>
+                        </span>
+                        <span>
+                          <strong>{receipt.items.length} item(ns)</strong>
+                          <small>{receipt.notes ?? 'Sem observacao'}</small>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="detail-empty">Nenhum recebimento confirmado.</p>
+                )}
+                {canWrite && ['SUPPLIER_INVOICED', 'RECEIVED'].includes(detailPurchase.workflowStage) && (
+                  <button className="secondary-button" onClick={() => void openReceipt(detailPurchase)} type="button">
+                    <PackageCheck size={16} />Confirmar recebimento
+                  </button>
+                )}
               </section>
 
               <section className="purchase-detail-section">
@@ -822,6 +1013,89 @@ export function PurchasesView({
                 Fechar
               </button>
             </footer>
+          </section>
+        </div>
+      )}
+
+      {receiptOpen && receiptPurchase && (
+        <div className="modal-backdrop" role="presentation">
+          <section aria-labelledby="receipt-title" aria-modal="true" className="modal-panel modal-wide" role="dialog">
+            <header className="modal-header">
+              <span><p className="eyebrow">Conferencia fisica</p><h2 id="receipt-title">Receber {receiptPurchase.number}</h2></span>
+              <button className="icon-button" onClick={() => { setReceiptOpen(false); setDetailOpen(true); }} title="Fechar" type="button"><X size={18} /></button>
+            </header>
+            <div className="management-form">
+              <label>Data do recebimento<input onChange={(event) => setReceiptDate(event.target.value)} type="date" value={receiptDate} /></label>
+              <div className="receipt-item-editor">
+                <div className="receipt-item-header"><span>Item</span><span>Pedido</span><span>Ja recebido</span><span>NF-e</span><span>Receber agora</span></div>
+                {receiptPurchase.items.map((item) => {
+                  const alreadyReceived = receivedQuantityByItem(goodsReceipts).get(item.id) ?? 0;
+                  const remaining = Math.max(0, item.quantity - alreadyReceived);
+                  const fiscalOptions = receiptFiscalItems.filter(
+                    (fiscalItem) => fiscalItem.purchaseItemId === item.id,
+                  );
+                  const selectedFiscalItem = fiscalOptions.find(
+                    (fiscalItem) => fiscalItem.id === receiptFiscalSelections[item.id],
+                  );
+                  const maximum = selectedFiscalItem
+                    ? Math.min(remaining, selectedFiscalItem.remainingQuantity)
+                    : fiscalOptions.length
+                      ? 0
+                      : remaining;
+                  return (
+                    <div className="receipt-item-row" key={item.id}>
+                      <span><strong>{item.description}</strong><small>{item.unit ?? 'Unidade nao informada'}</small></span>
+                      <span>{item.quantity}</span>
+                      <span>{alreadyReceived}</span>
+                      {fiscalOptions.length ? (
+                        <label>
+                          <span className="sr-only">NF-e de {item.description}</span>
+                          <select
+                            disabled={remaining <= 0}
+                            onChange={(event) => {
+                              const selectedId = event.target.value;
+                              const selected = fiscalOptions.find(
+                                (fiscalItem) => fiscalItem.id === selectedId,
+                              );
+                              setReceiptFiscalSelections((current) => ({
+                                ...current,
+                                [item.id]: selectedId,
+                              }));
+                              setReceiptQuantities((current) => ({
+                                ...current,
+                                [item.id]: selected
+                                  ? editableNumber(
+                                      Math.min(remaining, selected.remainingQuantity),
+                                    )
+                                  : '',
+                              }));
+                            }}
+                            value={receiptFiscalSelections[item.id] ?? ''}
+                          >
+                            <option value="">Selecione</option>
+                            {fiscalOptions.map((fiscalItem) => (
+                              <option
+                                disabled={fiscalItem.remainingQuantity <= 0.0001}
+                                key={fiscalItem.id}
+                                value={fiscalItem.id}
+                              >
+                                NF {fiscalItem.invoiceNumber ?? 'sem numero'} | saldo {fiscalItem.remainingQuantity}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : (
+                        <small className="receipt-fiscal-empty">Sem linha fiscal</small>
+                      )}
+                      <label><span className="sr-only">Quantidade recebida de {item.description}</span><input disabled={remaining <= 0 || maximum <= 0} max={maximum} min="0" onChange={(event) => setReceiptQuantities((current) => ({ ...current, [item.id]: event.target.value }))} step="0.0001" type="number" value={receiptQuantities[item.id] ?? ''} /></label>
+                    </div>
+                  );
+                })}
+              </div>
+              <label>Observacoes<textarea maxLength={1000} onChange={(event) => setReceiptNotes(event.target.value)} rows={3} value={receiptNotes} /></label>
+            </div>
+            {error && <div className="form-error">{error}</div>}
+            <footer className="modal-actions"><button className="secondary-button" onClick={() => { setReceiptOpen(false); setDetailOpen(true); }} type="button">Voltar</button><button className="primary-button" disabled={submitting || !receiptDate} onClick={() => void saveReceipt()} type="button"><PackageCheck size={16} />{submitting ? 'Confirmando' : 'Confirmar recebimento'}</button></footer>
           </section>
         </div>
       )}
@@ -1151,4 +1425,45 @@ function formatDateTime(value: string): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Nao foi possivel registrar a compra.';
+}
+
+function receivedQuantityByItem(receipts: GoodsReceipt[]): Map<string, number> {
+  const totals = new Map<string, number>();
+  receipts
+    .filter((receipt) => receipt.status === 'CONFIRMED')
+    .flatMap((receipt) => receipt.items)
+    .forEach((item) => {
+      totals.set(item.purchaseItemId, (totals.get(item.purchaseItemId) ?? 0) + item.quantity);
+    });
+  return totals;
+}
+
+function summarizePayables(
+  payables: PayableKanbanCard[],
+): Map<string, { balance: number; invoiceCount: number; received: boolean }> {
+  const grouped = new Map<
+    string,
+    { balance: number; invoiceNumbers: Set<string>; received: boolean }
+  >();
+  payables.forEach((payable) => {
+    const current = grouped.get(payable.purchaseId) ?? {
+      balance: 0,
+      invoiceNumbers: new Set<string>(),
+      received: true,
+    };
+    current.balance += payable.balance;
+    current.received = current.received && payable.received;
+    payable.invoiceNumbers.forEach((number) => current.invoiceNumbers.add(number));
+    grouped.set(payable.purchaseId, current);
+  });
+  return new Map(
+    [...grouped].map(([purchaseId, value]) => [
+      purchaseId,
+      {
+        balance: value.balance,
+        invoiceCount: value.invoiceNumbers.size,
+        received: value.received,
+      },
+    ]),
+  );
 }

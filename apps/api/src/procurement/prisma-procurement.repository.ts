@@ -80,7 +80,20 @@ const approvalRuleInclude = {
 } satisfies Prisma.ApprovalRuleInclude;
 
 const payablePurchaseInclude = {
-  installments: { orderBy: { sequence: 'asc' } },
+  installments: {
+    include: {
+      fiscalDocument: true,
+      instructionSnapshots: { orderBy: { version: 'desc' }, take: 1 },
+      settlements: true,
+    },
+    orderBy: { sequence: 'asc' },
+  },
+  fiscalDocumentLinks: { include: { invoiceDocument: true } },
+  items: {
+    include: {
+      receiptItems: { where: { receipt: { status: 'CONFIRMED' } } },
+    },
+  },
   supplier: true,
 } satisfies Prisma.PurchaseInclude;
 
@@ -293,6 +306,8 @@ export class PrismaProcurementRepository extends ProcurementRepository {
             paymentMethod: input.paymentMethod,
             pixKeyType: input.pixKeyType ?? null,
             pixKey: input.pixKey ?? null,
+            pixBeneficiaryName: input.pixBeneficiaryName ?? null,
+            pixBeneficiaryDocument: input.pixBeneficiaryDocument ?? null,
             paymentLink: input.paymentLink ?? null,
             defaultCostCenterId: input.defaultCostCenterId,
             email: input.email,
@@ -1554,6 +1569,11 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     sequence: number,
     input: UpdatePayableInput,
   ): Promise<PurchaseDetail> {
+    if (input.paidAt !== undefined) {
+      throw new BadRequestException(
+        'Registre o pagamento no fluxo financeiro com valor, identificador e comprovante.',
+      );
+    }
     if (sequence < 1) {
       throw new BadRequestException('A compra ainda nao possui parcelas para alterar.');
     }
@@ -1595,7 +1615,6 @@ export class PrismaProcurementRepository extends ProcurementRepository {
         where: { purchaseId_sequence: { purchaseId, sequence } },
         data: {
           ...(input.dueDate !== undefined && { dueDate: requiredDate(input.dueDate) }),
-          ...(input.paidAt !== undefined && { paidAt: toDate(input.paidAt) }),
           ...(input.paymentChannel !== undefined && {
             paymentChannel: input.paymentChannel,
           }),
@@ -1615,7 +1634,6 @@ export class PrismaProcurementRepository extends ProcurementRepository {
           resource: 'accounts_payable',
           resourceId: installment.id,
           metadata: {
-            paidAt: input.paidAt,
             paymentChannel: input.paymentChannel,
             purchaseId,
             sequence,
@@ -2101,6 +2119,8 @@ function toSupplier(supplier: SupplierRecord): Supplier {
     paymentMethod: supplier.paymentMethod,
     pixKeyType: supplier.pixKeyType,
     pixKey: supplier.pixKey,
+    pixBeneficiaryName: supplier.pixBeneficiaryName,
+    pixBeneficiaryDocument: supplier.pixBeneficiaryDocument,
     paymentLink: supplier.paymentLink,
     defaultCostCenterId: supplier.defaultCostCenterId,
     defaultCostCenterName: supplier.defaultCostCenter?.name ?? null,
@@ -2302,7 +2322,7 @@ function toPurchaseDetail(purchase: PurchaseDetailRecord): PurchaseDetail {
       fromStage: history.fromStage,
       toStage: history.toStage,
       changedById: history.changedById,
-      changedByName: history.changedBy.name,
+      changedByName: history.changedBy?.name ?? 'Automacao do sistema',
       reason: history.reason,
       createdAt: history.createdAt.toISOString(),
     })),
@@ -2674,6 +2694,23 @@ function assertManualStageTransition(
     }
     throw new BadRequestException('Esta mudanca de etapa nao e permitida.');
   }
+  if (workflowStageIndex(to) > workflowStageIndex(from)) {
+    if (to === 'SUPPLIER_INVOICED') {
+      throw new BadRequestException(
+        'Vincule uma nota fiscal ao pedido; o faturamento e atualizado pela conciliacao fiscal.',
+      );
+    }
+    if (to === 'RECEIVED') {
+      throw new BadRequestException(
+        'Confirme os itens recebidos; o recebimento nao pode ser avancado manualmente.',
+      );
+    }
+    if (to === 'COMPLETED') {
+      throw new BadRequestException(
+        'O pedido sera concluido quando estiver integralmente recebido e sem saldo financeiro.',
+      );
+    }
+  }
   if (
     (to === 'SUPPLIER_INVOICED' || to === 'COMPLETED') &&
     !invoiceLinked
@@ -2790,23 +2827,42 @@ function buildAccountsPayableReport(
   for (const purchase of purchases) {
     const defaultChannel = defaultSupplierPaymentChannel(purchase.supplier);
     const defaultReference = defaultSupplierPaymentReference(purchase.supplier);
+    const linkedInvoiceNumbers = payableInvoiceNumbers(purchase);
+    const received =
+      purchase.items.length > 0 &&
+      purchase.items.every(
+        (item) =>
+          roundMoney(
+            item.receiptItems.reduce(
+              (sum, receiptItem) => sum + Number(receiptItem.quantity),
+              0,
+            ),
+          ) >= Number(item.quantity) - 0.0001,
+      );
     if (!purchase.installments.length) {
       allRows.push({
         id: `unscheduled-${purchase.id}`,
         purchaseId: purchase.id,
         purchaseNumber: purchase.number,
         purchaseUpdatedAt: purchase.updatedAt.toISOString(),
-        invoiceNumber: purchase.invoiceNumber,
+        invoiceNumber: linkedInvoiceNumbers[0] ?? purchase.invoiceNumber,
+        invoiceNumbers: linkedInvoiceNumbers,
         supplierId: purchase.supplierId,
         supplierName: purchase.supplier.tradeName ?? purchase.supplier.legalName,
         sequence: 0,
         dueDate: null,
         amount: Number(purchase.total),
+        paidAmount: 0,
+        balance: Number(purchase.total),
         paidAt: null,
         status: 'UNSCHEDULED',
         paymentChannel: defaultChannel,
         paymentReference: defaultReference,
         paymentNotes: null,
+        paymentWorkflowStage: null,
+        received,
+        advancePayment: false,
+        settlementCount: 0,
         workflowStage: purchase.workflowStage,
       });
       continue;
@@ -2814,22 +2870,63 @@ function buildAccountsPayableReport(
     for (const installment of purchase.installments) {
       const dueDate = toIsoDate(installment.dueDate) as string;
       const paidAt = toIsoDate(installment.paidAt);
+      const settlementTotal = roundMoney(
+        installment.settlements.reduce(
+          (sum, settlement) => sum + Number(settlement.amount),
+          0,
+        ),
+      );
+      const amount = Number(installment.amount);
+      const paidAmount = installment.paidAt && settlementTotal === 0
+        ? amount
+        : settlementTotal;
+      const balance = Math.max(0, roundMoney(amount - paidAmount));
+      const instruction = installment.instructionSnapshots[0];
+      const invoiceNumbers = [
+        ...new Set([
+          ...linkedInvoiceNumbers,
+          ...(installment.fiscalDocument?.invoiceNumber
+            ? [installment.fiscalDocument.invoiceNumber]
+            : []),
+        ]),
+      ];
+      const status =
+        balance <= 0.001
+          ? 'PAID'
+          : dueDate < today
+            ? 'OVERDUE'
+            : paidAmount > 0.001
+              ? 'PARTIALLY_PAID'
+              : 'PENDING';
       allRows.push({
         id: installment.id,
         purchaseId: purchase.id,
         purchaseNumber: purchase.number,
         purchaseUpdatedAt: purchase.updatedAt.toISOString(),
-        invoiceNumber: purchase.invoiceNumber,
+        invoiceNumber: invoiceNumbers[0] ?? purchase.invoiceNumber,
+        invoiceNumbers,
         supplierId: purchase.supplierId,
         supplierName: purchase.supplier.tradeName ?? purchase.supplier.legalName,
         sequence: installment.sequence,
         dueDate,
-        amount: Number(installment.amount),
+        amount,
+        paidAmount,
+        balance,
         paidAt,
-        status: paidAt ? 'PAID' : dueDate < today ? 'OVERDUE' : 'PENDING',
-        paymentChannel: installment.paymentChannel ?? defaultChannel,
-        paymentReference: installment.paymentReference ?? defaultReference,
-        paymentNotes: installment.paymentNotes,
+        status,
+        paymentChannel:
+          instruction?.paymentChannel ?? installment.paymentChannel ?? defaultChannel,
+        paymentReference:
+          instruction?.paymentReference ??
+          instruction?.pixCopyPaste ??
+          instruction?.pixKey ??
+          installment.paymentReference ??
+          defaultReference,
+        paymentNotes: instruction?.notes ?? installment.paymentNotes,
+        paymentWorkflowStage: balance <= 0.001 ? 'PAID' : installment.paymentStage,
+        received,
+        advancePayment: installment.advancePayment,
+        settlementCount: installment.settlements.length,
         workflowStage: purchase.workflowStage,
       });
     }
@@ -2860,12 +2957,12 @@ function buildAccountsPayableReport(
       rows
         .filter(
           (row) =>
-            row.status === 'PENDING' &&
+            (row.status === 'PENDING' || row.status === 'PARTIALLY_PAID') &&
             row.dueDate !== null &&
             row.dueDate >= today &&
             row.dueDate <= end,
         )
-        .reduce((sum, row) => sum + row.amount, 0),
+        .reduce((sum, row) => sum + row.balance, 0),
     );
   };
   return {
@@ -2874,21 +2971,21 @@ function buildAccountsPayableReport(
     totals: {
       open: roundMoney(
         rows
-          .filter((row) => row.status === 'PENDING' || row.status === 'OVERDUE')
-          .reduce((sum, row) => sum + row.amount, 0),
+          .filter((row) =>
+            ['PENDING', 'PARTIALLY_PAID', 'OVERDUE'].includes(row.status),
+          )
+          .reduce((sum, row) => sum + row.balance, 0),
       ),
       overdue: roundMoney(
         rows
           .filter((row) => row.status === 'OVERDUE')
-          .reduce((sum, row) => sum + row.amount, 0),
+          .reduce((sum, row) => sum + row.balance, 0),
       ),
       dueIn7Days: dueIn(7),
       dueIn15Days: dueIn(15),
       dueIn30Days: dueIn(30),
       paid: roundMoney(
-        rows
-          .filter((row) => row.status === 'PAID')
-          .reduce((sum, row) => sum + row.amount, 0),
+        rows.reduce((sum, row) => sum + row.paidAmount, 0),
       ),
       unscheduled: roundMoney(
         rows
@@ -2899,6 +2996,19 @@ function buildAccountsPayableReport(
     },
     rows,
   };
+}
+
+function payableInvoiceNumbers(purchase: PayablePurchaseRecord): string[] {
+  return [
+    ...new Set(
+      purchase.fiscalDocumentLinks
+        .filter((link) =>
+          ['MATCHED_EXACT', 'MATCHED_MANUAL'].includes(link.matchStatus),
+        )
+        .map((link) => link.invoiceDocument.invoiceNumber)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
 }
 
 function defaultSupplierPaymentChannel(supplier: {

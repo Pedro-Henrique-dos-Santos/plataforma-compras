@@ -102,6 +102,8 @@ export const supplierSchema = z.object({
   paymentMethod: z.string().trim().max(80).nullable(),
   pixKeyType: pixKeyTypeSchema.nullable(),
   pixKey: z.string().trim().max(160).nullable(),
+  pixBeneficiaryName: z.string().trim().max(160).nullable(),
+  pixBeneficiaryDocument: z.string().trim().max(18).nullable(),
   paymentLink: paymentUrlSchema.nullable(),
   defaultCostCenterId: z.string().uuid().nullable(),
   defaultCostCenterName: z.string().trim().max(120).nullable(),
@@ -131,6 +133,8 @@ export const createSupplierInputSchema = z
       pixKeyTypeSchema.nullable(),
     ).optional(),
     pixKey: optionalText(160).optional(),
+    pixBeneficiaryName: optionalText(160).optional(),
+    pixBeneficiaryDocument: optionalText(18).optional(),
     paymentLink: optionalUrl.optional(),
     defaultCostCenterId: z.preprocess(
       (value) => (value === '' || value === undefined ? null : value),
@@ -162,6 +166,8 @@ export const updateSupplierInputSchema = z
       pixKeyTypeSchema.nullable(),
     ).optional(),
     pixKey: editableOptionalText(160),
+    pixBeneficiaryName: editableOptionalText(160),
+    pixBeneficiaryDocument: editableOptionalText(18),
     paymentLink: editableOptionalUrl,
     defaultCostCenterId: z.preprocess(
       (value) => (value === '' ? null : value),
@@ -191,7 +197,20 @@ export const updateSupplierInputSchema = z
     }
     if (hasType && hasKey) {
       validatePixFields(
-        { pixKeyType: value.pixKeyType ?? null, pixKey: value.pixKey ?? null },
+        {
+          pixBeneficiaryDocument: value.pixBeneficiaryDocument ?? null,
+          pixBeneficiaryName: value.pixBeneficiaryName ?? null,
+          pixKeyType: value.pixKeyType ?? null,
+          pixKey: value.pixKey ?? null,
+        },
+        context,
+      );
+    } else if (value.pixBeneficiaryDocument !== undefined) {
+      validatePixFields(
+        {
+          pixBeneficiaryDocument: value.pixBeneficiaryDocument,
+          pixBeneficiaryName: value.pixBeneficiaryName,
+        },
         context,
       );
     }
@@ -280,6 +299,8 @@ export type SupplierPriceImportResult = z.infer<typeof supplierPriceImportResult
 
 function validatePixFields(
   value: {
+    pixBeneficiaryDocument?: string | null;
+    pixBeneficiaryName?: string | null;
     pixKeyType?: PixKeyType | null;
     pixKey?: string | null;
   },
@@ -294,6 +315,18 @@ function validatePixFields(
       path: pixKeyType === null ? ['pixKeyType'] : ['pixKey'],
     });
     return;
+  }
+  const beneficiaryDocument = value.pixBeneficiaryDocument ?? null;
+  if (
+    beneficiaryDocument &&
+    !isValidCpf(beneficiaryDocument) &&
+    !isValidCnpj(beneficiaryDocument)
+  ) {
+    context.addIssue({
+      code: 'custom',
+      message: 'O documento do beneficiario Pix e invalido.',
+      path: ['pixBeneficiaryDocument'],
+    });
   }
   if (!pixKeyType || !pixKey) return;
   const valid = {

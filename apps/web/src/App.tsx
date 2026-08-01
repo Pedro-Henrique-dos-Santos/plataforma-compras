@@ -69,14 +69,19 @@ const ApprovalsView = lazy(() =>
     default: module.ApprovalsView,
   })),
 );
-const PayablesView = lazy(() =>
-  import('./components/PayablesView').then((module) => ({
-    default: module.PayablesView,
+const FinancialWorkflowView = lazy(() =>
+  import('./components/FinancialWorkflowView').then((module) => ({
+    default: module.FinancialWorkflowView,
   })),
 );
 const ApprovalSettingsView = lazy(() =>
   import('./components/ApprovalSettingsView').then((module) => ({
     default: module.ApprovalSettingsView,
+  })),
+);
+const FinancialSettingsView = lazy(() =>
+  import('./components/FinancialSettingsView').then((module) => ({
+    default: module.FinancialSettingsView,
   })),
 );
 const SuppliersView = lazy(() =>
@@ -99,9 +104,9 @@ const IntegrationsView = lazy(() =>
     default: module.IntegrationsView,
   })),
 );
-const InvoiceDocumentsView = lazy(() =>
-  import('./components/InvoiceDocumentsView').then((module) => ({
-    default: module.InvoiceDocumentsView,
+const FiscalWorkspaceView = lazy(() =>
+  import('./components/FiscalWorkspaceView').then((module) => ({
+    default: module.FiscalWorkspaceView,
   })),
 );
 
@@ -470,8 +475,10 @@ export default function App() {
           />
         )}
         {view === 'payables' && (
-          <PayablesView
+          <FinancialWorkflowView
             accessToken={accessToken}
+            canActOnApprovals={capabilities.canActOnPaymentApprovals}
+            canSettle={capabilities.canSettlePayments}
             canWrite={capabilities.canWritePayables}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}
@@ -479,6 +486,12 @@ export default function App() {
         )}
         {view === 'approval-settings' && capabilities.canManageApprovals && (
           <ApprovalSettingsView
+            accessToken={accessToken}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'financial-settings' && capabilities.canManagePaymentApprovals && (
+          <FinancialSettingsView
             accessToken={accessToken}
             organizationId={activeOrganization.id}
           />
@@ -517,8 +530,9 @@ export default function App() {
           />
         )}
         {view === 'invoice-documents' && (
-          <InvoiceDocumentsView
+          <FiscalWorkspaceView
             accessToken={accessToken}
+            canConfigure={capabilities.canManageFiscalIntegration}
             canWrite={capabilities.canWriteInvoices}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}

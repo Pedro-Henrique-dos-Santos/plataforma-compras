@@ -45,6 +45,26 @@ describe('invoice XML parser', () => {
     expect(result.extraction.accessKey).toHaveLength(44);
   });
 
+  it('preserves alphanumeric CNPJ and access key fields', () => {
+    const accessKey = '35260712ABC34501DE35550010000000011123456789';
+    const result = parseInvoiceXml(
+      Buffer.from(
+        nfeXml
+          .replace(
+            '35260711222333000181550010000012341000012345',
+            accessKey,
+          )
+          .replace(
+            '<CNPJ>11222333000181</CNPJ>',
+            '<CNPJ>12ABC34501DE35</CNPJ>',
+          ),
+      ),
+    );
+
+    expect(result.extraction.supplierDocument).toBe('12ABC34501DE35');
+    expect(result.extraction.accessKey).toBe(accessKey);
+  });
+
   it('keeps maintenance NFS-e in the purchasing review flow', () => {
     const result = parseInvoiceXml(
       Buffer.from(nfseXml('Manutencao preventiva dos equipamentos da clinica')),

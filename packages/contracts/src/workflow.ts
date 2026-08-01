@@ -209,7 +209,7 @@ export const purchaseStageHistorySchema = z.object({
   id: z.string().uuid(),
   fromStage: purchaseWorkflowStageSchema.nullable(),
   toStage: purchaseWorkflowStageSchema,
-  changedById: z.string().uuid(),
+  changedById: z.string().uuid().nullable(),
   changedByName: z.string(),
   reason: z.string().nullable(),
   createdAt: z.string().datetime(),

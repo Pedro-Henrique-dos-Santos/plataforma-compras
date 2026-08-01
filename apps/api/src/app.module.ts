@@ -15,6 +15,7 @@ import { OrganizationsModule } from './organizations/organizations.module.js';
 import { validateEnvironment } from './config/environment.js';
 import { PersistenceModule } from './persistence/persistence.module.js';
 import { PurchasesModule } from './purchases/purchases.module.js';
+import { ProcureToPayModule } from './procure-to-pay/procure-to-pay.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 
 @Module({
@@ -36,6 +37,7 @@ import { ReportsModule } from './reports/reports.module.js';
     MasterDataModule,
     NotificationsModule,
     PurchasesModule,
+    ProcureToPayModule,
     ReportsModule,
   ],
   controllers: [HealthController],

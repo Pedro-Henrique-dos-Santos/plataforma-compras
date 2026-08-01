@@ -129,6 +129,12 @@ export class PrismaInvoiceDocumentsRepository extends InvoiceDocumentsRepository
       confidence: input.extraction.confidence,
       invoiceNumber: input.extraction.invoiceNumber,
       accessKey: input.extraction.accessKey,
+      issuerDocument: input.extraction.supplierDocument,
+      fiscalIssuedAt: input.extraction.issuedAt
+        ? new Date(`${input.extraction.issuedAt}T00:00:00.000Z`)
+        : null,
+      fiscalTotal: input.extraction.total,
+      matchStatus: status === 'REVIEW_REQUIRED' ? 'REVIEW_REQUIRED' : 'UNMATCHED',
       parsedData: jsonValue(input.extraction),
       reviewData: Prisma.DbNull,
       warnings: input.warnings,
@@ -167,6 +173,10 @@ export class PrismaInvoiceDocumentsRepository extends InvoiceDocumentsRepository
         status: 'PROCESSING',
         parser: null,
         confidence: null,
+        issuerDocument: null,
+        fiscalIssuedAt: null,
+        fiscalTotal: null,
+        matchStatus: 'UNMATCHED',
         parsedData: Prisma.DbNull,
         reviewData: Prisma.DbNull,
         warnings: [],
@@ -200,6 +210,10 @@ export class PrismaInvoiceDocumentsRepository extends InvoiceDocumentsRepository
         status: 'READY',
         invoiceNumber: review.invoiceNumber,
         accessKey: review.accessKey,
+        issuerDocument: review.supplierDocument,
+        fiscalIssuedAt: new Date(`${review.issuedAt}T00:00:00.000Z`),
+        fiscalTotal: review.total,
+        matchStatus: 'REVIEW_REQUIRED',
         reviewData: jsonValue(review),
         reviewedById: actor.id,
         reviewedAt: new Date(),
@@ -228,6 +242,7 @@ export class PrismaInvoiceDocumentsRepository extends InvoiceDocumentsRepository
     }
     await this.updateExisting(organizationId, id, {
       status: 'OUT_OF_SCOPE',
+      matchStatus: 'REJECTED',
       reviewedById: actor.id,
       reviewedAt: new Date(),
       warnings: [...current.warnings, reason],
@@ -278,6 +293,11 @@ export class PrismaInvoiceDocumentsRepository extends InvoiceDocumentsRepository
     if (!current.review) {
       throw new ConflictException('A nota precisa estar revisada antes da importacao.');
     }
+    if (current.purchaseId && current.purchaseId !== purchaseId) {
+      throw new ConflictException(
+        'O documento fiscal ja esta vinculado a outro pedido.',
+      );
+    }
     const finalReview = { ...current.review, supplierId };
     const updated = await this.prisma.$transaction(async (transaction) => {
       const result = await transaction.invoiceDocument.updateMany({
@@ -285,6 +305,10 @@ export class PrismaInvoiceDocumentsRepository extends InvoiceDocumentsRepository
         data: {
           status: 'IMPORTED',
           purchaseId,
+          issuerDocument: finalReview.supplierDocument,
+          fiscalIssuedAt: new Date(`${finalReview.issuedAt}T00:00:00.000Z`),
+          fiscalTotal: finalReview.total,
+          matchStatus: 'MATCHED_MANUAL',
           reviewData: jsonValue(finalReview),
           importedById: actor.id,
           importedAt: new Date(),
@@ -292,6 +316,72 @@ export class PrismaInvoiceDocumentsRepository extends InvoiceDocumentsRepository
         },
       });
       if (!result.count) return false;
+      await transaction.purchaseInvoiceLink.upsert({
+        where: {
+          organizationId_purchaseId_invoiceDocumentId: {
+            organizationId,
+            purchaseId,
+            invoiceDocumentId: id,
+          },
+        },
+        create: {
+          organizationId,
+          purchaseId,
+          invoiceDocumentId: id,
+          matchStatus: 'MATCHED_MANUAL',
+          matchedById: actor.id,
+          matchReason: 'Documento importado apos revisao humana do XML ou PDF.',
+        },
+        update: {
+          matchStatus: 'MATCHED_MANUAL',
+          matchedById: actor.id,
+          matchReason: 'Documento importado apos revisao humana do XML ou PDF.',
+        },
+      });
+      const existingFiscalItems = await transaction.fiscalDocumentItem.count({
+        where: { organizationId, invoiceDocumentId: id },
+      });
+      if (!existingFiscalItems) {
+        const purchaseItems = await transaction.purchaseItem.findMany({
+          where: { organizationId, purchaseId },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        });
+        const matchedPurchaseItemIds = new Set<string>();
+        await transaction.fiscalDocumentItem.createMany({
+          data: finalReview.items.map((item, index) => {
+            const unitPrice = item.negotiatedPrice ?? item.unitPrice;
+            const candidates = purchaseItems.filter(
+              (purchaseItem) =>
+                !matchedPurchaseItemIds.has(purchaseItem.id) &&
+                normalizeText(purchaseItem.description) === normalizeText(item.description) &&
+                Math.abs(Number(purchaseItem.quantity) - item.quantity) <= 0.0001 &&
+                Math.abs(
+                  Number(purchaseItem.negotiatedPrice ?? purchaseItem.unitPrice) - unitPrice,
+                ) <= 0.0001,
+            );
+            const matchedPurchaseItemId = candidates.length === 1 ? candidates[0]!.id : null;
+            if (matchedPurchaseItemId) matchedPurchaseItemIds.add(matchedPurchaseItemId);
+            return {
+              organizationId,
+              invoiceDocumentId: id,
+              matchedPurchaseItemId,
+              sequence: index + 1,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unitPrice,
+              total: Math.round(item.quantity * unitPrice * 100) / 100,
+            };
+          }),
+        });
+      }
+      await assignImportedInstallments(
+        transaction,
+        organizationId,
+        purchaseId,
+        id,
+        finalReview.total,
+      );
       await transaction.auditLog.create({
         data: {
           actorUserId: actor.id,
@@ -299,7 +389,11 @@ export class PrismaInvoiceDocumentsRepository extends InvoiceDocumentsRepository
           action: 'IMPORT',
           resource: 'invoice_document',
           resourceId: id,
-          metadata: { purchaseId, supplierId },
+          metadata: {
+            fiscalMatchStatus: 'MATCHED_MANUAL',
+            purchaseId,
+            supplierId,
+          },
         },
       });
       return true;
@@ -411,6 +505,47 @@ function stringArray(value: Prisma.JsonValue): string[] {
 
 function jsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+async function assignImportedInstallments(
+  transaction: Prisma.TransactionClient,
+  organizationId: string,
+  purchaseId: string,
+  fiscalDocumentId: string,
+  fiscalTotal: number,
+): Promise<void> {
+  const installments = await transaction.installment.findMany({
+    where: { organizationId, purchaseId, fiscalDocumentId: null },
+    orderBy: [{ dueDate: 'asc' }, { sequence: 'asc' }],
+  });
+  const target = Math.round(fiscalTotal * 100);
+  let sum = 0;
+  const selected: string[] = [];
+  for (const installment of installments) {
+    const cents = Math.round(Number(installment.amount) * 100);
+    if (sum + cents > target) break;
+    sum += cents;
+    selected.push(installment.id);
+    if (sum === target) break;
+  }
+  if (sum !== target || !selected.length) return;
+  await transaction.installment.updateMany({
+    where: {
+      organizationId,
+      id: { in: selected },
+      fiscalDocumentId: null,
+    },
+    data: { fiscalDocumentId },
+  });
+}
+
+function normalizeText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
 }
 
 function isUniqueConstraintError(error: unknown): boolean {

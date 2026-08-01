@@ -7,7 +7,9 @@ Navegador
   -> React/Vite (Supabase Auth)
   -> API NestJS (identidade, tenant e permissoes)
   -> PostgreSQL/Supabase (dados operacionais)
+  -> Worker fiscal NF-e modelo 55 (SEFAZ Distribuicao DF-e)
   -> Worker de notificacoes (SMTP ou WhatsApp oficial)
+  -> Storage privado (XML, PDF, QR Pix e comprovantes)
   -> Google Sheets API (conciliacao durante a transicao)
   -> Google Drive para documentos durante a transicao
 ```
@@ -39,6 +41,7 @@ API e interface consomem a mesma matriz compartilhada de permissoes. O menu usa 
 | `PLATFORM_OWNER` | Plataforma | Cria empresas, administra acessos globais e consulta todos os ambientes |
 | `ORGANIZATION_ADMIN` | Empresa | Administra usuarios e dados de uma empresa |
 | `BUYER` | Empresa | Opera compras, fornecedores, precos e notas |
+| `FINANCE` | Empresa | Consulta titulos, decide aprovacoes financeiras e registra baixas conforme permissao |
 | `REPORT_VIEWER` | Empresa | Consulta dashboards e relatorios |
 
 O aprovador nao e um papel global adicional. Cada regra seleciona membros ativos
@@ -89,6 +92,25 @@ XML fiscal passa por validacao de assinatura, bloqueio de DTD e entidades extern
 
 O modelo OCR e resolvido e validado na inicializacao, usa cache somente leitura e nao depende de download durante o processamento. O container confirma essa disponibilidade com a rede desativada antes do smoke test. A extracao permanece em revisao humana e nunca grava uma compra diretamente.
 
+A integracao fiscal por empresa armazena CNPJ, ambiente, validade, fingerprint,
+estado, `ultNSU`, `maxNSU`, erro e proxima tentativa. Certificado A1 e senha sao
+entradas sem rota de download, criptografadas separadamente com AES-256-GCM. A
+API valida formato, senha, validade e, quando presente no certificado, o CNPJ.
+Substituicao e revogacao usam versao otimista para impedir sobrescrita por uma
+tela desatualizada.
+
+O worker usa trava consultiva por empresa, cursor de NSU, chave de acesso, hash
+e restricoes unicas para repetir lotes sem duplicar documentos. `docZip` e
+descompactado antes do parser. Certificado vencido interrompe novas consultas
+sem apagar o cursor; espera adaptativa respeita indisponibilidade e retornos sem
+novos documentos.
+
+Uma NF-e somente recebe vinculo automatico quando existe uma correspondencia
+unica e integral de tenant, CNPJ, referencia do pedido, itens, quantidades e
+valores. Qualquer diferenca resulta em `REVIEW_REQUIRED`. O rollout possui os
+modos `SHADOW`, `EXACT_MATCH` e `AUTO_SCIENCE`; eventos conclusivos de
+manifestacao permanecem manuais em todos eles.
+
 ## Operacao de compras
 
 A consulta detalhada de uma compra devolve itens, rateios, parcelas, observacoes e a referencia fiscal dentro do tenant ativo. A correcao substitui itens e parcelas em uma unica transacao, recalcula total e economia e preserva a origem e a referencia externa da importacao. Fornecedores ou centros de custo historicos que tenham sido inativados podem permanecer no registro existente, mas nao podem ser escolhidos para uma nova classificacao.
@@ -107,6 +129,13 @@ decisao ocorre em transacao serializavel; uma reprovacao exige comentario e
 devolve a compra para solicitacao, enquanto o quorum concluido promove o pedido.
 Edicoes ficam bloqueadas depois do envio e uma nota nao pode ser vinculada antes
 da aprovacao.
+
+O vinculo singular de nota permanece apenas como compatibilidade derivada. A
+relacao oficial aceita varias NF-e por pedido. Recebimentos registram itens,
+quantidades, responsavel, data, observacao e linha fiscal opcional. A quantidade
+recebida nao pode exceder o saldo do pedido nem o saldo da linha fiscal. O pedido
+so conclui quando estiver integralmente recebido, conciliado e sem saldo
+financeiro, salvo encerramento excepcional auditado.
 
 Cancelamento e reativacao exigem motivo, atualizam o estado sem apagar o
 historico e geram evento de auditoria. O cancelamento tambem encerra uma
@@ -129,16 +158,33 @@ persistidas.
 
 ## Contas a pagar
 
-A aprovacao da compra e o controle financeiro sao fluxos separados. Depois do
-quorum, uma notificacao opcional envia ao financeiro o pedido, fornecedor,
-total, parcelas e as instrucoes de Pix, boleto, cartao ou link disponiveis.
+A aprovacao da compra e o controle financeiro sao fluxos separados. Parcelas
+evoluem como titulos auditaveis vinculaveis a NF-e e recebimento. O Kanban
+financeiro usa `A conciliar`, `Aguardando aprovacao`, `Liberado para pagamento`,
+`Parcialmente pago` e `Pago`; vencimento e um alerta calculado, nao uma coluna.
 
-O modulo de contas a pagar deriva seus registros das parcelas da compra e
-identifica contas nao programadas, pendentes, vencidas e pagas. Uma compra
-aprovada sem parcelas pode receber uma conta unica pelo total integral. A API
-nao movimenta dinheiro nem acessa conta bancaria nesta fase; DDA, token
-financeiro, webhooks, aprovacao de pagamento e conciliacao bancaria pertencem a
-uma integracao futura.
+Cada empresa escolhe `DISABLED`, `PER_TITLE` ou `PER_PURCHASE_SNAPSHOT`. No modo
+agrupado, a fotografia inclui somente os titulos conciliados e elegiveis que
+existiam no pedido no instante da solicitacao. Titulos criados depois exigem uma
+nova aprovacao. Regras financeiras por valor definem responsaveis e quorum de
+uma ou duas pessoas sem reutilizar a regra de aprovacao da compra.
+
+Instrucao de pagamento e congelada por versao na aprovacao. Mudanca posterior
+cancela aprovacoes relacionadas e devolve o titulo para conferencia. Pix valida
+tipo e chave, CPF/CNPJ, telefone, e-mail, UUID v4, BR Code EMV, CRC, moeda, pais,
+valor e beneficiario verificavel. O fornecedor mantem nome e documento do
+beneficiario como referencia para detectar divergencias.
+
+Uma baixa e independente do titulo e exige valor, data, identificador bancario,
+autor e comprovante privado. Varias baixas podem liquidar o mesmo titulo. O
+saldo determina `PARTIALLY_PAID` ou `PAID`; a rota legada nao pode marcar pago
+sem comprovante. Adiantamentos exigem justificativa, evidencia e aprovacao
+extraordinaria.
+
+A segregacao opcional impede que solicitante ou aprovador da compra aprove o
+pagamento e que o aprovador financeiro registre a propria baixa. O sistema
+continua sem acessar conta bancaria, guardar senha, executar Pix ou confirmar
+pagamento automaticamente.
 
 ## Indicadores
 

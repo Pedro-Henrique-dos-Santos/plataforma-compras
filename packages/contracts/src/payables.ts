@@ -2,11 +2,13 @@ import { z } from 'zod';
 
 import { isoDateSchema, monetaryValueSchema, paymentChannelSchema } from './master-data.js';
 import { purchaseWorkflowStageSchema } from './workflow.js';
+import { paymentWorkflowStageSchema } from './procure-to-pay.js';
 
 export const payableStatusSchema = z.enum([
   'UNSCHEDULED',
   'PENDING',
   'OVERDUE',
+  'PARTIALLY_PAID',
   'PAID',
 ]);
 export type PayableStatus = z.infer<typeof payableStatusSchema>;
@@ -37,16 +39,23 @@ export const accountsPayableRowSchema = z.object({
   purchaseNumber: z.string(),
   purchaseUpdatedAt: z.string().datetime(),
   invoiceNumber: z.string().nullable(),
+  invoiceNumbers: z.array(z.string()),
   supplierId: z.string().uuid(),
   supplierName: z.string(),
   sequence: z.number().int().nonnegative(),
   dueDate: isoDateSchema.nullable(),
   amount: monetaryValueSchema,
+  paidAmount: monetaryValueSchema,
+  balance: monetaryValueSchema,
   paidAt: isoDateSchema.nullable(),
   status: payableStatusSchema,
   paymentChannel: paymentChannelSchema.nullable(),
   paymentReference: z.string().nullable(),
   paymentNotes: z.string().nullable(),
+  paymentWorkflowStage: paymentWorkflowStageSchema.nullable(),
+  received: z.boolean(),
+  advancePayment: z.boolean(),
+  settlementCount: z.number().int().nonnegative(),
   workflowStage: purchaseWorkflowStageSchema,
 });
 export type AccountsPayableRow = z.infer<typeof accountsPayableRowSchema>;

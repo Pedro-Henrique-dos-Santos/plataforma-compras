@@ -29,6 +29,7 @@ type AccessViewProps = {
 const roleLabels: Record<OrganizationRole, string> = {
   ORGANIZATION_ADMIN: 'Administrador',
   BUYER: 'Comprador',
+  FINANCE: 'Financeiro',
   REPORT_VIEWER: 'Relatorios',
 };
 

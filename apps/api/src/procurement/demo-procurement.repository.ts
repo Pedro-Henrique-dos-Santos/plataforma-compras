@@ -280,6 +280,8 @@ export class DemoProcurementRepository extends ProcurementRepository {
       paymentMethod: input.paymentMethod,
       pixKeyType: input.pixKeyType ?? null,
       pixKey: input.pixKey ?? null,
+      pixBeneficiaryName: input.pixBeneficiaryName ?? null,
+      pixBeneficiaryDocument: input.pixBeneficiaryDocument ?? null,
       paymentLink: input.paymentLink ?? null,
       defaultCostCenterId: input.defaultCostCenterId,
       email: input.email,
@@ -898,6 +900,11 @@ export class DemoProcurementRepository extends ProcurementRepository {
     sequence: number,
     input: UpdatePayableInput,
   ): Promise<PurchaseDetail> {
+    if (input.paidAt !== undefined) {
+      throw new BadRequestException(
+        'Registre o pagamento no fluxo financeiro com valor, identificador e comprovante.',
+      );
+    }
     const purchase = this.requireStoredPurchase(organizationId, purchaseId);
     if (
       purchase.status === 'CANCELLED' ||
@@ -916,7 +923,6 @@ export class DemoProcurementRepository extends ProcurementRepository {
       throw new NotFoundException('Conta a pagar nao encontrada.');
     }
     if (input.dueDate !== undefined) installment.dueDate = input.dueDate;
-    if (input.paidAt !== undefined) installment.paidAt = input.paidAt;
     if (input.paymentChannel !== undefined) {
       installment.paymentChannel = input.paymentChannel;
     }
@@ -1841,16 +1847,23 @@ function buildDemoAccountsPayableReport(
         purchaseNumber: purchase.number,
         purchaseUpdatedAt: purchase.updatedAt,
         invoiceNumber: purchase.invoiceNumber,
+        invoiceNumbers: purchase.invoiceNumber ? [purchase.invoiceNumber] : [],
         supplierId: purchase.supplierId,
         supplierName: supplier.tradeName ?? supplier.legalName,
         sequence: 0,
         dueDate: null,
         amount: purchase.total,
+        paidAmount: 0,
+        balance: purchase.total,
         paidAt: null,
         status: 'UNSCHEDULED',
         paymentChannel: defaultChannel,
         paymentReference: defaultReference,
         paymentNotes: null,
+        paymentWorkflowStage: null,
+        received: ['RECEIVED', 'COMPLETED'].includes(purchase.workflowStage),
+        advancePayment: false,
+        settlementCount: 0,
         workflowStage: purchase.workflowStage,
       });
       continue;
@@ -1862,11 +1875,14 @@ function buildDemoAccountsPayableReport(
         purchaseNumber: purchase.number,
         purchaseUpdatedAt: purchase.updatedAt,
         invoiceNumber: purchase.invoiceNumber,
+        invoiceNumbers: purchase.invoiceNumber ? [purchase.invoiceNumber] : [],
         supplierId: purchase.supplierId,
         supplierName: supplier.tradeName ?? supplier.legalName,
         sequence: installment.sequence,
         dueDate: installment.dueDate,
         amount: installment.amount,
+        paidAmount: installment.paidAt ? installment.amount : 0,
+        balance: installment.paidAt ? 0 : installment.amount,
         paidAt: installment.paidAt,
         status: installment.paidAt
           ? 'PAID'
@@ -1876,6 +1892,10 @@ function buildDemoAccountsPayableReport(
         paymentChannel: installment.paymentChannel ?? defaultChannel,
         paymentReference: installment.paymentReference ?? defaultReference,
         paymentNotes: installment.paymentNotes,
+        paymentWorkflowStage: installment.paidAt ? 'PAID' : 'MATCHING_REQUIRED',
+        received: ['RECEIVED', 'COMPLETED'].includes(purchase.workflowStage),
+        advancePayment: false,
+        settlementCount: installment.paidAt ? 1 : 0,
         workflowStage: purchase.workflowStage,
       });
     }
@@ -1899,11 +1919,11 @@ function buildDemoAccountsPayableReport(
           right.dueDate ?? '9999-12-31',
         ) || left.purchaseNumber.localeCompare(right.purchaseNumber),
     );
-  const sumStatus = (...statuses: Array<AccountsPayableReport['rows'][number]['status']>) =>
+  const sumBalance = (...statuses: Array<AccountsPayableReport['rows'][number]['status']>) =>
     roundMoney(
       rows
         .filter((row) => statuses.includes(row.status))
-        .reduce((sum, row) => sum + row.amount, 0),
+        .reduce((sum, row) => sum + row.balance, 0),
     );
   const dueIn = (days: number) => {
     const end = addDemoIsoDays(today, days);
@@ -1911,25 +1931,25 @@ function buildDemoAccountsPayableReport(
       rows
         .filter(
           (row) =>
-            row.status === 'PENDING' &&
+            (row.status === 'PENDING' || row.status === 'PARTIALLY_PAID') &&
             row.dueDate !== null &&
             row.dueDate >= today &&
             row.dueDate <= end,
         )
-        .reduce((sum, row) => sum + row.amount, 0),
+        .reduce((sum, row) => sum + row.balance, 0),
     );
   };
   return {
     dataSource: 'DEMO',
     generatedAt: new Date().toISOString(),
     totals: {
-      open: sumStatus('PENDING', 'OVERDUE'),
-      overdue: sumStatus('OVERDUE'),
+      open: sumBalance('PENDING', 'PARTIALLY_PAID', 'OVERDUE'),
+      overdue: sumBalance('OVERDUE'),
       dueIn7Days: dueIn(7),
       dueIn15Days: dueIn(15),
       dueIn30Days: dueIn(30),
-      paid: sumStatus('PAID'),
-      unscheduled: sumStatus('UNSCHEDULED'),
+      paid: roundMoney(rows.reduce((sum, row) => sum + row.paidAmount, 0)),
+      unscheduled: sumBalance('UNSCHEDULED'),
       rowCount: rows.length,
     },
     rows,
@@ -1992,6 +2012,8 @@ function supplier(
     paymentMethod: 'Boleto',
     pixKeyType: null,
     pixKey: null,
+    pixBeneficiaryName: null,
+    pixBeneficiaryDocument: null,
     paymentLink: null,
     defaultCostCenterId,
     email: null,

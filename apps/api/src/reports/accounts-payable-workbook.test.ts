@@ -35,6 +35,10 @@ describe('accounts payable Excel export', () => {
       "'@OBSERVACAO",
     );
     expect(workbook.getWorksheet('Contas a pagar')?.getCell('I4').value).toBe(100);
+    expect(workbook.getWorksheet('Contas a pagar')?.getCell('N4').value).toBe(60);
+    expect(workbook.getWorksheet('Contas a pagar')?.getCell('O4').value).toBe(
+      'Parcialmente pago',
+    );
   });
 });
 
@@ -59,16 +63,23 @@ function payableReport(): AccountsPayableReport {
         purchaseNumber: '=PEDIDO!A1',
         purchaseUpdatedAt: '2026-07-14T12:00:00.000Z',
         invoiceNumber: '-NF-001',
+        invoiceNumbers: ['-NF-001', 'NF-002'],
         supplierId: '51000000-0000-4000-8000-000000000001',
         supplierName: '=FORNECEDOR!A1',
         sequence: 1,
         dueDate: '2026-07-21',
         amount: 100,
+        paidAmount: 40,
+        balance: 60,
         paidAt: null,
-        status: 'PENDING',
+        status: 'PARTIALLY_PAID',
         paymentChannel: 'PIX',
         paymentReference: '+5511999999999',
         paymentNotes: '@OBSERVACAO',
+        paymentWorkflowStage: 'PARTIALLY_PAID',
+        received: true,
+        advancePayment: false,
+        settlementCount: 1,
         workflowStage: 'PURCHASE_ORDER',
       },
     ],

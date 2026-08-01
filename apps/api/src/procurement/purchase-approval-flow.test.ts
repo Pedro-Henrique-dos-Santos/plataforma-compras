@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  NotFoundException,
 } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -147,29 +146,15 @@ describe('purchase approval workflow', () => {
       status: 'PENDING',
     });
 
-    const paid = await repository.updatePayable(
-      owner,
-      HUMAN_CLINIC_ID,
-      approved.id,
-      1,
-      {
+    await expect(
+      repository.updatePayable(owner, HUMAN_CLINIC_ID, approved.id, 1, {
         expectedUpdatedAt: approved.updatedAt,
         paidAt: '2099-08-10',
         paymentChannel: 'BOLETO',
         paymentReference: 'Linha digitavel validada',
         paymentNotes: 'Pagamento confirmado pelo financeiro.',
-      },
-    );
-    expect(paid.installments[0]).toMatchObject({
-      paidAt: '2099-08-10',
-      paymentChannel: 'BOLETO',
-      paymentReference: 'Linha digitavel validada',
-    });
-    const paidReport = await repository.getAccountsPayable(HUMAN_CLINIC_ID, {
-      supplierId: supplier.id,
-      status: 'PAID',
-    });
-    expect(paidReport.rows).toHaveLength(1);
+      }),
+    ).rejects.toThrow(/fluxo financeiro/i);
     expect(
       await repository.getAccountsPayable(EXAMPLE_COMPANY_ID, {
         supplierId: supplier.id,
@@ -189,16 +174,16 @@ describe('purchase approval workflow', () => {
     await expect(
       repository.updatePurchase(owner, HUMAN_CLINIC_ID, approved.id, {
         expectedUpdatedAt: invoiced.updatedAt,
-        number: paid.number,
+        number: approved.number,
         invoiceNumber: invoiced.invoiceNumber,
-        supplierId: paid.supplierId,
-        issuedAt: paid.issuedAt,
-        category: paid.category,
-        operationNature: paid.operationNature,
-        paymentMethod: paid.paymentMethod,
-        notes: paid.notes,
-        items: paid.items,
-        installments: paid.installments,
+        supplierId: approved.supplierId,
+        issuedAt: approved.issuedAt,
+        category: approved.category,
+        operationNature: approved.operationNature,
+        paymentMethod: approved.paymentMethod,
+        notes: approved.notes,
+        items: approved.items,
+        installments: approved.installments,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     const returnedToOrder = await repository.changePurchaseWorkflowStage(
@@ -240,7 +225,7 @@ describe('purchase approval workflow', () => {
         expectedUpdatedAt: created.updatedAt,
         paidAt: '2099-08-10',
       }),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    ).rejects.toBeInstanceOf(BadRequestException);
     const requested = await repository.changePurchaseWorkflowStage(
       owner,
       HUMAN_CLINIC_ID,

@@ -75,4 +75,38 @@ describe('notification rendering', () => {
       appUrl,
     ]);
   });
+
+  it('renders payment lifecycle and fiscal review notifications', () => {
+    const payment = renderNotificationText(
+      'PAYMENT_PARTIALLY_SETTLED',
+      {
+        amount: 400,
+        purchaseNumber: 'PED-903',
+        remainingBalance: 600,
+        supplierName: 'Fornecedor Parcial',
+        total: 1_000,
+      },
+      appUrl,
+    );
+    expect(payment).toContain('baixa parcial');
+    expect(payment).toContain('Saldo: R$ 600,00');
+
+    const fiscal = renderNotificationText(
+      'FISCAL_REVIEW_REQUIRED',
+      {
+        invoiceNumber: '456',
+        issuerDocument: '12ABC34501DE35',
+        total: 750,
+      },
+      appUrl,
+    );
+    expect(fiscal).toContain('NF-e 456 requer revisao');
+    expect(
+      renderWhatsAppTemplateParameters(
+        'FISCAL_REVIEW_REQUIRED',
+        { invoiceNumber: '456', issuerDocument: '12ABC34501DE35', total: 750 },
+        appUrl,
+      ),
+    ).toEqual(['456', '12ABC34501DE35', 'R$ 750,00', appUrl]);
+  });
 });

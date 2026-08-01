@@ -24,6 +24,17 @@ describe('organization contracts', () => {
     expect(normalizeBrazilianDocument('11.222.333/0001-81')).toBe('11222333000181');
   });
 
+  it('accepts and normalizes an alphanumeric CNPJ', () => {
+    const input = createOrganizationInputSchema.parse({
+      name: 'Empresa Alfanumerica',
+      document: '12.ABC.345/01DE-35',
+    });
+
+    expect(input.document).toBe('12ABC34501DE35');
+    expect(isValidCnpj(input.document ?? '')).toBe(true);
+    expect(isValidCnpj('12ABC34501DE34')).toBe(false);
+  });
+
   it('rejects repeated or invalid CNPJ digits', () => {
     expect(isValidCnpj('11.111.111/1111-11')).toBe(false);
     expect(() =>

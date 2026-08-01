@@ -23,7 +23,6 @@ type PayablesViewProps = {
 
 type PayableEditor = {
   dueDate: string;
-  paidAt: string;
   paymentChannel: '' | PaymentChannel;
   paymentNotes: string;
   paymentReference: string;
@@ -93,7 +92,6 @@ export function PayablesView({
     setEditing(row);
     setEditor({
       dueDate: row.dueDate ?? '',
-      paidAt: row.paidAt ?? '',
       paymentChannel: row.paymentChannel ?? '',
       paymentNotes: row.paymentNotes ?? '',
       paymentReference: row.paymentReference ?? '',
@@ -123,7 +121,6 @@ export function PayablesView({
         const input: UpdatePayableInput = {
           expectedUpdatedAt: editing.purchaseUpdatedAt,
           dueDate: editor.dueDate || undefined,
-          paidAt: editor.paidAt || null,
           paymentChannel: editor.paymentChannel || null,
           paymentReference: editor.paymentReference.trim() || null,
           paymentNotes: editor.paymentNotes.trim() || null,
@@ -238,6 +235,7 @@ export function PayablesView({
           >
             <option value="">Todos os status</option>
             <option value="PENDING">Pendente</option>
+            <option value="PARTIALLY_PAID">Parcialmente pago</option>
             <option value="OVERDUE">Vencido</option>
             <option value="PAID">Pago</option>
             <option value="UNSCHEDULED">Sem vencimento</option>
@@ -422,21 +420,6 @@ export function PayablesView({
                     value={editor.paymentReference}
                   />
                 </label>
-                {editing.sequence > 0 && (
-                  <label>
-                    Data do pagamento
-                    <input
-                      onChange={(event) =>
-                        setEditor((current) => ({
-                          ...current,
-                          paidAt: event.target.value,
-                        }))
-                      }
-                      type="date"
-                      value={editor.paidAt}
-                    />
-                  </label>
-                )}
               </div>
               <label>
                 Observacoes financeiras
@@ -503,7 +486,6 @@ function Metric({
 function emptyEditor(): PayableEditor {
   return {
     dueDate: '',
-    paidAt: '',
     paymentChannel: '',
     paymentNotes: '',
     paymentReference: '',
@@ -522,6 +504,7 @@ function queryString(filters: AccountsPayableFilters): string {
 function payableStatusLabel(status: PayableStatus): string {
   return {
     OVERDUE: 'Vencido',
+    PARTIALLY_PAID: 'Parcialmente pago',
     PAID: 'Pago',
     PENDING: 'Pendente',
     UNSCHEDULED: 'Sem vencimento',
@@ -531,6 +514,7 @@ function payableStatusLabel(status: PayableStatus): string {
 function payableTone(status: PayableStatus): string {
   return {
     OVERDUE: 'cancelled',
+    PARTIALLY_PAID: 'warning',
     PAID: 'active',
     PENDING: 'warning',
     UNSCHEDULED: '',

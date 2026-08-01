@@ -186,6 +186,32 @@ describe('validateEnvironment', () => {
     ).toBe('20000');
   });
 
+  it('keeps fiscal automation in shadow mode and validates its secrets and URLs', () => {
+    const defaults = validateEnvironment({ NODE_ENV: 'development' });
+    expect(defaults['FISCAL_ROLLOUT_MODE']).toBe('SHADOW');
+    expect(defaults['FISCAL_SYNC_WORKER_ENABLED']).toBe('false');
+
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'development',
+        FISCAL_CREDENTIAL_ENCRYPTION_KEY: 'invalid',
+      }),
+    ).toThrow(/32 bytes in base64/);
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'development',
+        SEFAZ_NFE_DISTRIBUTION_PRODUCTION_URL: 'http://sefaz.example.com',
+      }),
+    ).toThrow(/explicit HTTPS URL/);
+    expect(() =>
+      validateEnvironment({
+        DEMO_MODE: 'false',
+        FISCAL_SYNC_WORKER_ENABLED: 'true',
+        NODE_ENV: 'development',
+      }),
+    ).toThrow(/FISCAL_CREDENTIAL_ENCRYPTION_KEY is required/);
+  });
+
   it('rejects partial WhatsApp provider configuration', () => {
     expect(() =>
       validateEnvironment({

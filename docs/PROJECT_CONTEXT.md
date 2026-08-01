@@ -20,6 +20,17 @@ A primeira versao foi criada em Google Sheets e Google Apps Script. Ela possui p
   completo por empresa.
 - Aprovacao da compra separada do pagamento; esta fase acompanha contas a pagar
   e notifica o financeiro, mas nao movimenta dinheiro.
+- Dois Kanbans conectados: compras acompanha o pedido e recebimento, enquanto o
+  financeiro acompanha cada titulo, aprovacao, saldo e baixa comprovada.
+- Uma compra pode possuir varias NF-e e varios recebimentos parciais. O vinculo
+  fiscal exato pode ser automatico; divergencia ou ambiguidade exige revisao.
+- A captura fiscal automatica inicial cobre somente NF-e modelo 55. NFS-e,
+  CT-e, DDA e integracao bancaria permanecem como adaptadores futuros.
+- O papel empresarial `FINANCE` possui permissoes financeiras proprias. A
+  segregacao de funcoes e configuravel e inicia desabilitada nas empresas atuais.
+- O pagamento continua fora do E-Gestao nesta fase. O sistema nao recebe senha
+  bancaria nem executa Pix; ele controla instrucao, aprovacao, comprovante,
+  baixa parcial e auditoria.
 - Notificacoes duraveis por e-mail ou WhatsApp oficial, configuradas somente no
   servidor e processadas fora da transacao principal.
 - O proprietario global e independente das contas das empresas atendidas.

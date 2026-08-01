@@ -6,14 +6,16 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from 'react';
-import type {
-  CostCenter,
-  InvoiceDocumentDetail,
-  InvoiceDocumentStatus,
-  InvoiceDocumentSummary,
-  InvoiceImportResult,
-  InvoiceReviewInput,
-  Supplier,
+import {
+  normalizeBrazilianDocument,
+  normalizeNfeAccessKey,
+  type CostCenter,
+  type InvoiceDocumentDetail,
+  type InvoiceDocumentStatus,
+  type InvoiceDocumentSummary,
+  type InvoiceImportResult,
+  type InvoiceReviewInput,
+  type Supplier,
 } from '@compras/contracts';
 import {
   Ban,
@@ -341,7 +343,7 @@ export function InvoiceDocumentsView({
       ...(supplier
         ? {
             supplierName: supplier.legalName,
-            supplierDocument: digitsOnly(supplier.document),
+            supplierDocument: normalizeBrazilianDocument(supplier.document ?? ''),
             defaultCostCenterId:
               current.defaultCostCenterId || supplier.defaultCostCenterId || '',
             category: current.category || supplier.category || '',
@@ -590,7 +592,10 @@ export function InvoiceDocumentsView({
                       label="CNPJ"
                       maxLength={18}
                       onChange={(supplierDocument) =>
-                        setForm((current) => ({ ...current, supplierDocument }))
+                        setForm((current) => ({
+                          ...current,
+                          supplierDocument: supplierDocument.toUpperCase(),
+                        }))
                       }
                       value={form.supplierDocument}
                     />
@@ -648,7 +653,10 @@ export function InvoiceDocumentsView({
                       <input
                         maxLength={54}
                         onChange={(event) =>
-                          setForm((current) => ({ ...current, accessKey: event.target.value }))
+                          setForm((current) => ({
+                            ...current,
+                            accessKey: event.target.value.toUpperCase(),
+                          }))
                         }
                         value={form.accessKey}
                       />
@@ -923,7 +931,8 @@ function formFromDocument(
     : suppliers.find(
         (supplier) =>
           document.supplierDocument &&
-          digitsOnly(supplier.document) === digitsOnly(document.supplierDocument),
+          normalizeBrazilianDocument(supplier.document ?? '') ===
+          normalizeBrazilianDocument(document.supplierDocument ?? ''),
       );
   const reviewItems = document.review?.items;
   return {
@@ -961,7 +970,7 @@ function formFromDocument(
 
 function toReviewInput(form: ReviewForm): InvoiceReviewInput {
   return {
-    accessKey: digitsOnly(form.accessKey) || null,
+    accessKey: normalizeNfeAccessKey(form.accessKey) || null,
     category: nullable(form.category),
     defaultCostCenterId: form.defaultCostCenterId || null,
     installments: form.installments.map((installment) => ({
@@ -981,7 +990,7 @@ function toReviewInput(form: ReviewForm): InvoiceReviewInput {
     notes: nullable(form.notes),
     operationNature: nullable(form.operationNature),
     paymentMethod: nullable(form.paymentMethod),
-    supplierDocument: digitsOnly(form.supplierDocument) || null,
+    supplierDocument: normalizeBrazilianDocument(form.supplierDocument) || null,
     supplierId: form.supplierId || null,
     supplierName: form.supplierName.trim(),
     total: numberValue(form.total),
@@ -1025,10 +1034,6 @@ function numberValue(value: string): number {
 
 function nullable(value: string): string | null {
   return value.trim() || null;
-}
-
-function digitsOnly(value: string | null): string {
-  return (value ?? '').replace(/\D/g, '');
 }
 
 function normalize(value: string): string {

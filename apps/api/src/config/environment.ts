@@ -25,6 +25,41 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
   environment['NOTIFICATION_WORKER_ENABLED'] = String(
     booleanValue(raw['NOTIFICATION_WORKER_ENABLED'], true),
   );
+  const fiscalWorkerEnabled = booleanValue(raw['FISCAL_SYNC_WORKER_ENABLED'], false);
+  environment['FISCAL_SYNC_WORKER_ENABLED'] = String(fiscalWorkerEnabled);
+  const fiscalRolloutMode = textValue(raw['FISCAL_ROLLOUT_MODE']) || 'SHADOW';
+  if (!['SHADOW', 'EXACT_MATCH', 'AUTO_SCIENCE'].includes(fiscalRolloutMode)) {
+    throw new Error('FISCAL_ROLLOUT_MODE must be SHADOW, EXACT_MATCH or AUTO_SCIENCE.');
+  }
+  environment['FISCAL_ROLLOUT_MODE'] = fiscalRolloutMode;
+  const fiscalPollInterval = numberValue(raw['FISCAL_SYNC_POLL_INTERVAL_MS'], 60_000);
+  if (fiscalPollInterval < 60_000 || fiscalPollInterval > 3_600_000) {
+    throw new Error('FISCAL_SYNC_POLL_INTERVAL_MS must be between 60000 and 3600000.');
+  }
+  environment['FISCAL_SYNC_POLL_INTERVAL_MS'] = String(fiscalPollInterval);
+  const sefazRequestTimeout = numberValue(raw['SEFAZ_REQUEST_TIMEOUT_MS'], 30_000);
+  if (sefazRequestTimeout < 1_000 || sefazRequestTimeout > 120_000) {
+    throw new Error('SEFAZ_REQUEST_TIMEOUT_MS must be between 1000 and 120000.');
+  }
+  environment['SEFAZ_REQUEST_TIMEOUT_MS'] = String(sefazRequestTimeout);
+  for (const key of [
+    'SEFAZ_NFE_DISTRIBUTION_HOMOLOGATION_URL',
+    'SEFAZ_NFE_DISTRIBUTION_PRODUCTION_URL',
+    'SEFAZ_NFE_MANIFESTATION_HOMOLOGATION_URL',
+    'SEFAZ_NFE_MANIFESTATION_PRODUCTION_URL',
+  ]) {
+    const configuredUrl = textValue(raw[key]);
+    if (configuredUrl && !isHttpsUrl(configuredUrl)) {
+      throw new Error(`${key} must be an explicit HTTPS URL.`);
+    }
+  }
+  const fiscalCredentialKey = textValue(raw['FISCAL_CREDENTIAL_ENCRYPTION_KEY']);
+  if (fiscalCredentialKey && Buffer.from(fiscalCredentialKey, 'base64').length !== 32) {
+    throw new Error('FISCAL_CREDENTIAL_ENCRYPTION_KEY must contain 32 bytes in base64.');
+  }
+  if (fiscalWorkerEnabled && !demoMode && !fiscalCredentialKey) {
+    throw new Error('FISCAL_CREDENTIAL_ENCRYPTION_KEY is required when the fiscal worker is enabled.');
+  }
   const notificationMode =
     textValue(raw['NOTIFICATION_DELIVERY_MODE']).toLowerCase() || 'log';
   if (!['log', 'live'].includes(notificationMode)) {
@@ -221,6 +256,15 @@ function parseGoogleCredentials(value: string): {
   }
 }
 
+function isHttpsUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
 function validateNotificationProviders(
   raw: Record<string, unknown>,
   mode: string,
@@ -250,6 +294,7 @@ function validateNotificationProviders(
     'WHATSAPP_APPROVAL_TEMPLATE',
     'WHATSAPP_REJECTION_TEMPLATE',
     'WHATSAPP_FINANCE_TEMPLATE',
+    'WHATSAPP_FISCAL_TEMPLATE',
   ] as const;
   const configuredWhatsApp = whatsappKeys.filter((key) => textValue(raw[key]));
   if (

@@ -170,13 +170,59 @@ export function renderNotificationText(
   const purchaseNumber = textField(payload, 'purchaseNumber', 'sem numero');
   const supplierName = textField(payload, 'supplierName', 'Fornecedor nao informado');
   const total = currencyField(payload['total']);
-  if (eventType === 'PURCHASE_APPROVAL_REJECTED') {
+  if (eventType === 'FISCAL_REVIEW_REQUIRED') {
+    return [
+      `A NF-e ${textField(payload, 'invoiceNumber', 'sem numero')} requer revisao.`,
+      `Emitente: ${textField(payload, 'issuerDocument', 'nao identificado')}`,
+      `Valor: ${currencyField(payload['total'])}`,
+      `Acesse: ${appUrl}`,
+    ].join('\n');
+  }
+  if (eventType === 'FISCAL_CERTIFICATE_EXPIRING' || eventType === 'FISCAL_CERTIFICATE_EXPIRED') {
+    const expired = eventType === 'FISCAL_CERTIFICATE_EXPIRED';
+    return [
+      expired ? 'O certificado A1 fiscal esta vencido.' : 'O certificado A1 fiscal esta proximo do vencimento.',
+      `CNPJ: ${textField(payload, 'taxpayerDocument', 'nao informado')}`,
+      `Validade: ${dateField(payload['expiresAt']) ?? 'nao informada'}`,
+      `Acesse: ${appUrl}`,
+    ].join('\n');
+  }
+  if (eventType === 'PAYMENT_APPROVAL_REQUESTED') {
+    return [
+      `Os titulos da compra ${purchaseNumber} aguardam aprovacao financeira.`,
+      `Fornecedor: ${supplierName}`,
+      `Valor: ${total}`,
+      `Acesse: ${appUrl}`,
+    ].join('\n');
+  }
+  if (eventType === 'PURCHASE_APPROVAL_REJECTED' || eventType === 'PAYMENT_APPROVAL_REJECTED') {
     const comment = textField(payload, 'comment', 'Motivo nao informado');
     return [
-      `A compra ${purchaseNumber} foi reprovada.`,
+      eventType === 'PAYMENT_APPROVAL_REJECTED'
+        ? `O pagamento da compra ${purchaseNumber} foi reprovado.`
+        : `A compra ${purchaseNumber} foi reprovada.`,
       `Fornecedor: ${supplierName}`,
       `Valor: ${total}`,
       `Motivo: ${comment}`,
+      `Acesse: ${appUrl}`,
+    ].join('\n');
+  }
+  if (eventType === 'PAYMENT_RELEASED') {
+    return [
+      `Os titulos da compra ${purchaseNumber} foram liberados para pagamento.`,
+      `Fornecedor: ${supplierName}`,
+      `Valor: ${total}`,
+      `Consulte os dados e vencimentos em: ${appUrl}`,
+    ].join('\n');
+  }
+  if (eventType === 'PAYMENT_SETTLED' || eventType === 'PAYMENT_PARTIALLY_SETTLED') {
+    return [
+      eventType === 'PAYMENT_SETTLED'
+        ? `O titulo da compra ${purchaseNumber} foi liquidado.`
+        : `Uma baixa parcial foi registrada na compra ${purchaseNumber}.`,
+      `Fornecedor: ${supplierName}`,
+      `Valor da baixa: ${currencyField(payload['amount'])}`,
+      `Saldo: ${currencyField(payload['remainingBalance'])}`,
       `Acesse: ${appUrl}`,
     ].join('\n');
   }
@@ -216,11 +262,19 @@ function whatsappTemplateName(
   config: ConfigService,
   eventType: string,
 ): string {
-  if (eventType === 'PURCHASE_APPROVAL_REJECTED') {
+  if (eventType === 'PURCHASE_APPROVAL_REJECTED' || eventType === 'PAYMENT_APPROVAL_REJECTED') {
     return requiredConfig(config, 'WHATSAPP_REJECTION_TEMPLATE');
   }
-  if (eventType === 'PURCHASE_APPROVED_FOR_PAYMENT') {
+  if (
+    eventType === 'PURCHASE_APPROVED_FOR_PAYMENT' ||
+    eventType === 'PAYMENT_RELEASED' ||
+    eventType === 'PAYMENT_SETTLED' ||
+    eventType === 'PAYMENT_PARTIALLY_SETTLED'
+  ) {
     return requiredConfig(config, 'WHATSAPP_FINANCE_TEMPLATE');
+  }
+  if (eventType.startsWith('FISCAL_')) {
+    return requiredConfig(config, 'WHATSAPP_FISCAL_TEMPLATE');
   }
   return requiredConfig(config, 'WHATSAPP_APPROVAL_TEMPLATE');
 }
@@ -230,21 +284,56 @@ export function renderWhatsAppTemplateParameters(
   payload: Record<string, unknown>,
   appUrl: string,
 ): string[] {
+  if (eventType === 'FISCAL_REVIEW_REQUIRED') {
+    return [
+      textField(payload, 'invoiceNumber', 'sem numero'),
+      textField(payload, 'issuerDocument', 'nao identificado'),
+      currencyField(payload['total']),
+      appUrl,
+    ];
+  }
+  if (eventType === 'FISCAL_CERTIFICATE_EXPIRING' || eventType === 'FISCAL_CERTIFICATE_EXPIRED') {
+    return [
+      textField(payload, 'taxpayerDocument', 'nao informado'),
+      dateField(payload['expiresAt']) ?? 'nao informada',
+      eventType === 'FISCAL_CERTIFICATE_EXPIRED' ? 'Vencido' : 'Proximo do vencimento',
+      appUrl,
+    ];
+  }
   const fields = [
     textField(payload, 'purchaseNumber', 'sem numero'),
     textField(payload, 'supplierName', 'Fornecedor nao informado'),
     currencyField(payload['total']),
   ];
-  if (eventType === 'PURCHASE_APPROVAL_REJECTED') {
+  if (eventType === 'PURCHASE_APPROVAL_REJECTED' || eventType === 'PAYMENT_APPROVAL_REJECTED') {
     fields.push(textField(payload, 'comment', 'Motivo nao informado'));
   }
-  if (eventType === 'PURCHASE_APPROVED_FOR_PAYMENT') {
+  if (
+    eventType === 'PURCHASE_APPROVED_FOR_PAYMENT' ||
+    eventType === 'PAYMENT_RELEASED' ||
+    eventType === 'PAYMENT_SETTLED' ||
+    eventType === 'PAYMENT_PARTIALLY_SETTLED'
+  ) {
     fields.push(
-      financePaymentInstructions(payload)[0] ?? 'Consulte os dados de pagamento no sistema',
+      paymentNotificationSummary(eventType, payload),
     );
   }
   fields.push(appUrl);
   return fields;
+}
+
+function paymentNotificationSummary(
+  eventType: string,
+  payload: Record<string, unknown>,
+): string {
+  if (eventType === 'PAYMENT_RELEASED') return 'Liberado para pagamento';
+  if (eventType === 'PAYMENT_SETTLED') {
+    return `Liquidado - ${currencyField(payload['amount'])}`;
+  }
+  if (eventType === 'PAYMENT_PARTIALLY_SETTLED') {
+    return `Baixa ${currencyField(payload['amount'])} - saldo ${currencyField(payload['remainingBalance'])}`;
+  }
+  return financePaymentInstructions(payload)[0] ?? 'Consulte os dados de pagamento no sistema';
 }
 
 function financePaymentInstructions(payload: Record<string, unknown>): string[] {

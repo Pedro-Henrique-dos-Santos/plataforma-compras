@@ -22,6 +22,8 @@ const supplier: Supplier = {
   paymentMethod: null,
   pixKeyType: null,
   pixKey: null,
+  pixBeneficiaryName: null,
+  pixBeneficiaryDocument: null,
   paymentLink: null,
   defaultCostCenterId: null,
   defaultCostCenterName: null,
