@@ -636,14 +636,15 @@ export class PrismaProcurementRepository extends ProcurementRepository {
             installments: {
               create: installmentCreateData(input.installments),
             },
-            stageHistory: {
-              create: {
-                organizationId,
-                changedById: actor.id,
-                toStage: workflowStage,
-                reason: 'Compra criada.',
-              },
-            },
+          },
+        });
+        await transaction.purchaseStageHistory.create({
+          data: {
+            organizationId,
+            purchaseId: purchase.id,
+            changedById: actor.id,
+            toStage: workflowStage,
+            reason: 'Compra criada.',
           },
         });
         await transaction.auditLog.create({

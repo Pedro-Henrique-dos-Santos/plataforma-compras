@@ -92,7 +92,7 @@ describe('Prisma multi-company security', () => {
       ORDER BY relation.relname ASC
     `;
 
-    expect(tables.map((table) => table.tableName)).toEqual([
+    const expectedApplicationTables = [
       'approval_rule_approvers',
       'approval_rules',
       'approval_settings',
@@ -131,7 +131,9 @@ describe('Prisma multi-company security', () => {
       'supplier_prices',
       'suppliers',
       'users',
-    ]);
+    ].sort();
+
+    expect(tables.map((table) => table.tableName)).toEqual(expectedApplicationTables);
     expect(tables.filter((table) => !table.rlsEnabled)).toEqual([]);
   });
 
