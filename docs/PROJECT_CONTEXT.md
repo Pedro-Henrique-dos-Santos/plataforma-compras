@@ -48,6 +48,9 @@ A primeira versao foi criada em Google Sheets e Google Apps Script. Ela possui p
   e Administracao. Cada modulo possui navegacao lateral propria, filtrada pelas
   permissoes da empresa ativa, sem separar os dados ou interromper os vinculos
   entre pedido, documento fiscal, recebimento e titulo financeiro.
+- A execucao local padrao e persistente. Casa e empresa executam a aplicacao
+  localmente contra o mesmo PostgreSQL/Supabase central; o modo demonstracao e
+  uma opcao explicita e descartavel.
 
 ## Ambientes conhecidos
 

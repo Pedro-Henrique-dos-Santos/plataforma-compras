@@ -2,6 +2,13 @@
 
 ## Nao publicado
 
+- Tornado o runtime local persistente por padrao, com validacao previa das
+  credenciais, PostgreSQL/Supabase obrigatorio e modo demonstracao apenas no
+  comando explicito `pnpm dev:demo`.
+- Adicionados comandos de verificacao e preparo idempotente, testes contra
+  regressao para memoria e guia para operar a mesma base em casa e na empresa.
+- Aplicadas e verificadas em homologacao as onze migracoes atuais, com 38
+  tabelas protegidas por RLS e 34 relacionamentos multiempresa auditados.
 - Adicionado lancador central para os modulos Compras, Financeiro e
   Administracao, com menus laterais contextuais derivados das permissoes do
   usuario e retorno rapido para a selecao de area.

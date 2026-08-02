@@ -1,4 +1,4 @@
-const requiredProductionKeys = [
+const requiredPersistentKeys = [
   'APP_WEB_URL',
   'CORS_ORIGIN',
   'DATABASE_URL',
@@ -13,7 +13,7 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
     throw new Error('NODE_ENV must be development, test or production.');
   }
 
-  const demoMode = booleanValue(raw['DEMO_MODE'], nodeEnvironment !== 'production');
+  const demoMode = booleanValue(raw['DEMO_MODE'], false);
   environment['NODE_ENV'] = nodeEnvironment;
   environment['DEMO_MODE'] = String(demoMode);
   const requireVerifiedEmail = booleanValue(
@@ -149,11 +149,11 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
       textValue(raw['SUPABASE_PUBLISHABLE_KEY']) || textValue(raw['SUPABASE_ANON_KEY']);
     const supabaseSecretKey =
       textValue(raw['SUPABASE_SECRET_KEY']) || textValue(raw['SUPABASE_SERVICE_ROLE_KEY']);
-    const missing: string[] = requiredProductionKeys.filter((key) => !textValue(raw[key]));
+    const missing: string[] = requiredPersistentKeys.filter((key) => !textValue(raw[key]));
     if (!supabasePublishableKey) missing.push('SUPABASE_PUBLISHABLE_KEY');
     if (!supabaseSecretKey) missing.push('SUPABASE_SECRET_KEY');
     if (missing.length) {
-      throw new Error(`Missing production environment variables: ${missing.join(', ')}.`);
+      throw new Error(`Missing persistent environment variables: ${missing.join(', ')}.`);
     }
     environment['SUPABASE_PUBLISHABLE_KEY'] = supabasePublishableKey;
     environment['SUPABASE_SECRET_KEY'] = supabaseSecretKey;
@@ -177,8 +177,14 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
     }
 
     const supabaseOrigin = normalizeHttpOrigin(textValue(raw['SUPABASE_URL']));
-    if (!supabaseOrigin?.startsWith('https://')) {
-      throw new Error('SUPABASE_URL must be a valid HTTPS origin.');
+    if (
+      !supabaseOrigin ||
+      (!supabaseOrigin.startsWith('https://') &&
+        (nodeEnvironment === 'production' || !isLoopbackOrigin(supabaseOrigin)))
+    ) {
+      throw new Error(
+        'SUPABASE_URL must use HTTPS, except for a loopback URL in local development.',
+      );
     }
     environment['SUPABASE_URL'] = supabaseOrigin;
 
@@ -258,6 +264,15 @@ function parseGoogleCredentials(value: string): {
       : null;
   } catch {
     return null;
+  }
+}
+
+function isLoopbackOrigin(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname;
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+  } catch {
+    return false;
   }
 }
 

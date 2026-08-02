@@ -5,6 +5,8 @@
 - [Concluido] Preservar o Apps Script em `legacy/`.
 - [Concluido] Criar monorepositorio, documentacao, verificacoes e GitHub privado.
 - [Concluido] Entregar modo demonstracao executavel.
+- [Concluido em homologacao em 2026-08-01] Tornar o runtime local persistente
+  por padrao, com validacao do destino e modo demonstracao somente explicito.
 
 ## Fase 1: identidade e empresas
 
@@ -88,11 +90,11 @@
   fiscal auditavel como alternativa a Distribuicao DF-e.
 - [Concluido no codigo e testes] Incluir documentos, recebimentos, saldo,
   situacao financeira e baixas nas exportacoes Excel.
-- [Pendente externo] Aplicar a migracao `202608010001_procure_to_pay_nfe` no
-  Supabase de homologacao e executar a reconciliacao de dados migrados.
-- [Pendente externo] Aplicar a migracao
-  `202608010002_receivables_workflow_supplier_lookup` no Supabase de homologacao
-  e homologar contas a receber, consulta de CNPJ e configuracao de retorno.
+- [Concluido em homologacao em 2026-08-01] Aplicar a migracao
+  `202608010001_procure_to_pay_nfe` e reconciliar contagens e valores existentes.
+- [Concluido em homologacao em 2026-08-01] Aplicar a migracao
+  `202608010002_receivables_workflow_supplier_lookup`; as tabelas novas iniciam
+  vazias e prontas para o aceite funcional.
 - [Pendente externo] Homologar A1 e SEFAZ em modo `SHADOW`, sem manifestacao ou
   vinculo automatico, usando uma empresa e certificado autorizados.
 - [Pendente externo] Liberar `EXACT_MATCH` somente depois de comparar capturas,
@@ -125,8 +127,9 @@
 - [Concluido] Aprovar e mesclar o pull request 7 na `main` com CI verde.
 - [Concluido no codigo] Validar credencial, compartilhamento e abas do Google Sheets com escopo somente leitura antes da previa.
 - [Pendente externo] Configurar a conta de servico permanente do Google e validar a sincronizacao autenticada.
-- [Pendente externo] Aplicar a migracao de aprovacao no Supabase de homologacao
-  e executar o aceite multiusuario.
+- [Concluido em homologacao em 2026-08-01] Aplicar a migracao de aprovacao no
+  Supabase de homologacao.
+- [Pendente externo] Executar o aceite multiusuario do fluxo de aprovacao.
 - [Pendente externo] Configurar SMTP de homologacao e comprovar entrega,
   repeticao e deduplicacao.
 - [Pendente externo] Aprovar templates da Meta e configurar o WhatsApp oficial,

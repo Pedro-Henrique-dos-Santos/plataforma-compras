@@ -16,8 +16,7 @@ export function readBoolean(
 }
 
 export function isDemoMode(config: ConfigService): boolean {
-  const developmentDefault = config.get('NODE_ENV', 'development') !== 'production';
-  return readBoolean(config, 'DEMO_MODE', developmentDefault);
+  return readBoolean(config, 'DEMO_MODE', false);
 }
 
 export function configuredEmailSet(config: ConfigService, key: string): Set<string> {

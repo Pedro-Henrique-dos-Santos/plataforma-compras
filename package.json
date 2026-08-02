@@ -8,12 +8,16 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @compras/web --filter @compras/api dev",
+    "dev": "node scripts/local-runtime.mjs persistent",
+    "dev:demo": "node scripts/local-runtime.mjs demo",
+    "dev:workspace": "pnpm --parallel --filter @compras/web --filter @compras/api dev",
     "dev:web": "pnpm --filter @compras/web dev",
     "dev:api": "pnpm --filter @compras/api dev",
+    "local:check": "node scripts/local-runtime.mjs check",
+    "local:setup": "node scripts/local-runtime.mjs setup",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test && node --test scripts/container-contracts.test.mjs scripts/github-workflow-security.test.mjs scripts/procure-to-pay-migration.test.mjs scripts/receivables-migration.test.mjs scripts/restore-drill.test.mjs scripts/supabase-bootstrap.test.mjs scripts/ui-acceptance-fixture.test.mjs scripts/verify-deployed-database.test.mjs scripts/verify-release.test.mjs",
+    "test": "pnpm -r --if-present test && node --test scripts/container-contracts.test.mjs scripts/github-workflow-security.test.mjs scripts/local-runtime.test.mjs scripts/procure-to-pay-migration.test.mjs scripts/receivables-migration.test.mjs scripts/restore-drill.test.mjs scripts/supabase-bootstrap.test.mjs scripts/ui-acceptance-fixture.test.mjs scripts/verify-deployed-database.test.mjs scripts/verify-release.test.mjs",
     "test:integration": "pnpm --filter @compras/api test:integration",
     "lint": "pnpm -r --if-present lint",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",

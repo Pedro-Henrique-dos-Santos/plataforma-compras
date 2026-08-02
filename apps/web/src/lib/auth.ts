@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-export const demoMode = import.meta.env.VITE_DEMO_MODE !== 'false';
+import { parseWebDemoMode } from './runtime-mode';
+
+export const demoMode = parseWebDemoMode(import.meta.env.VITE_DEMO_MODE);
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabasePublishableKey =

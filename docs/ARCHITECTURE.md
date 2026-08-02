@@ -56,7 +56,14 @@ somente leitura.
 
 O schema PostgreSQL usa chaves UUID, valores monetarios em `Decimal`, datas de auditoria e relacionamentos explicitos. PDFs permanecem fora do banco; o banco armazena metadados e links controlados.
 
-O modo `demo` usa repositorios em memoria com os mesmos contratos das implementacoes Prisma. Em homologacao e producao, os repositorios Prisma sao selecionados automaticamente e persistem usuarios, empresas, vinculos, centros de custo, fornecedores, precos, compras, itens, rateios, parcelas e auditoria no PostgreSQL.
+O runtime local inicia em modo persistente e falha de forma explicita quando a
+configuracao do PostgreSQL/Supabase esta ausente. Casa e empresa podem executar
+web e API em cada computador contra o mesmo banco hospedado, mantendo uma unica
+fonte operacional. O modo `demo` usa repositorios em memoria com os mesmos
+contratos Prisma, mas somente e ativado pelo comando dedicado e seus registros
+sao descartaveis. Homologacao e producao sempre selecionam os repositorios
+Prisma e persistem usuarios, empresas, vinculos, centros de custo, fornecedores,
+precos, compras, itens, rateios, parcelas e auditoria no PostgreSQL.
 
 O workflow acrescenta configuracoes e regras de aprovacao, responsaveis,
 solicitacoes, decisoes, historico de etapas e uma outbox de notificacoes. As

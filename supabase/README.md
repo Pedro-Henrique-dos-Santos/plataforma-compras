@@ -4,9 +4,10 @@
 
 Crie um projeto no plano Free e guarde a senha do banco em um gerenciador de segredos. Use uma regiao proxima aos usuarios e nao reutilize credenciais de outros clientes.
 
-## 2. Configurar a API
+## 2. Configurar o ambiente local
 
-Preencha `apps/api/.env` a partir de `apps/api/.env.example`:
+Crie o arquivo privado `.env.local` na raiz a partir de `.env.example`. Esse e o
+arquivo canonico lido pela API e pelo front-end:
 
 - `DEMO_MODE=false`
 - `APP_WEB_URL` com a origem exata do front-end
@@ -19,27 +20,34 @@ Preencha `apps/api/.env` a partir de `apps/api/.env.example`:
 - `CORS_ORIGIN` com as origens HTTPS autorizadas
 - `TRUST_PROXY=true` somente quando houver um proxy confiavel na frente da API
 - `INVOICE_STORAGE_BUCKET` com o nome do bucket privado de documentos
-
-`SUPABASE_SECRET_KEY` e `DATABASE_URL` existem somente no back-end. As variaveis legadas `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` continuam aceitas apenas para compatibilidade.
-
-## 3. Configurar o front-end
-
-Preencha `apps/web/.env` a partir de `apps/web/.env.example`:
-
 - `VITE_DEMO_MODE=false`
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_API_URL=/api` quando o front-end usar o proxy local
+- `VITE_API_URL=/api`
+
+`SUPABASE_SECRET_KEY` e `DATABASE_URL` existem somente no back-end. As variaveis legadas `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` continuam aceitas apenas para compatibilidade.
+
+Os arquivos antigos `apps/api/.env`, `apps/web/.env` e `.env.staging.local`
+continuam aceitos como fallback local, mas um clone novo deve usar
+`.env.local`. Nenhum desses arquivos pode ser versionado.
+
+Valide o destino antes de iniciar:
+
+```bash
+pnpm local:check
+```
 
 A chave anonima e publica por definicao, mas nao concede acesso as tabelas operacionais deste projeto.
 
-## 4. Aplicar e validar o banco
+## 3. Aplicar e validar o banco
 
 ```bash
-pnpm db:generate
-pnpm db:validate
-pnpm db:deploy
+pnpm local:setup
 ```
+
+O comando gera o cliente Prisma, aplica somente migracoes pendentes, verifica
+RLS e relacionamentos multiempresa e garante o bucket privado. Depois use
+`pnpm dev`. O modo em memoria existe apenas em `pnpm dev:demo`.
 
 As migracoes criam o schema e habilitam Row Level Security sem politicas de acesso direto para `anon` e `authenticated`. A aplicacao acessa os dados somente pela API.
 
@@ -47,11 +55,11 @@ As migracoes criam o schema e habilitam Row Level Security sem politicas de aces
 
 Crie o bucket definido em `INVOICE_STORAGE_BUCKET` como privado. A chave privilegiada fica somente na API; o navegador nao recebe caminho interno, hash ou acesso direto aos documentos.
 
-## 5. Configurar autenticacao
+## 4. Configurar autenticacao
 
 No painel do Supabase, defina a URL do front-end e as URLs de redirecionamento permitidas para login, convite e recuperacao de senha. Mantenha a confirmacao de e-mail ativa.
 
-## 6. Validar antes de compartilhar
+## 5. Validar antes de compartilhar
 
 1. Entre com a conta indicada em `PLATFORM_OWNER_EMAILS`.
 2. Crie duas empresas de teste.
@@ -62,9 +70,12 @@ No painel do Supabase, defina a URL do front-end e as URLs de redirecionamento p
 7. Compare dashboard, relatorio e exportacao com os mesmos totais da planilha.
 8. Execute um backup e uma restauracao de ensaio conforme `docs/RECOVERY_RUNBOOK.md`.
 
-O modo demonstracao funciona sem credenciais, mas deve permanecer desativado fora do desenvolvimento local.
+Confirme tambem que `GET http://127.0.0.1:3333/api/health/ready` responde com
+`persistence` igual a `database`. O modo demonstracao funciona sem credenciais,
+mas deve ser iniciado apenas de forma explicita e nunca representa a operacao
+real.
 
-## 7. Homologacao automatizada pelo GitHub
+## 6. Homologacao automatizada pelo GitHub
 
 Crie um ambiente protegido chamado `staging` no repositorio e cadastre somente nele:
 
