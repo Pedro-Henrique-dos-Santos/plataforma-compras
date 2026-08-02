@@ -420,8 +420,10 @@ model Purchase {
   id                      String                    @id @default(uuid()) @db.Uuid
   organizationId          String                    @map("organization_id") @db.Uuid
   supplierId              String                    @map("supplier_id") @db.Uuid
+  displaySequence         Int                       @map("display_sequence")
   number                  String                    @db.VarChar(40)
   invoiceNumber           String?                   @map("invoice_number") @db.VarChar(60)
+  fiscalDocumentRequired  Boolean                   @default(true) @map("fiscal_document_required")
   issuedAt                DateTime?                 @map("issued_at") @db.Date
   status                  PurchaseStatus            @default(DRAFT)
   workflowStage           PurchaseWorkflowStage     @default(REGISTRATION) @map("workflow_stage")
@@ -447,6 +449,7 @@ model Purchase {
   paymentApprovalRequests PaymentApprovalRequest[]
 
   @@unique([organizationId, number])
+  @@unique([organizationId, displaySequence])
   @@unique([organizationId, id])
   @@unique([organizationId, supplierId, invoiceNumber])
   @@unique([organizationId, source, sourceReference])
@@ -1116,6 +1119,7 @@ model AuditLog {
   actor          User?         @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt])
+  @@index([organizationId, resource, createdAt])
   @@index([actorUserId, createdAt])
   @@map("audit_logs")
 }

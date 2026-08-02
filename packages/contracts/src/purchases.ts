@@ -84,6 +84,7 @@ export const createPurchaseInputSchema = z
   .object({
     number: z.string().trim().min(1).max(40),
     invoiceNumber: nullableText(60).optional(),
+    fiscalDocumentRequired: z.boolean().optional(),
     supplierId: z.string().uuid(),
     issuedAt: isoDateSchema,
     category: nullableText(100),
@@ -104,6 +105,7 @@ export const updatePurchaseInputSchema = z
     expectedUpdatedAt: z.string().datetime(),
     number: z.string().trim().min(1).max(40),
     invoiceNumber: nullableText(60).optional(),
+    fiscalDocumentRequired: z.boolean().optional(),
     supplierId: z.string().uuid(),
     issuedAt: isoDateSchema.nullable(),
     category: nullableText(100),
@@ -125,8 +127,10 @@ export type ChangePurchaseStatusInput = z.infer<typeof changePurchaseStatusInput
 
 export const purchaseSummarySchema = z.object({
   id: z.string().uuid(),
+  displayNumber: z.number().int().positive(),
   number: z.string(),
   invoiceNumber: z.string().nullable(),
+  fiscalDocumentRequired: z.boolean(),
   supplierId: z.string().uuid(),
   supplierName: z.string(),
   issuedAt: isoDateSchema.nullable(),
@@ -180,11 +184,30 @@ export const purchaseInstallmentDetailSchema = z.object({
 });
 export type PurchaseInstallmentDetail = z.infer<typeof purchaseInstallmentDetailSchema>;
 
+export const purchaseFiscalDocumentSchema = z.object({
+  id: z.string().uuid().nullable(),
+  invoiceNumber: z.string().nullable(),
+  accessKey: z.string().nullable(),
+  issuerName: z.string().nullable(),
+  issuerDocument: z.string().nullable(),
+  issuedAt: z.string().datetime().nullable(),
+  total: monetaryValueSchema.nullable(),
+  kind: z.enum(['PDF', 'XML']).nullable(),
+  matchStatus: z
+    .enum(['UNMATCHED', 'MATCHED_EXACT', 'MATCHED_MANUAL', 'REVIEW_REQUIRED', 'REJECTED'])
+    .nullable(),
+  fileName: z.string().nullable(),
+  fileAvailable: z.boolean(),
+  legacy: z.boolean(),
+});
+export type PurchaseFiscalDocument = z.infer<typeof purchaseFiscalDocumentSchema>;
+
 export const purchaseDetailSchema = purchaseSummarySchema.extend({
   operationNature: z.string().trim().max(100).nullable(),
   notes: z.string().max(2_000).nullable(),
   items: z.array(purchaseItemDetailSchema).min(1),
   installments: z.array(purchaseInstallmentDetailSchema),
+  fiscalDocuments: z.array(purchaseFiscalDocumentSchema),
   approval: purchaseApprovalDetailSchema.nullable(),
   stageHistory: z.array(purchaseStageHistorySchema),
 });

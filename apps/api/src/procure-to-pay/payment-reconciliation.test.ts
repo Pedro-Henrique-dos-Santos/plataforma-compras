@@ -7,6 +7,7 @@ function title(input: {
   fiscalQuantity?: number;
   fiscalReceived?: number;
   fiscalItemMatched?: boolean;
+  fiscalDocumentRequired?: boolean;
   linkStatus?: string;
   purchaseReceived?: number;
 } = {}): ReconciliationTitle {
@@ -27,6 +28,7 @@ function title(input: {
         }
       : null,
     purchase: {
+      fiscalDocumentRequired: input.fiscalDocumentRequired ?? true,
       fiscalDocumentLinks: [
         {
           invoiceDocumentId: 'invoice-a',
@@ -69,5 +71,27 @@ describe('payment title reconciliation', () => {
     const migrated = title({ purchaseReceived: 10 });
     migrated.fiscalDocument!.fiscalItems = [];
     expect(titleIsMatched(migrated)).toBe(true);
+  });
+
+  it('reconciles an explicitly exempt purchase after full physical receipt', () => {
+    expect(
+      titleIsMatched(
+        title({
+          fiscalDocumentId: null,
+          fiscalDocumentRequired: false,
+          linkStatus: 'REVIEW_REQUIRED',
+          purchaseReceived: 10,
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      titleIsMatched(
+        title({
+          fiscalDocumentId: null,
+          fiscalDocumentRequired: false,
+          purchaseReceived: 9,
+        }),
+      ),
+    ).toBe(false);
   });
 });

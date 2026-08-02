@@ -17,6 +17,7 @@ import type {
   UpdatePurchaseInput,
 } from '@compras/contracts';
 import {
+  BadgeCheck,
   Banknote,
   CalendarPlus,
   ChevronLeft,
@@ -24,10 +25,12 @@ import {
   CircleX,
   FileCheck2,
   GitBranch,
+  History,
   Pencil,
   PackageCheck,
   Plus,
   Columns3,
+  Download,
   List,
   ReceiptText,
   RotateCcw,
@@ -37,6 +40,7 @@ import {
 } from 'lucide-react';
 
 import { apiGet, apiPatch, apiPost } from '../lib/api';
+import { PurchaseAuditDialog } from './PurchaseAuditDialog';
 
 type PurchasesViewProps = {
   accessToken: string | null;
@@ -68,6 +72,7 @@ type InstallmentRow = {
 };
 type PurchaseForm = {
   category: string;
+  fiscalDocumentRequired: boolean;
   invoiceNumber: string;
   issuedAt: string;
   notes: string;
@@ -78,6 +83,10 @@ type PurchaseForm = {
 };
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const percentage = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 
 export function PurchasesView({
   accessToken,
@@ -102,6 +111,8 @@ export function PurchasesView({
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'ALL' | PurchaseStatus>('ALL');
   const [viewMode, setViewMode] = useState<'KANBAN' | 'TABLE'>('KANBAN');
+  const [showCompletedInKanban, setShowCompletedInKanban] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PurchaseDetail | null>(null);
   const [detailPurchase, setDetailPurchase] = useState<PurchaseDetail | null>(null);
@@ -129,6 +140,7 @@ export function PurchasesView({
   const [installments, setInstallments] = useState<InstallmentRow[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [openingFiscalDocumentId, setOpeningFiscalDocumentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -166,10 +178,24 @@ export function PurchasesView({
     const term = normalize(search);
     return purchases.filter((purchase) => {
       if (status !== 'ALL' && purchase.status !== status) return false;
-      const content = `${purchase.number} ${purchase.supplierName} ${purchase.category ?? ''} ${purchase.departments.join(' ')}`;
+      const content = `${purchase.displayNumber} ${purchase.number} ${purchase.supplierName} ${purchase.category ?? ''} ${purchase.departments.join(' ')}`;
       return !term || normalize(content).includes(term);
     });
   }, [purchases, search, status]);
+  const completedPurchases = useMemo(
+    () => visiblePurchases.filter((purchase) => purchase.workflowStage === 'COMPLETED'),
+    [visiblePurchases],
+  );
+  const kanbanPurchases = useMemo(
+    () =>
+      showCompletedInKanban
+        ? visiblePurchases
+        : visiblePurchases.filter((purchase) => purchase.workflowStage !== 'COMPLETED'),
+    [showCompletedInKanban, visiblePurchases],
+  );
+  const kanbanStages = showCompletedInKanban
+    ? workflowStages
+    : workflowStages.filter((stage) => stage !== 'COMPLETED');
 
   const selectedSupplier = suppliers.find((supplier) => supplier.id === form.supplierId) ?? null;
   const totals = useMemo(() => calculateTotals(items), [items]);
@@ -177,6 +203,12 @@ export function PurchasesView({
   const detailFinancial = detailPurchase
     ? financialByPurchase.get(detailPurchase.id)
     : undefined;
+  const detailNegotiation = detailPurchase
+    ? purchaseNegotiationMetrics(
+        detailPurchase.total,
+        detailPurchase.negotiatedSavings,
+      )
+    : null;
 
   function openCreate() {
     setEditing(null);
@@ -305,6 +337,34 @@ export function PurchasesView({
       setError(errorMessage(requestError));
     } finally {
       setPendingId(null);
+    }
+  }
+
+  function editOpenPurchase() {
+    if (!detailPurchase) return;
+    const editor = purchaseDetailToEditor(detailPurchase);
+    setEditing(detailPurchase);
+    setForm(editor.form);
+    setItems(editor.items);
+    setInstallments(editor.installments);
+    setError(null);
+    setDetailOpen(false);
+    setDialogOpen(true);
+  }
+
+  async function openFiscalDocument(documentId: string) {
+    setOpeningFiscalDocumentId(documentId);
+    setError(null);
+    try {
+      const access = await apiGet<{ expiresAt: string; url: string }>(
+        `/procure-to-pay/fiscal/documents/${documentId}/file-url`,
+        { token: accessToken, organizationId },
+      );
+      window.open(access.url, '_blank', 'noopener,noreferrer');
+    } catch (requestError) {
+      setError(errorMessage(requestError));
+    } finally {
+      setOpeningFiscalDocumentId(null);
     }
   }
 
@@ -558,6 +618,9 @@ export function PurchasesView({
             <button aria-pressed={viewMode === 'KANBAN'} onClick={() => setViewMode('KANBAN')} title="Kanban" type="button"><Columns3 size={16} /><span>Kanban</span></button>
             <button aria-pressed={viewMode === 'TABLE'} onClick={() => setViewMode('TABLE')} title="Tabela" type="button"><List size={16} /><span>Tabela</span></button>
           </span>
+          <button className="secondary-button" onClick={() => setAuditOpen(true)} type="button">
+            <History size={16} />Historico
+          </button>
           {canWrite && <button className="primary-button" onClick={openCreate} type="button"><Plus size={16} />Nova compra</button>}
         </span>
       </section>
@@ -565,7 +628,25 @@ export function PurchasesView({
       <section className="filter-bar panel">
         <label className="search-field"><Search size={16} /><span className="sr-only">Buscar compra</span><input onChange={(event) => setSearch(event.target.value)} placeholder="Pedido, fornecedor, categoria ou departamento" value={search} /></label>
         <label className="compact-select"><span className="sr-only">Filtrar por status</span><select onChange={(event) => setStatus(event.target.value as typeof status)} value={status}><option value="ALL">Todos os status</option><option value="REGISTERED">Registradas</option><option value="CANCELLED">Canceladas</option><option value="DRAFT">Rascunhos</option></select></label>
-        <span className="count-label">{visiblePurchases.length} compras</span>
+        {viewMode === 'KANBAN' && (
+          <label className="kanban-history-toggle">
+            <input
+              checked={showCompletedInKanban}
+              onChange={(event) => setShowCompletedInKanban(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Exibir concluidos</span>
+          </label>
+        )}
+        <span className="count-label">
+          {viewMode === 'KANBAN'
+            ? `${kanbanPurchases.length} no fluxo${
+                !showCompletedInKanban && completedPurchases.length
+                  ? ` | ${completedPurchases.length} concluidos ocultos`
+                  : ''
+              }`
+            : `${visiblePurchases.length} compras`}
+        </span>
       </section>
 
       {error && !dialogOpen && !detailOpen && !lifecycleOpen && !receiptOpen && (
@@ -575,8 +656,8 @@ export function PurchasesView({
       {viewMode === 'KANBAN' ? (
         loading ? <div className="panel table-loading">Carregando compras</div> : (
           <section className="purchase-kanban" aria-label="Fluxo das compras">
-            {workflowStages.map((stage) => {
-              const stagePurchases = visiblePurchases.filter((purchase) => purchase.workflowStage === stage);
+            {kanbanStages.map((stage) => {
+              const stagePurchases = kanbanPurchases.filter((purchase) => purchase.workflowStage === stage);
               const draggedPurchase = purchases.find(
                 (candidate) => candidate.id === draggingId,
               );
@@ -610,8 +691,12 @@ export function PurchasesView({
                     {stagePurchases.map((purchase) => {
                       const previous = previousWorkflowStage(purchase.workflowStage);
                       const next = nextWorkflowStage(purchase.workflowStage);
-                      const editable = canEditPurchase(purchase);
+                      const editable = canEditPurchase(purchase, canManageWorkflow);
                       const financial = financialByPurchase.get(purchase.id);
+                      const negotiation = purchaseNegotiationMetrics(
+                        purchase.total,
+                        purchase.negotiatedSavings,
+                      );
                       return (
                         <article
                           className={`purchase-kanban-card ${purchase.status === 'CANCELLED' ? 'cancelled' : ''} ${draggingId === purchase.id ? 'dragging' : ''}`}
@@ -623,6 +708,14 @@ export function PurchasesView({
                             )
                           }
                           key={purchase.id}
+                          onDoubleClick={(event) => {
+                            if (
+                              pendingId !== purchase.id &&
+                              shouldOpenPurchaseOnDoubleClick(event.target)
+                            ) {
+                              void openDetails(purchase);
+                            }
+                          }}
                           onDragEnd={() => {
                             setDraggingId(null);
                             setDragOverStage(null);
@@ -632,16 +725,33 @@ export function PurchasesView({
                             event.dataTransfer.setData('text/purchase-id', purchase.id);
                             setDraggingId(purchase.id);
                           }}
+                          title="Abrir pedido"
                         >
                           <header>
                             <span>
-                              <strong>{purchase.number}</strong>
+                              <strong>Pedido #{purchase.displayNumber}</strong>
                               <small>{formatDate(purchase.issuedAt)}</small>
                             </span>
                             {purchase.invoiceLinked && <span className="invoice-badge">NF</span>}
                           </header>
                           <p>{purchase.supplierName}</p>
-                          <strong className="kanban-card-total">{currency.format(purchase.total)}</strong>
+                          <div className="kanban-negotiation-summary">
+                            <span>
+                              <small>Valor inicial</small>
+                              <strong>{currency.format(negotiation.initialValue)}</strong>
+                            </span>
+                            <span>
+                              <small>Valor negociado</small>
+                              <strong>{currency.format(negotiation.negotiatedValue)}</strong>
+                            </span>
+                            <span className="kanban-savings-summary">
+                              <small>Economia</small>
+                              <strong>
+                                {currency.format(negotiation.savings)} |{' '}
+                                {percentage.format(negotiation.savingsPercentage)}%
+                              </strong>
+                            </span>
+                          </div>
                           <small>{purchase.departments.join(', ') || 'Sem centro de custo'}</small>
                           {financial && (
                             <div className="purchase-financial-status">
@@ -654,6 +764,12 @@ export function PurchasesView({
                             <div className={`kanban-approval ${purchase.approval.status.toLowerCase()}`}>
                               <span>{purchase.approval.ruleName}</span>
                               <strong>{purchase.approval.approvedCount}/{purchase.approval.requiredApprovals}</strong>
+                            </div>
+                          )}
+                          {purchase.approval?.status === 'APPROVED' && purchase.approval.approvedBy.length > 0 && (
+                            <div className="kanban-approved-by">
+                              <BadgeCheck size={15} />
+                              <span>Aprovado por <strong>{approvedByLabel(purchase.approval.approvedBy)}</strong></span>
                             </div>
                           )}
                           <footer>
@@ -740,8 +856,20 @@ export function PurchasesView({
                 <thead><tr><th>Pedido</th><th>Fornecedor</th><th>Departamentos</th><th>Itens</th><th>Data</th><th>Etapa</th><th className="align-right">Economia</th><th className="align-right">Total</th><th className="align-right">Acoes</th></tr></thead>
                 <tbody>
                   {visiblePurchases.length ? visiblePurchases.map((purchase) => (
-                    <tr className={purchase.status === 'CANCELLED' ? 'purchase-row-cancelled' : undefined} key={purchase.id}>
-                      <td className="order-id"><strong>{purchase.number}</strong><small>{purchase.invoiceNumber ? `NF ${purchase.invoiceNumber}` : 'Sem nota vinculada'}</small></td>
+                    <tr
+                      className={purchase.status === 'CANCELLED' ? 'purchase-row-cancelled' : undefined}
+                      key={purchase.id}
+                      onDoubleClick={(event) => {
+                        if (
+                          pendingId !== purchase.id &&
+                          shouldOpenPurchaseOnDoubleClick(event.target)
+                        ) {
+                          void openDetails(purchase);
+                        }
+                      }}
+                      title="Abrir pedido"
+                    >
+                      <td className="order-id"><strong>Pedido #{purchase.displayNumber}</strong><small>{purchase.invoiceNumber ? `NF ${purchase.invoiceNumber}` : 'Sem nota vinculada'}</small></td>
                       <td>{purchase.supplierName}</td>
                       <td>{purchase.departments.join(', ') || 'Nao classificado'}</td>
                       <td>{purchase.itemCount}</td>
@@ -753,7 +881,7 @@ export function PurchasesView({
                         <button className="icon-button table-action" disabled={pendingId === purchase.id} onClick={() => void openDetails(purchase)} title="Ver detalhes e historico" type="button"><ReceiptText size={16} /></button>
                         {canWrite && (
                           <>
-                          <button className="icon-button table-action" disabled={pendingId === purchase.id || !canEditPurchase(purchase)} onClick={() => void openEdit(purchase)} title={canEditPurchase(purchase) ? 'Editar compra' : 'Edicao encerrada apos envio para aprovacao'} type="button"><Pencil size={16} /></button>
+                          <button className="icon-button table-action" disabled={pendingId === purchase.id || !canEditPurchase(purchase, canManageWorkflow)} onClick={() => void openEdit(purchase)} title={canEditPurchase(purchase, canManageWorkflow) ? 'Editar compra' : 'Edicao encerrada apos envio para aprovacao'} type="button"><Pencil size={16} /></button>
                           <button className={`icon-button table-action ${purchase.status === 'CANCELLED' ? '' : 'danger-icon'}`} disabled={pendingId === purchase.id} onClick={() => void openLifecycle(purchase)} title={purchase.status === 'CANCELLED' ? 'Reativar compra' : 'Cancelar compra'} type="button">{purchase.status === 'CANCELLED' ? <RotateCcw size={16} /> : <CircleX size={16} />}</button>
                           </>
                         )}
@@ -771,17 +899,18 @@ export function PurchasesView({
         <div className="modal-backdrop" role="presentation">
           <section aria-labelledby="purchase-title" aria-modal="true" className="modal-panel modal-extra-wide purchase-modal" role="dialog">
             <header className="modal-header">
-              <span><p className="eyebrow">Operacao de compras</p><h2 id="purchase-title">{editing ? 'Editar compra' : 'Registrar compra'}</h2></span>
+              <span><p className="eyebrow">Operacao de compras</p><h2 id="purchase-title">{editing ? `Editar pedido #${editing.displayNumber}` : 'Registrar compra'}</h2></span>
               <button className="icon-button" onClick={() => setDialogOpen(false)} title="Fechar" type="button"><X size={18} /></button>
             </header>
             <form className="management-form purchase-form" onSubmit={(event) => void submit(event)}>
               <div className="form-grid three-columns">
-                <label>Numero do pedido<input autoFocus maxLength={40} onChange={(event) => formField('number', event.target.value)} required value={form.number} /></label>
+                <label>Referencia original<input autoFocus maxLength={40} onChange={(event) => formField('number', event.target.value)} required value={form.number} /></label>
                 <label>Data de emissao<input onChange={(event) => formField('issuedAt', event.target.value)} required={!editing} type="date" value={form.issuedAt} /></label>
                 <label>Fornecedor<select onChange={(event) => formField('supplierId', event.target.value)} required value={form.supplierId}><option value="">Selecione</option>{suppliers.map((supplier) => <option disabled={supplier.status !== 'ACTIVE' && supplier.id !== form.supplierId} key={supplier.id} value={supplier.id}>{supplier.tradeName ?? supplier.legalName}{supplier.status !== 'ACTIVE' ? ' | Inativo' : ''}</option>)}</select></label>
                 <label>Categoria<input maxLength={100} onChange={(event) => formField('category', event.target.value)} placeholder={selectedSupplier?.category ?? 'Automatica pelo fornecedor'} value={form.category} /></label>
                 <label>Natureza da operacao<input maxLength={100} onChange={(event) => formField('operationNature', event.target.value)} placeholder={selectedSupplier?.operationNature ?? 'Automatica pelo fornecedor'} value={form.operationNature} /></label>
                 <label>Metodo de pagamento<input maxLength={80} onChange={(event) => formField('paymentMethod', event.target.value)} placeholder={selectedSupplier?.paymentMethod ?? 'Nao informado'} value={form.paymentMethod} /></label>
+                <label className="checkbox-field"><input checked={form.fiscalDocumentRequired} onChange={(event) => formField('fiscalDocumentRequired', event.target.checked)} type="checkbox" /><span><strong>Documento fiscal exigido</strong></span></label>
               </div>
 
               <section className="form-section">
@@ -827,7 +956,7 @@ export function PurchasesView({
 
               <label>Observacoes<textarea maxLength={2000} onChange={(event) => formField('notes', event.target.value)} rows={3} value={form.notes} /></label>
 
-              <div className="purchase-total-band"><span><small>Total da compra</small><strong>{currency.format(totals.total)}</strong></span><span><small>Economia negociada</small><strong>{currency.format(totals.savings)}</strong></span></div>
+              <div className="purchase-total-band"><span><small>Valor inicial</small><strong>{currency.format(totals.total + totals.savings)}</strong></span><span><small>Valor negociado</small><strong>{currency.format(totals.total)}</strong></span><span><small>Economia negociada</small><strong>{currency.format(totals.savings)} | {percentage.format(totals.total + totals.savings > 0 ? (totals.savings / (totals.total + totals.savings)) * 100 : 0)}%</strong></span></div>
               {error && <div className="form-error">{error}</div>}
               <footer className="modal-actions"><button className="secondary-button" onClick={() => setDialogOpen(false)} type="button">Fechar</button><button className="primary-button" disabled={submitting} type="submit">{editing ? <Pencil size={16} /> : <ReceiptText size={16} />}{submitting ? 'Salvando' : editing ? 'Salvar alteracoes' : 'Registrar compra'}</button></footer>
             </form>
@@ -846,7 +975,8 @@ export function PurchasesView({
             <header className="modal-header">
               <span>
                 <p className="eyebrow">Pedido de compra</p>
-                <h2 id="purchase-detail-title">{detailPurchase.number}</h2>
+                <h2 id="purchase-detail-title">Pedido #{detailPurchase.displayNumber}</h2>
+                <small className="purchase-technical-reference">Referencia original: {detailPurchase.number}</small>
               </span>
               <button
                 className="icon-button"
@@ -857,7 +987,7 @@ export function PurchasesView({
                 <X size={18} />
               </button>
             </header>
-            <div className="purchase-detail-content">
+            <div className="purchase-detail-content purchase-detail-with-fiscal">
               <div className="purchase-detail-summary">
                 <span>
                   <small>Fornecedor</small>
@@ -877,29 +1007,113 @@ export function PurchasesView({
                 </span>
                 <span>
                   <small>Notas vinculadas</small>
-                  <strong>{detailFinancial?.invoiceCount ?? (detailPurchase.invoiceLinked ? 1 : 0)}</strong>
+                  <strong>{detailPurchase.fiscalDocuments.length}</strong>
                 </span>
                 <span>
                   <small>Saldo financeiro</small>
                   <strong>{currency.format(detailFinancial?.balance ?? detailPurchase.total)}</strong>
                 </span>
                 <span>
-                  <small>Total</small>
-                  <strong>{currency.format(detailPurchase.total)}</strong>
+                  <small>Valor inicial</small>
+                  <strong>{currency.format(detailNegotiation?.initialValue ?? 0)}</strong>
+                </span>
+                <span>
+                  <small>Valor negociado</small>
+                  <strong>{currency.format(detailNegotiation?.negotiatedValue ?? 0)}</strong>
+                </span>
+                <span>
+                  <small>Economia</small>
+                  <strong>
+                    {currency.format(detailNegotiation?.savings ?? 0)} |{' '}
+                    {percentage.format(detailNegotiation?.savingsPercentage ?? 0)}%
+                  </strong>
                 </span>
                 <span>
                   <small>Emissao</small>
                   <strong>{formatDate(detailPurchase.issuedAt)}</strong>
                 </span>
                 <span>
-                  <small>Nota fiscal</small>
-                  <strong>{detailPurchase.invoiceNumber ?? 'Nao vinculada'}</strong>
+                  <small>Referencia fiscal da planilha</small>
+                  <strong>{detailPurchase.invoiceNumber ?? 'Nao informada'}</strong>
+                </span>
+                <span>
+                  <small>Documento fiscal</small>
+                  <strong>
+                    {detailPurchase.fiscalDocumentRequired ? 'Exigido' : 'Nao exigido'}
+                  </strong>
                 </span>
                 <span>
                   <small>Categoria</small>
                   <strong>{detailPurchase.category ?? 'Nao informada'}</strong>
                 </span>
               </div>
+
+              <aside className="purchase-fiscal-sidebar" aria-label="Documentos fiscais vinculados">
+                <header>
+                  <span>
+                    <small>Documentos fiscais</small>
+                    <strong>NF-e vinculadas</strong>
+                  </span>
+                  <span className="fiscal-document-count">
+                    {detailPurchase.fiscalDocuments.length}
+                  </span>
+                </header>
+                {detailPurchase.fiscalDocuments.length ? (
+                  <div className="purchase-fiscal-card-list">
+                    {detailPurchase.fiscalDocuments.map((document) => (
+                      <article className="purchase-fiscal-card" key={document.id ?? document.invoiceNumber}>
+                        <header>
+                          <span>
+                            <small>Nota fiscal</small>
+                            <strong>NF {document.invoiceNumber ?? 'Sem numero'}</strong>
+                          </span>
+                          {document.kind && <span className="fiscal-kind-badge">{document.kind}</span>}
+                        </header>
+                        <dl>
+                          <div><dt>Emitente</dt><dd>{document.issuerName ?? detailPurchase.supplierName}</dd></div>
+                          <div><dt>CNPJ</dt><dd>{formatTaxDocument(document.issuerDocument)}</dd></div>
+                          <div><dt>Emissao</dt><dd>{formatFiscalDate(document.issuedAt)}</dd></div>
+                          <div><dt>Valor</dt><dd>{document.total === null ? 'Nao lido' : currency.format(document.total)}</dd></div>
+                          <div><dt>Vinculo</dt><dd>{fiscalMatchLabel(document.matchStatus)}</dd></div>
+                        </dl>
+                        {document.accessKey && (
+                          <p className="fiscal-access-key" title={document.accessKey}>
+                            Chave {document.accessKey}
+                          </p>
+                        )}
+                        {document.id && document.fileAvailable && (
+                          <button
+                            className="secondary-button fiscal-file-button"
+                            disabled={openingFiscalDocumentId === document.id}
+                            onClick={() => void openFiscalDocument(document.id!)}
+                            type="button"
+                          >
+                            <Download size={15} />
+                            {openingFiscalDocumentId === document.id
+                              ? 'Abrindo'
+                              : document.kind === 'PDF'
+                                ? 'Abrir DANFE'
+                                : 'Abrir XML'}
+                          </button>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="purchase-fiscal-empty">
+                    <FileCheck2 size={20} />
+                    <strong>Nenhum documento validado</strong>
+                    <p>O recebimento fiscal aguarda um arquivo legivel e conciliado.</p>
+                  </div>
+                )}
+                {!detailPurchase.fiscalDocuments.length && detailPurchase.invoiceNumber && (
+                  <div className="legacy-fiscal-reference">
+                    <small>Referencia nao validada da planilha</small>
+                    <strong>{detailPurchase.invoiceNumber}</strong>
+                    <p>Este numero nao foi convertido em NF-e porque nao ha arquivo fiscal legivel.</p>
+                  </div>
+                )}
+              </aside>
 
               <section className="purchase-detail-section">
                 <header>
@@ -913,7 +1127,8 @@ export function PurchasesView({
                         <th>Descricao</th>
                         <th>Centro de custo</th>
                         <th className="align-right">Quantidade</th>
-                        <th className="align-right">Preco</th>
+                        <th className="align-right">Preco original</th>
+                        <th className="align-right">Preco negociado</th>
                         <th className="align-right">Total</th>
                       </tr>
                     </thead>
@@ -932,7 +1147,8 @@ export function PurchasesView({
                               : item.costCenterName ?? 'Nao classificado'}
                           </td>
                           <td className="align-right">{item.quantity}</td>
-                          <td className="align-right">
+                          <td className="align-right">{currency.format(item.unitPrice)}</td>
+                          <td className="align-right savings-cell">
                             {currency.format(item.negotiatedPrice ?? item.unitPrice)}
                           </td>
                           <td className="align-right amount-cell">
@@ -968,7 +1184,7 @@ export function PurchasesView({
                 ) : (
                   <p className="detail-empty">Nenhum recebimento confirmado.</p>
                 )}
-                {canWrite && ['SUPPLIER_INVOICED', 'RECEIVED'].includes(detailPurchase.workflowStage) && (
+                {canWrite && canConfirmPurchaseReceipt(detailPurchase) && (
                   <button className="secondary-button" onClick={() => void openReceipt(detailPurchase)} type="button">
                     <PackageCheck size={16} />Confirmar recebimento
                   </button>
@@ -1075,9 +1291,15 @@ export function PurchasesView({
                 </section>
               )}
             </div>
+            {error && <div className="form-error">{error}</div>}
             <footer className="modal-actions">
+              {canWrite && canEditPurchase(detailPurchase, canManageWorkflow) && (
+                <button className="primary-button" onClick={editOpenPurchase} type="button">
+                  <Pencil size={16} />Editar pedido
+                </button>
+              )}
               <button
-                className="primary-button"
+                className="secondary-button"
                 onClick={() => setDetailOpen(false)}
                 type="button"
               >
@@ -1092,13 +1314,13 @@ export function PurchasesView({
         <div className="modal-backdrop" role="presentation">
           <section aria-labelledby="receipt-title" aria-modal="true" className="modal-panel modal-wide" role="dialog">
             <header className="modal-header">
-              <span><p className="eyebrow">Conferencia fisica</p><h2 id="receipt-title">Receber {receiptPurchase.number}</h2></span>
+              <span><p className="eyebrow">Conferencia fisica</p><h2 id="receipt-title">Receber pedido #{receiptPurchase.displayNumber}</h2></span>
               <button className="icon-button" onClick={() => { setReceiptOpen(false); setDetailOpen(true); }} title="Fechar" type="button"><X size={18} /></button>
             </header>
             <div className="management-form">
               <label>Data do recebimento<input onChange={(event) => setReceiptDate(event.target.value)} type="date" value={receiptDate} /></label>
               <div className="receipt-item-editor">
-                <div className="receipt-item-header"><span>Item</span><span>Pedido</span><span>Ja recebido</span><span>NF-e</span><span>Receber agora</span></div>
+                <div className="receipt-item-header"><span>Item</span><span>Pedido</span><span>Ja recebido</span><span>Documento</span><span>Receber agora</span></div>
                 {receiptPurchase.items.map((item) => {
                   const alreadyReceived = receivedQuantityByItem(goodsReceipts).get(item.id) ?? 0;
                   const remaining = Math.max(0, item.quantity - alreadyReceived);
@@ -1156,7 +1378,11 @@ export function PurchasesView({
                           </select>
                         </label>
                       ) : (
-                        <small className="receipt-fiscal-empty">Sem linha fiscal</small>
+                        <small className="receipt-fiscal-empty">
+                          {receiptPurchase.fiscalDocumentRequired
+                            ? 'Sem linha fiscal'
+                            : 'Nao exigido'}
+                        </small>
                       )}
                       <label><span className="sr-only">Quantidade recebida de {item.description}</span><input disabled={remaining <= 0 || maximum <= 0} max={maximum} min="0" onChange={(event) => setReceiptQuantities((current) => ({ ...current, [item.id]: event.target.value }))} step="0.0001" type="number" value={receiptQuantities[item.id] ?? ''} /></label>
                     </div>
@@ -1179,7 +1405,7 @@ export function PurchasesView({
               <button className="icon-button" onClick={() => setLifecycleOpen(false)} title="Fechar" type="button"><X size={18} /></button>
             </header>
             <div className="management-form">
-              <div className="lifecycle-purchase-summary"><span><small>Pedido</small><strong>{lifecyclePurchase.number}</strong></span><span><small>Fornecedor</small><strong>{lifecyclePurchase.supplierName}</strong></span><span><small>Valor</small><strong>{currency.format(lifecyclePurchase.total)}</strong></span></div>
+              <div className="lifecycle-purchase-summary"><span><small>Pedido</small><strong>#{lifecyclePurchase.displayNumber}</strong></span><span><small>Fornecedor</small><strong>{lifecyclePurchase.supplierName}</strong></span><span><small>Valor</small><strong>{currency.format(lifecyclePurchase.total)}</strong></span></div>
               <label>Motivo<textarea autoFocus maxLength={500} minLength={3} onChange={(event) => setLifecycleReason(event.target.value)} required rows={4} value={lifecycleReason} /></label>
               {error && <div className="form-error">{error}</div>}
               <footer className="modal-actions">
@@ -1195,7 +1421,7 @@ export function PurchasesView({
         <div className="modal-backdrop" role="presentation">
           <section aria-labelledby="move-purchase-title" aria-modal="true" className="modal-panel" role="dialog">
             <header className="modal-header">
-              <span><p className="eyebrow">Retorno de etapa</p><h2 id="move-purchase-title">{moving.purchase.number}</h2></span>
+              <span><p className="eyebrow">Retorno de etapa</p><h2 id="move-purchase-title">Pedido #{moving.purchase.displayNumber}</h2></span>
               <button className="icon-button" onClick={() => setMoving(null)} title="Fechar" type="button"><X size={18} /></button>
             </header>
             <div className="management-form">
@@ -1210,12 +1436,25 @@ export function PurchasesView({
           </section>
         </div>
       )}
+
+      <PurchaseAuditDialog
+        accessToken={accessToken}
+        onClose={() => setAuditOpen(false)}
+        open={auditOpen}
+        organizationId={organizationId}
+      />
     </div>
   );
 }
 
+export function approvedByLabel(
+  approvedBy: NonNullable<PurchaseSummary['approval']>['approvedBy'],
+): string {
+  return approvedBy.map((approval) => approval.name).join(' e ');
+}
+
 function newPurchaseForm(): PurchaseForm {
-  return { category: '', invoiceNumber: '', issuedAt: new Date().toISOString().slice(0, 10), notes: '', number: '', operationNature: '', paymentMethod: '', supplierId: '' };
+  return { category: '', fiscalDocumentRequired: true, invoiceNumber: '', issuedAt: new Date().toISOString().slice(0, 10), notes: '', number: '', operationNature: '', paymentMethod: '', supplierId: '' };
 }
 
 function newPurchaseItem(): PurchaseItemRow {
@@ -1283,6 +1522,7 @@ function toEditablePurchaseInput(
   return {
     number: form.number.trim(),
     invoiceNumber: form.invoiceNumber.trim() || null,
+    fiscalDocumentRequired: form.fiscalDocumentRequired,
     supplierId: form.supplierId,
     issuedAt: form.issuedAt || null,
     category: form.category.trim() || null,
@@ -1308,6 +1548,7 @@ export function purchaseDetailToEditor(detail: PurchaseDetail): {
   return {
     form: {
       category: detail.category ?? '',
+      fiscalDocumentRequired: detail.fiscalDocumentRequired,
       invoiceNumber: detail.invoiceNumber ?? '',
       issuedAt: detail.issuedAt ?? '',
       notes: detail.notes ?? '',
@@ -1360,6 +1601,35 @@ function approvalStatusLabel(
     REJECTED: 'Reprovada',
     CANCELLED: 'Cancelada',
   }[status];
+}
+
+const purchaseDoubleClickInteractiveSelector =
+  'button, a, input, select, textarea, [role="button"]';
+
+export function shouldOpenPurchaseOnDoubleClick(target: EventTarget | null): boolean {
+  const candidate = target as
+    | (EventTarget & { closest?: (selector: string) => unknown })
+    | null;
+  return !candidate?.closest?.(purchaseDoubleClickInteractiveSelector);
+}
+
+export function purchaseNegotiationMetrics(total: number, savings: number) {
+  const negotiatedValue = Math.max(0, total);
+  const normalizedSavings = Math.max(0, savings);
+  const initialValue = negotiatedValue + normalizedSavings;
+  return {
+    initialValue,
+    negotiatedValue,
+    savings: normalizedSavings,
+    savingsPercentage:
+      initialValue > 0 ? (normalizedSavings / initialValue) * 100 : 0,
+  };
+}
+
+function canConfirmPurchaseReceipt(purchase: PurchaseSummary): boolean {
+  return purchase.fiscalDocumentRequired
+    ? ['SUPPLIER_INVOICED', 'RECEIVED'].includes(purchase.workflowStage)
+    : ['PURCHASE_ORDER', 'RECEIVED'].includes(purchase.workflowStage);
 }
 
 function approvalDecisionLabel(
@@ -1458,10 +1728,14 @@ function canMoveTo(
   return true;
 }
 
-function canEditPurchase(purchase: PurchaseSummary): boolean {
+function canEditPurchase(
+  purchase: PurchaseSummary,
+  canManageWorkflow: boolean,
+): boolean {
   return (
     purchase.status !== 'CANCELLED' &&
-    (purchase.workflowStage === 'REGISTRATION' ||
+    (canManageWorkflow ||
+      purchase.workflowStage === 'REGISTRATION' ||
       purchase.workflowStage === 'REQUESTED')
   );
 }
@@ -1504,6 +1778,34 @@ function formatDateTime(value: string): string {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(new Date(value));
+}
+
+function formatFiscalDate(value: string | null): string {
+  if (!value) return 'Nao informada';
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(new Date(value));
+}
+
+function formatTaxDocument(value: string | null): string {
+  if (!value) return 'Nao informado';
+  const digits = value.replace(/\D/g, '');
+  if (digits.length !== 14) return value;
+  return digits.replace(
+    /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+    '$1.$2.$3/$4-$5',
+  );
+}
+
+function fiscalMatchLabel(
+  status: PurchaseDetail['fiscalDocuments'][number]['matchStatus'],
+): string {
+  if (!status) return 'Aguardando validacao';
+  return {
+    UNMATCHED: 'Nao vinculada',
+    MATCHED_EXACT: 'Correspondencia exata',
+    MATCHED_MANUAL: 'Revisada manualmente',
+    REVIEW_REQUIRED: 'Revisao necessaria',
+    REJECTED: 'Rejeitada',
+  }[status];
 }
 
 function errorMessage(error: unknown): string {

@@ -49,8 +49,11 @@ export class PurchasesService {
     organizationId: string,
     id: string,
     input: UpdatePurchaseInput,
+    organizationRole: OrganizationRole,
   ) {
-    return this.repository.updatePurchase(actor, organizationId, id, input);
+    return this.repository.updatePurchase(actor, organizationId, id, input, {
+      organizationRole,
+    });
   }
 
   changeStatus(

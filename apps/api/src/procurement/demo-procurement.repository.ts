@@ -124,6 +124,7 @@ type StoredPurchaseItem = {
 type StoredPurchase = {
   category: string | null;
   createdAt: string;
+  displaySequence: number;
   id: string;
   issuedAt: string | null;
   items: StoredPurchaseItem[];
@@ -132,6 +133,7 @@ type StoredPurchase = {
   notes: string | null;
   number: string;
   invoiceNumber: string | null;
+  fiscalDocumentRequired: boolean;
   operationNature: string | null;
   organizationId: string;
   paymentMethod: string | null;
@@ -477,18 +479,31 @@ export class DemoProcurementRepository extends ProcurementRepository {
   }
 
   async updatePurchase(
-    _actor: AuthenticatedIdentity,
+    actor: AuthenticatedIdentity,
     organizationId: string,
     id: string,
     input: UpdatePurchaseInput,
+    context: WorkflowTransitionContext = {},
   ): Promise<PurchaseDetail> {
     const purchase = this.requireStoredPurchase(organizationId, id);
     if (purchase.status === 'CANCELLED') {
       throw new BadRequestException('Reative a compra antes de altera-la.');
     }
-    if (!['REGISTRATION', 'REQUESTED'].includes(purchase.workflowStage)) {
+    const adminOverride =
+      actor.platformRoles.includes('PLATFORM_OWNER') ||
+      context.organizationRole === 'ORGANIZATION_ADMIN';
+    const isEarlyStage = ['REGISTRATION', 'REQUESTED'].includes(purchase.workflowStage);
+    if (
+      !isEarlyStage &&
+      !adminOverride
+    ) {
       throw new BadRequestException(
         'Os dados da compra so podem ser alterados durante o cadastro ou a solicitacao.',
+      );
+    }
+    if (!isEarlyStage && adminOverride && purchase.invoiceNumber) {
+      throw new BadRequestException(
+        'Este pedido demonstrativo possui evidencia fiscal vinculada e nao pode ter itens ou valores alterados.',
       );
     }
     if ((input.invoiceNumber ?? null) !== purchase.invoiceNumber) {
@@ -503,6 +518,8 @@ export class DemoProcurementRepository extends ProcurementRepository {
       organizationId,
       {
         ...input,
+        fiscalDocumentRequired:
+          input.fiscalDocumentRequired ?? purchase.fiscalDocumentRequired,
         source: purchase.source,
         sourceReference: purchase.sourceReference,
       },
@@ -591,6 +608,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
       input.stage,
       input.reason ?? null,
       purchase.invoiceNumber !== null,
+      purchase.fiscalDocumentRequired,
       {
         adminOverride:
           actor.platformRoles.includes('PLATFORM_OWNER') ||
@@ -1366,8 +1384,16 @@ export class DemoProcurementRepository extends ProcurementRepository {
     return {
       id: randomUUID(),
       organizationId,
+      displaySequence:
+        Math.max(
+          0,
+          ...this.purchases
+            .filter((purchase) => purchase.organizationId === organizationId)
+            .map((purchase) => purchase.displaySequence),
+        ) + 1,
       number: input.number,
       invoiceNumber: input.invoiceNumber ?? null,
+      fiscalDocumentRequired: input.fiscalDocumentRequired ?? true,
       supplierId: input.supplierId,
       issuedAt: input.issuedAt,
       status: demoLifecycleStatusForStage(workflowStage),
@@ -1491,8 +1517,10 @@ export class DemoProcurementRepository extends ProcurementRepository {
   private toPurchaseSummary(purchase: StoredPurchase): PurchaseSummary {
     return {
       id: purchase.id,
+      displayNumber: purchase.displaySequence,
       number: purchase.number,
       invoiceNumber: purchase.invoiceNumber,
+      fiscalDocumentRequired: purchase.fiscalDocumentRequired,
       supplierId: purchase.supplierId,
       supplierName: this.supplierName(purchase.supplierId),
       issuedAt: purchase.issuedAt,
@@ -1550,6 +1578,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
         })),
       })),
       installments: purchase.installments.map((installment) => ({ ...installment })),
+      fiscalDocuments: [],
       approval: purchase.approvalRequests.length
         ? {
             ...toStoredApprovalSummary(
@@ -1743,6 +1772,16 @@ function toStoredApprovalSummary(request: StoredApprovalRequest) {
     rejectedCount: request.participants.filter(
       (participant) => participant.decision === 'REJECTED',
     ).length,
+    approvedBy: request.participants
+      .filter(
+        (participant): participant is typeof participant & { decidedAt: string } =>
+          participant.decision === 'APPROVED' && participant.decidedAt !== null,
+      )
+      .map((participant) => ({
+        userId: participant.userId,
+        name: participant.name,
+        decidedAt: participant.decidedAt,
+      })),
     submittedAt: request.submittedAt,
     resolvedAt: request.resolvedAt,
   };
@@ -1782,6 +1821,7 @@ function assertDemoManualStageTransition(
   to: PurchaseWorkflowStage,
   reason: string | null,
   invoiceLinked: boolean,
+  fiscalDocumentRequired: boolean,
   options: {
     adminOverride: boolean;
     automated: boolean;
@@ -1790,7 +1830,12 @@ function assertDemoManualStageTransition(
 ) {
   const movingBackwards = demoWorkflowStageIndex(to) < demoWorkflowStageIndex(from);
   if (options.automated) {
-    if (demoWorkflowStageIndex(to) !== demoWorkflowStageIndex(from) + 1) {
+    const exemptReceiptTransition =
+      !fiscalDocumentRequired && from === 'PURCHASE_ORDER' && to === 'RECEIVED';
+    if (
+      !exemptReceiptTransition &&
+      demoWorkflowStageIndex(to) !== demoWorkflowStageIndex(from) + 1
+    ) {
       throw new BadRequestException('A automacao tentou ignorar uma etapa do fluxo de compras.');
     }
     return;
@@ -2182,8 +2227,10 @@ function seededPurchase(
   return {
     id,
     organizationId,
+    displaySequence: Number(id.slice(-12)),
     number,
     invoiceNumber: null,
+    fiscalDocumentRequired: true,
     supplierId,
     issuedAt,
     status: 'REGISTERED',

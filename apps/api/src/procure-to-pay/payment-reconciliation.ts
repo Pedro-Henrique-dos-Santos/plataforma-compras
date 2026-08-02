@@ -18,6 +18,7 @@ export type ReconciliationTitle = {
   fiscalDocumentId: string | null;
   fiscalDocument: { fiscalItems: FiscalItem[] } | null;
   purchase: {
+    fiscalDocumentRequired: boolean;
     fiscalDocumentLinks: Array<{
       invoiceDocumentId: string;
       matchStatus: string;
@@ -27,6 +28,9 @@ export type ReconciliationTitle = {
 };
 
 export function titleIsMatched(title: ReconciliationTitle): boolean {
+  if (!title.purchase.fiscalDocumentRequired) {
+    return purchaseIsFullyReceived(title.purchase);
+  }
   const validLinks = title.purchase.fiscalDocumentLinks.filter((link) =>
     ['MATCHED_EXACT', 'MATCHED_MANUAL'].includes(link.matchStatus),
   );

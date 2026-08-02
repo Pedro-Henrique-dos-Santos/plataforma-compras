@@ -81,6 +81,11 @@ preenchem o formulario para revisao humana e nao sao persistidos automaticamente
 
 As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor.
 
+Cada compra tambem recebe um numero sequencial amigavel e imutavel dentro da
+empresa. Esse numero e usado na interface e nas comunicacoes, enquanto a
+referencia original da planilha ou do fornecedor permanece preservada para
+deduplicacao e rastreabilidade.
+
 Relacoes operacionais tambem usam chaves estrangeiras compostas por
 `organization_id` e pelo identificador do registro. Quinze relacoes criticas
 impedem que fornecedor, centro de custo, compra, item, rateio, parcela, nota
@@ -126,9 +131,21 @@ valores. Qualquer diferenca resulta em `REVIEW_REQUIRED`. O rollout possui os
 modos `SHADOW`, `EXACT_MATCH` e `AUTO_SCIENCE`; eventos conclusivos de
 manifestacao permanecem manuais em todos eles.
 
+Um numero de nota existente apenas na planilha e uma referencia historica, nao
+um documento fiscal validado. Ele nao cria card de NF-e, nao libera recebimento
+e nao conta como vinculo fiscal. Somente um arquivo real legivel, extraido e
+conciliado por correspondencia exata ou revisao humana aparece no pedido e pode
+ser aberto por link temporario do storage privado.
+
+O documento fiscal e exigido por padrao. Uma compra pode registrar de forma
+explicita que o documento fiscal nao se aplica; essa classificacao nunca e
+inferida pelo meio de pagamento. A dispensa permite recebimento sem linha fiscal
+e conciliacao do titulo apos o recebimento, mas nao elimina aprovacao, baixa,
+comprovante ou auditoria.
+
 ## Operacao de compras
 
-A consulta detalhada de uma compra devolve itens, rateios, parcelas, observacoes e a referencia fiscal dentro do tenant ativo. A correcao substitui itens e parcelas em uma unica transacao, recalcula total e economia e preserva a origem e a referencia externa da importacao. Fornecedores ou centros de custo historicos que tenham sido inativados podem permanecer no registro existente, mas nao podem ser escolhidos para uma nova classificacao.
+A consulta detalhada de uma compra devolve itens, rateios, parcelas, observacoes e documentos fiscais validados dentro do tenant ativo. A correcao substitui itens e parcelas em uma unica transacao, recalcula total e economia e preserva a origem e a referencia externa da importacao. Administradores podem corrigir pedidos em etapas avancadas enquanto nao houver documento fiscal moderno, recebimento ou pagamento vinculado; esses registros bloqueiam alteracoes estruturais. Fornecedores ou centros de custo historicos que tenham sido inativados podem permanecer no registro existente, mas nao podem ser escolhidos para uma nova classificacao.
 
 Toda edicao exige o `updatedAt` lido pelo usuario. Se outra operacao alterar a compra antes da gravacao, a API rejeita a versao antiga e exige recarregamento. Parcelas pagas permanecem no banco e nao podem ter valor, vencimento, ordem ou existencia alterados pela edicao da compra.
 
@@ -137,6 +154,14 @@ O Kanban usa `Cadastro`, `Solicitacao`, `Aguardando aprovacao`,
 Compras manuais iniciam em cadastro; importacoes historicas iniciam como pedido
 formalizado; uma nota fiscal importada inicia como faturada. Cada movimento gera
 historico com autor, instante e motivo quando exigido.
+
+O historico de alteracoes das compras usa os eventos imutaveis de auditoria e
+oferece consulta tabular paginada por periodo, usuario, acao, tipo de evento e
+numero amigavel do pedido. A API resolve solicitacoes e decisoes antigas ate o
+pedido correspondente sem expor registros de outra empresa. Inclusoes,
+alteracoes, importacoes e transicoes exibem os campos disponiveis, o instante e
+o responsavel; eventos sem usuario sao identificados como automacao do sistema.
+O card mostra os nomes apenas de participantes com decisao `APPROVED` gravada.
 
 A exigencia de motivo para retornar uma compra e uma configuracao do tenant e
 inicia desabilitada. Administradores da empresa e proprietarios da plataforma

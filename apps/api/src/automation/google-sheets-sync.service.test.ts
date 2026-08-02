@@ -160,8 +160,10 @@ function payload(): ParsedSheetPayload {
 function existingPurchase(): PurchaseSummary {
   return {
     id: '71000000-0000-4000-8000-000000000001',
+    displayNumber: 1,
     number: 'LEGACY-1',
     invoiceNumber: null,
+    fiscalDocumentRequired: true,
     supplierId: supplier.id,
     supplierName: supplier.legalName,
     issuedAt: '2026-07-10',

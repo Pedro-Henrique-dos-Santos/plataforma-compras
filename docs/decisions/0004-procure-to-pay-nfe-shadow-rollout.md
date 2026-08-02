@@ -25,6 +25,11 @@ que nao podem ser liberados de uma vez em producao.
 - Implantar em tres passos: `SHADOW`, `EXACT_MATCH` e `AUTO_SCIENCE` opcional.
 - Nunca resolver divergencia fiscal ou financeira automaticamente.
 - Nunca executar pagamento ou guardar credencial bancaria nesta fase.
+- Exigir documento fiscal por padrao e permitir dispensa somente quando marcada
+  explicitamente no pedido; boleto ou Pix nao implicam dispensa fiscal.
+- Preservar numeros fiscais importados da planilha apenas como referencias
+  historicas. Sem arquivo legivel, extracao e conciliacao validada, eles nao
+  criam NF-e nem liberam recebimento.
 
 ## Consequencias
 

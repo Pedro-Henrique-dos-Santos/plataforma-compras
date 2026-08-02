@@ -196,6 +196,13 @@ export const purchaseApprovalSummarySchema = z.object({
   requiredApprovals: z.number().int().min(1).max(2),
   approvedCount: z.number().int().nonnegative(),
   rejectedCount: z.number().int().nonnegative(),
+  approvedBy: z.array(
+    z.object({
+      userId: z.string().uuid(),
+      name: z.string().trim().min(1).max(120),
+      decidedAt: z.string().datetime(),
+    }),
+  ),
   submittedAt: z.string().datetime(),
   resolvedAt: z.string().datetime().nullable(),
 });

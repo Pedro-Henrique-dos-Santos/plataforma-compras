@@ -311,6 +311,7 @@ describe('Prisma multi-company security', () => {
         data: {
           organizationId: organizationAId,
           supplierId: supplierB.id,
+          displaySequence: 99_999,
           number: 'CROSS-COMPANY-SUPPLIER',
           total: 1,
         },

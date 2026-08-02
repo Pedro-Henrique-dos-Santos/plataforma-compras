@@ -53,6 +53,10 @@ import { parseInvoiceXml } from '../invoices/invoice-xml.parser.js';
 import { ProcurementRepository } from '../procurement/procurement.repository.js';
 import { inspectA1Certificate } from './a1-certificate.js';
 import { CredentialCipher } from './credential-cipher.js';
+import {
+  missingReadableFiscalDocumentFields,
+  type FiscalDocumentRequiredField,
+} from './fiscal-document-readiness.js';
 import { exactItemMatches, hasPurchaseReference } from './fiscal-matching.js';
 import { titleIsMatched } from './payment-reconciliation.js';
 import { validatePaymentInstruction } from './pix-validation.js';
@@ -1674,8 +1678,15 @@ export class ProcureToPayService {
       if (purchase.updatedAt !== input.expectedPurchaseUpdatedAt) {
         throw new ConflictException('O pedido foi alterado por outro usuario.');
       }
-      if (!['SUPPLIER_INVOICED', 'RECEIVED'].includes(purchase.workflowStage)) {
-        throw new BadRequestException('Vincule a NF-e antes de confirmar o recebimento.');
+      const allowedStages = purchase.fiscalDocumentRequired
+        ? ['SUPPLIER_INVOICED', 'RECEIVED']
+        : ['PURCHASE_ORDER', 'RECEIVED'];
+      if (!allowedStages.includes(purchase.workflowStage)) {
+        throw new BadRequestException(
+          purchase.fiscalDocumentRequired
+            ? 'Vincule a NF-e antes de confirmar o recebimento.'
+            : 'O pedido precisa estar formalizado antes do recebimento.',
+        );
       }
       const previous = this.demoReceipts.filter(
         (receipt) => receipt.organizationId === organizationId && receipt.purchaseId === purchaseId,
@@ -1716,7 +1727,10 @@ export class ProcureToPayService {
       const fullyReceived = purchase.items.every(
         (item) => (totals.get(item.id) ?? 0) >= item.quantity - 0.0001,
       );
-      if (fullyReceived && purchase.workflowStage === 'SUPPLIER_INVOICED') {
+      if (
+        fullyReceived &&
+        ['PURCHASE_ORDER', 'SUPPLIER_INVOICED'].includes(purchase.workflowStage)
+      ) {
         await this.procurement.changePurchaseWorkflowStage(
           actor,
           organizationId,
@@ -1747,13 +1761,21 @@ export class ProcureToPayService {
     if (purchase.updatedAt.toISOString() !== input.expectedPurchaseUpdatedAt) {
       throw new ConflictException('O pedido foi alterado por outro usuario.');
     }
+    const hasMatchedFiscalDocument = purchase.fiscalDocumentLinks.some((link) =>
+      ['MATCHED_EXACT', 'MATCHED_MANUAL'].includes(link.matchStatus),
+    );
+    const stageAllowsReceipt = purchase.fiscalDocumentRequired
+      ? ['SUPPLIER_INVOICED', 'RECEIVED'].includes(purchase.workflowStage)
+      : ['PURCHASE_ORDER', 'RECEIVED'].includes(purchase.workflowStage);
     if (
-      !['SUPPLIER_INVOICED', 'RECEIVED'].includes(purchase.workflowStage) ||
-      !purchase.fiscalDocumentLinks.some((link) =>
-        ['MATCHED_EXACT', 'MATCHED_MANUAL'].includes(link.matchStatus),
-      )
+      !stageAllowsReceipt ||
+      (purchase.fiscalDocumentRequired && !hasMatchedFiscalDocument)
     ) {
-      throw new BadRequestException('Vincule e confira a NF-e antes do recebimento.');
+      throw new BadRequestException(
+        purchase.fiscalDocumentRequired
+          ? 'Vincule e confira a NF-e antes do recebimento.'
+          : 'O pedido precisa estar formalizado antes do recebimento.',
+      );
     }
     await this.assertReceiptResponsibility(actor, organizationId, purchase.items);
     validateReceiptQuantities(
@@ -2411,6 +2433,20 @@ export class ProcureToPayService {
       });
       return this.requireFiscalDocumentSummary(organizationId, documentId);
     }
+    const missingFiscalFields = missingReadableFiscalDocumentFields({
+      accessKey: document.accessKey,
+      fileAvailable: Boolean(document.storagePath),
+      invoiceNumber: document.invoiceNumber,
+      issuedAt: document.fiscalIssuedAt,
+      issuerDocument: document.issuerDocument,
+      itemCount: document.fiscalItems.length,
+      total: document.fiscalTotal === null ? null : Number(document.fiscalTotal),
+    });
+    if (missingFiscalFields.length) {
+      throw new BadRequestException(
+        `O arquivo fiscal nao possui dados minimos legiveis (${missingFiscalFields.map(fiscalFieldLabel).join(', ')}). O vinculo nao foi realizado.`,
+      );
+    }
     const purchase = await this.prisma.purchase.findFirst({
       where: { id: input.purchaseId!, organizationId },
       include: { supplier: true, items: true },
@@ -2928,7 +2964,22 @@ export class ProcureToPayService {
     documentId: string,
     metadata: NfeMetadata,
   ): Promise<boolean> {
-    if (!metadata.issuerDocument || !metadata.total || !metadata.items.length) return false;
+    if (
+      missingReadableFiscalDocumentFields(
+        {
+          accessKey: metadata.accessKey,
+          fileAvailable: true,
+          invoiceNumber: metadata.invoiceNumber,
+          issuedAt: metadata.issuedAt,
+          issuerDocument: metadata.issuerDocument,
+          itemCount: metadata.items.length,
+          total: metadata.total,
+        },
+        { requireAccessKey: true },
+      ).length
+    ) {
+      return false;
+    }
     const candidates = await this.prisma.purchase.findMany({
       where: {
         organizationId,
@@ -3172,6 +3223,14 @@ export class ProcureToPayService {
     filters: PayableKanbanFilters,
   ): Promise<PayableKanbanCard[]> {
     const report = await this.procurement.getAccountsPayable(organizationId, {});
+    const purchaseRequirements = new Map(
+      await Promise.all(
+        [...new Set(report.rows.map((row) => row.purchaseId))].map(async (purchaseId) => {
+          const purchase = await this.procurement.getPurchase(organizationId, purchaseId);
+          return [purchaseId, purchase.fiscalDocumentRequired] as const;
+        }),
+      ),
+    );
     const cards = report.rows
       .filter((row) => row.sequence > 0 && row.dueDate)
       .map((row) => {
@@ -3204,6 +3263,7 @@ export class ProcureToPayService {
           stage,
           overdue: stage !== 'PAID' && row.dueDate! < toDateOnly(new Date()),
           invoiceNumbers,
+          fiscalDocumentRequired: purchaseRequirements.get(row.purchaseId) ?? true,
           received,
           advancePayment: Boolean(advance),
           advanceReason: advance?.reason ?? null,
@@ -3331,6 +3391,7 @@ function toPayableCard(title: TitleRecord): PayableKanbanCard {
     stage: balance <= 0.001 ? 'PAID' : title.paymentStage,
     overdue: balance > 0.001 && toDateOnly(title.dueDate) < toDateOnly(new Date()),
     invoiceNumbers: [...invoices],
+    fiscalDocumentRequired: title.purchase.fiscalDocumentRequired,
     received: titleIsMatched(title),
     advancePayment: title.advancePayment,
     advanceReason: title.advanceReason,
@@ -3495,7 +3556,8 @@ function canRequestApproval(card: PayableKanbanCard): boolean {
     card.instruction !== null &&
     (card.advancePayment
       ? card.hasAdvanceEvidence && Boolean(card.advanceReason)
-      : card.received && card.invoiceNumbers.length > 0)
+      : card.received &&
+        (!card.fiscalDocumentRequired || card.invoiceNumbers.length > 0))
   );
 }
 
@@ -3966,6 +4028,18 @@ async function matchFiscalItemsByDescription(
       });
     }
   }
+}
+
+function fiscalFieldLabel(field: FiscalDocumentRequiredField): string {
+  return {
+    accessKey: 'chave de acesso',
+    file: 'arquivo',
+    invoiceNumber: 'numero da nota',
+    issuedAt: 'data de emissao',
+    issuerDocument: 'CPF ou CNPJ do emitente',
+    items: 'itens',
+    total: 'valor total',
+  }[field];
 }
 
 type NfeMetadataItem = {

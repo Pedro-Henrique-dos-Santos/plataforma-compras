@@ -1,4 +1,5 @@
 export * from './access.js';
+export * from './audit.js';
 export * from './dashboard.js';
 export * from './invoices.js';
 export * from './master-data.js';

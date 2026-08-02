@@ -46,6 +46,9 @@
   duas pessoas, aprovadores por empresa e historico imutavel das decisoes.
 - [Concluido no codigo e testes] Bloquear edicao e vinculacao fiscal antes da
   aprovacao, tratar reprovacao e encerrar solicitacoes no cancelamento.
+- [Concluido no codigo e testes] Criar historico tabular de alteracoes com
+  filtros de periodo, usuario, acao, evento e pedido, e identificar no Kanban
+  os usuarios que efetivamente aprovaram a compra.
 - [Concluido no codigo e testes] Criar outbox duravel e entrega por log, SMTP ou
   templates oficiais do WhatsApp.
 - [Concluido no codigo e testes] Notificar o financeiro depois da aprovacao com

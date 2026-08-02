@@ -158,6 +158,7 @@ export abstract class ProcurementRepository {
     organizationId: string,
     id: string,
     input: UpdatePurchaseInput,
+    context?: WorkflowTransitionContext,
   ): Promise<PurchaseDetail>;
 
   abstract changePurchaseStatus(

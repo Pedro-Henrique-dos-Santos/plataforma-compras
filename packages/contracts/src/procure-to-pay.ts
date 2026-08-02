@@ -345,6 +345,7 @@ export const payableKanbanCardSchema = z.object({
   stage: paymentWorkflowStageSchema,
   overdue: z.boolean(),
   invoiceNumbers: z.array(z.string()),
+  fiscalDocumentRequired: z.boolean(),
   received: z.boolean(),
   advancePayment: z.boolean(),
   advanceReason: z.string().nullable(),

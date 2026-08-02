@@ -98,6 +98,7 @@ async function main() {
           },
         },
       },
+      displaySequence: 1,
       number: 'DEMO-001',
       issuedAt: new Date('2026-01-15T00:00:00.000Z'),
       category: 'Materiais de escritorio',

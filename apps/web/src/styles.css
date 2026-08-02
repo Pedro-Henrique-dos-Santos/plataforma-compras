@@ -210,6 +210,25 @@ button:disabled {
   line-height: 1.2;
 }
 
+.brand-wordmark {
+  display: flex !important;
+  align-items: baseline;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.brand-wordmark span:last-child {
+  color: var(--teal);
+}
+
+.brand-on-light .brand-wordmark {
+  color: var(--ink);
+}
+
+.brand-on-light .brand-lockup-copy small {
+  color: var(--muted);
+}
+
 .brand-lockup small {
   margin-top: 3px;
   color: #b9c0c4;
@@ -1479,12 +1498,14 @@ td {
 
 .purchase-kanban {
   min-width: 0;
-  min-height: calc(100vh - 224px);
+  height: calc(100dvh - 224px);
+  min-height: 420px;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(220px, 1fr);
   gap: 0;
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 0;
   background: var(--surface-alt);
   border: 1px solid var(--line);
@@ -1494,6 +1515,7 @@ td {
 
 .kanban-lane {
   min-width: 220px;
+  min-height: 0;
   display: grid;
   grid-template-rows: 46px minmax(0, 1fr);
   align-self: stretch;
@@ -1544,15 +1566,25 @@ td {
 }
 
 .kanban-card-list {
+  height: 100%;
   min-height: 180px;
   display: grid;
   align-content: start;
   gap: 9px;
   padding: 10px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.kanban-card-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .purchase-kanban-card {
-  min-height: 176px;
+  min-height: 226px;
   display: grid;
   grid-template-rows: auto auto auto auto 1fr auto;
   gap: 7px;
@@ -1566,6 +1598,28 @@ td {
     box-shadow 140ms ease,
     opacity 140ms ease,
     transform 140ms ease;
+  cursor: pointer;
+}
+
+.kanban-history-toggle {
+  min-width: max-content;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.kanban-history-toggle input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
 }
 
 .purchase-kanban-card[draggable="true"] {
@@ -1624,8 +1678,45 @@ td {
   font-weight: 650;
 }
 
-.kanban-card-total {
-  font-size: 15px;
+.kanban-negotiation-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.kanban-negotiation-summary > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.kanban-negotiation-summary small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanban-negotiation-summary strong {
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kanban-negotiation-summary .kanban-savings-summary {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding-top: 5px;
+  color: var(--success);
+  border-top: 1px solid var(--line);
+}
+
+.kanban-savings-summary strong {
+  text-align: right;
 }
 
 .invoice-badge {
@@ -1661,6 +1752,27 @@ td {
 .kanban-approval.rejected {
   color: var(--danger);
   background: var(--danger-soft);
+}
+
+.kanban-approved-by {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+.kanban-approved-by svg {
+  flex: 0 0 auto;
+}
+
+.kanban-approved-by span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .purchase-kanban-card > footer {
@@ -1938,12 +2050,169 @@ td {
 }
 
 .purchase-detail-modal {
-  width: min(1040px, 100%);
+  width: min(1280px, 100%);
 }
 
 .purchase-detail-content {
   display: grid;
   padding: 0 20px;
+}
+
+.purchase-detail-with-fiscal {
+  grid-template-columns: minmax(0, 1fr) 330px;
+  align-items: start;
+  column-gap: 22px;
+}
+
+.purchase-detail-with-fiscal > :not(.purchase-fiscal-sidebar) {
+  grid-column: 1;
+}
+
+.purchase-technical-reference {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.purchase-fiscal-sidebar {
+  grid-column: 2;
+  grid-row: 1 / span 20;
+  position: sticky;
+  top: 0;
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  padding: 18px 0 18px 22px;
+  border-left: 1px solid var(--line);
+}
+
+.purchase-fiscal-sidebar > header,
+.purchase-fiscal-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.purchase-fiscal-sidebar > header span:first-child,
+.purchase-fiscal-card > header span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.purchase-fiscal-sidebar small,
+.purchase-fiscal-card small,
+.purchase-fiscal-card dt,
+.legacy-fiscal-reference small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.fiscal-document-count,
+.fiscal-kind-badge {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 7px;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.purchase-fiscal-card-list {
+  display: grid;
+  gap: 10px;
+}
+
+.purchase-fiscal-card {
+  min-width: 0;
+  display: grid;
+  gap: 13px;
+  padding: 14px;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.purchase-fiscal-card > header strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.purchase-fiscal-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px 12px;
+  margin: 0;
+}
+
+.purchase-fiscal-card dl div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.purchase-fiscal-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.fiscal-access-key {
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fiscal-file-button {
+  width: 100%;
+}
+
+.purchase-fiscal-empty {
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  padding: 18px 0;
+  color: var(--muted);
+  border-block: 1px solid var(--line);
+}
+
+.purchase-fiscal-empty strong {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.purchase-fiscal-empty p,
+.legacy-fiscal-reference p {
+  margin: 0;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.legacy-fiscal-reference {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  color: var(--muted);
+  background: var(--gold-soft);
+  border-left: 3px solid var(--gold);
+}
+
+.legacy-fiscal-reference strong {
+  color: var(--ink);
+  font-size: 11px;
 }
 
 .purchase-detail-summary {
@@ -2274,6 +2543,178 @@ td {
 .modal-header h2 {
   margin: 0;
   font-size: 18px;
+}
+
+.audit-dialog-backdrop {
+  padding: 18px;
+}
+
+.audit-dialog {
+  width: min(1180px, 100%);
+  height: min(780px, calc(100vh - 36px));
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.audit-dialog-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audit-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--line);
+}
+
+.audit-filter-grid > label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.audit-filter-grid input,
+.audit-filter-grid select {
+  width: 100%;
+  height: 36px;
+  min-width: 0;
+}
+
+.audit-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.audit-filter-actions .secondary-button {
+  height: 36px;
+}
+
+.audit-filter-actions .icon-button {
+  width: 36px;
+  height: 36px;
+}
+
+.audit-table-wrap {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.audit-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+}
+
+.audit-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--table-head);
+}
+
+.audit-table th,
+.audit-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--table-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.audit-table th {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.audit-table td {
+  font-size: 10px;
+}
+
+.audit-table td strong,
+.audit-table td small {
+  display: block;
+}
+
+.audit-table td small {
+  max-width: 470px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audit-date-cell {
+  min-width: 126px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.audit-reason {
+  color: var(--gold) !important;
+}
+
+.audit-action {
+  display: inline-flex;
+  min-width: 66px;
+  justify-content: center;
+  padding: 4px 7px;
+  color: var(--graphite);
+  background: var(--neutral-pill);
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.audit-action-create,
+.audit-action-import {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.audit-action-delete {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.empty-table-cell {
+  padding: 42px 18px !important;
+  color: var(--muted);
+  text-align: center !important;
+}
+
+.audit-pagination {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.audit-pagination > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.audit-pagination .icon-button {
+  width: 34px;
+  height: 34px;
 }
 
 .management-form {
@@ -4807,6 +5248,183 @@ td {
   }
 }
 
+.supplyedge-loading-page {
+  color: #ffffff;
+  background: var(--sidebar);
+}
+
+.supplyedge-loader {
+  width: min(320px, calc(100vw - 48px));
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+}
+
+.supplyedge-loader-lockup {
+  height: 56px;
+  display: flex;
+  align-items: center;
+}
+
+.supplyedge-loader-mark {
+  position: relative;
+  z-index: 2;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+  animation: supplyedge-mark-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.supplyedge-loader-reveal {
+  width: 0;
+  overflow: hidden;
+  animation: supplyedge-word-reveal 720ms cubic-bezier(0.22, 1, 0.36, 1) 360ms both;
+}
+
+.supplyedge-loader-reveal strong {
+  display: flex;
+  align-items: baseline;
+  padding-left: 10px;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 760;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.supplyedge-loader-reveal strong span:last-child {
+  color: #72c4bd;
+}
+
+.supplyedge-loader-track {
+  width: 244px;
+  height: 2px;
+  overflow: hidden;
+  background: #4a5054;
+}
+
+.supplyedge-loader-track span {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #72c4bd;
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: supplyedge-track 620ms ease-out 790ms both;
+}
+
+.supplyedge-loader p {
+  margin: 0;
+  color: #b8c0c4;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0;
+  opacity: 0;
+  animation: supplyedge-caption 300ms ease-out 980ms both;
+}
+
+@keyframes supplyedge-mark-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes supplyedge-word-reveal {
+  from {
+    width: 0;
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    width: 164px;
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes supplyedge-track {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes supplyedge-caption {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supplyedge-loader-mark,
+  .supplyedge-loader-reveal,
+  .supplyedge-loader-track span,
+  .supplyedge-loader p {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+}
+
+@media (max-width: 1180px) {
+  .audit-filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .audit-filter-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 620px) {
+  .audit-dialog-backdrop {
+    padding: 0;
+  }
+
+  .audit-dialog {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .audit-dialog-header {
+    min-height: 68px;
+    padding: 12px 14px;
+  }
+
+  .audit-dialog-header h2 {
+    font-size: 15px;
+  }
+
+  .audit-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 238px;
+    padding: 10px 12px;
+    overflow-y: auto;
+  }
+
+  .audit-filter-actions {
+    justify-content: stretch;
+  }
+
+  .audit-filter-actions .secondary-button {
+    flex: 1;
+  }
+
+  .audit-pagination {
+    padding-inline: 12px;
+  }
+}
+
 .cnpj-lookup-field {
   min-width: 0;
   display: grid;
@@ -4838,6 +5456,30 @@ td {
   }
 }
 
+@media (max-width: 980px) {
+  .purchase-detail-with-fiscal {
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 0;
+  }
+
+  .purchase-detail-with-fiscal > :not(.purchase-fiscal-sidebar),
+  .purchase-fiscal-sidebar {
+    grid-column: 1;
+  }
+
+  .purchase-fiscal-sidebar {
+    grid-row: auto;
+    position: static;
+    padding: 18px 0;
+    border-left: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .purchase-fiscal-card-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 620px) {
   .segmented-control,
   .segmented-control button {
@@ -4845,7 +5487,8 @@ td {
   }
 
   .purchase-kanban {
-    min-height: calc(100vh - 300px);
+    height: calc(100dvh - 318px);
+    min-height: 360px;
     grid-auto-columns: minmax(82vw, 82vw);
   }
 
@@ -4859,6 +5502,11 @@ td {
 
   .purchase-detail-summary > span {
     min-height: 58px;
+  }
+
+  .purchase-fiscal-card-list,
+  .purchase-fiscal-card dl {
+    grid-template-columns: 1fr;
   }
 
   .approval-installment-list {

@@ -8,6 +8,7 @@ import { GUARDS_METADATA, METHOD_METADATA } from '@nestjs/common/constants.js';
 import { describe, expect, it } from 'vitest';
 
 import { GoogleSheetsController } from '../automation/google-sheets.controller.js';
+import { AuditController } from '../audit/audit.controller.js';
 import { AuthController } from '../auth/auth.controller.js';
 import { ALLOW_PENDING_LEGAL_ACCEPTANCE } from '../auth/legal-acceptance.decorator.js';
 import { DashboardController } from '../dashboard/dashboard.controller.js';
@@ -37,6 +38,7 @@ type RouteHandler = {
 };
 
 const tenantControllers: ControllerClass[] = [
+  AuditController,
   GoogleSheetsController,
   CostCentersController,
   DashboardController,
@@ -60,6 +62,7 @@ const allControllers: ControllerClass[] = [
 ];
 
 const expectedControllerFiles = [
+  'audit/audit.controller.ts',
   'auth/auth.controller.ts',
   'automation/google-sheets.controller.ts',
   'dashboard/dashboard.controller.ts',

@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AccessModule } from './access/access.module.js';
 import { AutomationModule } from './automation/automation.module.js';
+import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { HealthController } from './health/health.controller.js';
@@ -32,6 +33,7 @@ import { ReceivablesModule } from './receivables/receivables.module.js';
     OrganizationsModule,
     AuthModule,
     AccessModule,
+    AuditModule,
     AutomationModule,
     InvoiceDocumentsModule,
     DashboardModule,

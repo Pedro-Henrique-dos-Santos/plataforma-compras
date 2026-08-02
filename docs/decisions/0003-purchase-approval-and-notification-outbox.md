@@ -29,6 +29,9 @@ operacional do produto.
 - Criar uma solicitacao e participantes imutaveis a cada envio. Nome da regra,
   total, canal, nome e destino dos aprovadores ficam congelados para auditoria.
 - Registrar toda mudanca de etapa e toda decisao no PostgreSQL.
+- Expor o historico de compras como consulta tabular por tenant, com filtros de
+  periodo, usuario, acao, evento e pedido. A interface exibe o aprovador somente
+  quando existe uma decisao `APPROVED` persistida para aquele participante.
 - Bloquear edicao operacional depois do envio e impedir vinculacao fiscal antes
   da aprovacao.
 - Separar aprovacao da compra do acompanhamento financeiro. A compra aprovada

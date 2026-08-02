@@ -106,7 +106,16 @@ const purchaseInclude = {
       allocations: { include: { costCenter: true } },
     },
   },
-  invoiceDocuments: { select: { id: true }, take: 1 },
+  invoiceDocuments: {
+    where: { matchStatus: { in: ['MATCHED_EXACT', 'MATCHED_MANUAL'] } },
+    select: { id: true },
+    take: 1,
+  },
+  fiscalDocumentLinks: {
+    where: { matchStatus: { in: ['MATCHED_EXACT', 'MATCHED_MANUAL'] } },
+    select: { id: true },
+    take: 1,
+  },
   approvalRequests: {
     include: { participants: true, rule: true },
     orderBy: { submittedAt: 'desc' },
@@ -123,7 +132,42 @@ const purchaseDetailInclude = {
     },
   },
   installments: { orderBy: { sequence: 'asc' } },
-  invoiceDocuments: { select: { id: true }, take: 1 },
+  invoiceDocuments: {
+    where: { matchStatus: { in: ['MATCHED_EXACT', 'MATCHED_MANUAL'] } },
+    select: {
+      id: true,
+      invoiceNumber: true,
+      accessKey: true,
+      issuerDocument: true,
+      fiscalIssuedAt: true,
+      fiscalTotal: true,
+      kind: true,
+      matchStatus: true,
+      fileName: true,
+      storagePath: true,
+    },
+    orderBy: { createdAt: 'asc' },
+  },
+  fiscalDocumentLinks: {
+    where: { matchStatus: { in: ['MATCHED_EXACT', 'MATCHED_MANUAL'] } },
+    include: {
+      invoiceDocument: {
+        select: {
+          id: true,
+          invoiceNumber: true,
+          accessKey: true,
+          issuerDocument: true,
+          fiscalIssuedAt: true,
+          fiscalTotal: true,
+          kind: true,
+          matchStatus: true,
+          fileName: true,
+          storagePath: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'asc' },
+  },
   approvalRequests: {
     include: {
       participants: { include: { user: true }, orderBy: { createdAt: 'asc' } },
@@ -606,6 +650,14 @@ export class PrismaProcurementRepository extends ProcurementRepository {
 
     try {
       const id = await this.prisma.$transaction(async (transaction) => {
+        await transaction.$queryRaw(
+          Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${organizationId}, 0))`,
+        );
+        const latestSequence = await transaction.purchase.aggregate({
+          where: { organizationId },
+          _max: { displaySequence: true },
+        });
+        const displaySequence = (latestSequence._max.displaySequence ?? 0) + 1;
         const purchase = await transaction.purchase.create({
           data: {
             organization: { connect: { id: organizationId } },
@@ -617,8 +669,10 @@ export class PrismaProcurementRepository extends ProcurementRepository {
                 },
               },
             },
+            displaySequence,
             number: input.number,
             invoiceNumber: input.invoiceNumber ?? null,
+            fiscalDocumentRequired: input.fiscalDocumentRequired ?? true,
             issuedAt: toDate(input.issuedAt),
             status: lifecycleStatusForStage(workflowStage),
             workflowStage,
@@ -678,18 +732,43 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     organizationId: string,
     id: string,
     input: UpdatePurchaseInput,
+    context: WorkflowTransitionContext = {},
   ): Promise<PurchaseDetail> {
     const current = await this.requirePurchaseDetailRecord(organizationId, id);
     if (current.status === 'CANCELLED') {
       throw new BadRequestException('Reative a compra antes de altera-la.');
     }
-    if (
-      current.workflowStage !== 'REGISTRATION' &&
-      current.workflowStage !== 'REQUESTED'
-    ) {
+    const adminOverride =
+      actor.platformRoles.includes('PLATFORM_OWNER') ||
+      context.organizationRole === 'ORGANIZATION_ADMIN';
+    const isEarlyStage =
+      current.workflowStage === 'REGISTRATION' ||
+      current.workflowStage === 'REQUESTED';
+    if (!isEarlyStage && !adminOverride) {
       throw new BadRequestException(
         'Itens e valores nao podem ser alterados depois do envio para aprovacao.',
       );
+    }
+    if (!isEarlyStage && adminOverride) {
+      const [fiscalLinks, directDocuments, receipts, settlements, legacyPaidTitles] =
+        await Promise.all([
+          this.prisma.purchaseInvoiceLink.count({ where: { organizationId, purchaseId: id } }),
+          this.prisma.invoiceDocument.count({ where: { organizationId, purchaseId: id } }),
+          this.prisma.goodsReceipt.count({
+            where: { organizationId, purchaseId: id, status: 'CONFIRMED' },
+          }),
+          this.prisma.paymentSettlement.count({
+            where: { organizationId, installment: { purchaseId: id } },
+          }),
+          this.prisma.installment.count({
+            where: { organizationId, purchaseId: id, paidAt: { not: null } },
+          }),
+        ]);
+      if (fiscalLinks + directDocuments + receipts + settlements + legacyPaidTitles > 0) {
+        throw new BadRequestException(
+          'Este pedido possui evidencia fiscal, recebimento ou pagamento. Corrija esses registros vinculados antes de alterar itens e valores.',
+        );
+      }
     }
     if (input.invoiceNumber && input.invoiceNumber !== current.invoiceNumber) {
       throw new BadRequestException(
@@ -704,6 +783,8 @@ export class PrismaProcurementRepository extends ProcurementRepository {
     const persistedInput: PersistPurchaseInput = {
       number: input.number,
       invoiceNumber: input.invoiceNumber ?? null,
+      fiscalDocumentRequired:
+        input.fiscalDocumentRequired ?? current.fiscalDocumentRequired,
       supplierId: input.supplierId,
       issuedAt: input.issuedAt,
       category: input.category,
@@ -737,6 +818,8 @@ export class PrismaProcurementRepository extends ProcurementRepository {
             supplierId: input.supplierId,
             number: input.number,
             invoiceNumber: input.invoiceNumber ?? null,
+            fiscalDocumentRequired:
+              input.fiscalDocumentRequired ?? current.fiscalDocumentRequired,
             issuedAt: toDate(input.issuedAt),
             category: input.category ?? supplier.category,
             operationNature: input.operationNature ?? supplier.operationNature,
@@ -893,7 +976,7 @@ export class PrismaProcurementRepository extends ProcurementRepository {
       current.workflowStage,
       input.stage,
       input.reason ?? null,
-      current.invoiceDocuments.length > 0 || current.invoiceNumber !== null,
+      current.invoiceDocuments.length > 0 || current.fiscalDocumentLinks.length > 0,
       {
         adminOverride:
           actor.platformRoles.includes('PLATFORM_OWNER') ||
@@ -1246,6 +1329,7 @@ export class PrismaProcurementRepository extends ProcurementRepository {
               metadata: {
                 comment: input.comment,
                 decision: input.decision,
+                purchaseId: purchase.id,
                 requestId: request.id,
               },
             },
@@ -2227,8 +2311,10 @@ function toSupplierPrice(price: PriceRecord, today: Date): SupplierPrice {
 function toPurchaseSummary(purchase: PurchaseRecord): PurchaseSummary {
   return {
     id: purchase.id,
+    displayNumber: purchase.displaySequence,
     number: purchase.number,
     invoiceNumber: purchase.invoiceNumber,
+    fiscalDocumentRequired: purchase.fiscalDocumentRequired,
     supplierId: purchase.supplierId,
     supplierName: purchase.supplier.tradeName ?? purchase.supplier.legalName,
     issuedAt: toIsoDate(purchase.issuedAt),
@@ -2254,7 +2340,9 @@ function toPurchaseSummary(purchase: PurchaseRecord): PurchaseSummary {
     createdAt: purchase.createdAt.toISOString(),
     updatedAt: purchase.updatedAt.toISOString(),
     workflowStage: purchase.workflowStage,
-    invoiceLinked: purchase.invoiceDocuments.length > 0 || purchase.invoiceNumber !== null,
+    invoiceLinked:
+      purchase.invoiceDocuments.length > 0 ||
+      purchase.fiscalDocumentLinks.length > 0,
     approval: purchase.approvalRequests[0]
       ? toApprovalSummary(purchase.approvalRequests[0])
       : null,
@@ -2358,6 +2446,7 @@ function toPurchaseDetail(purchase: PurchaseDetailRecord): PurchaseDetail {
           })),
         }
       : null,
+    fiscalDocuments: toPurchaseFiscalDocuments(purchase),
     stageHistory: purchase.stageHistory.map((history) => ({
       id: history.id,
       fromStage: history.fromStage,
@@ -2368,6 +2457,48 @@ function toPurchaseDetail(purchase: PurchaseDetailRecord): PurchaseDetail {
       createdAt: history.createdAt.toISOString(),
     })),
   };
+}
+
+function toPurchaseFiscalDocuments(
+  purchase: PurchaseDetailRecord,
+): PurchaseDetail['fiscalDocuments'] {
+  type FiscalRecord = PurchaseDetailRecord['invoiceDocuments'][number];
+  const documents = new Map<
+    string,
+    { document: FiscalRecord; matchStatus: FiscalRecord['matchStatus'] }
+  >();
+
+  for (const link of purchase.fiscalDocumentLinks) {
+    documents.set(link.invoiceDocument.id, {
+      document: link.invoiceDocument,
+      matchStatus: link.matchStatus,
+    });
+  }
+  for (const document of purchase.invoiceDocuments) {
+    if (!documents.has(document.id)) {
+      documents.set(document.id, { document, matchStatus: document.matchStatus });
+    }
+  }
+
+  const issuerName = purchase.supplier.tradeName ?? purchase.supplier.legalName;
+  const result: PurchaseDetail['fiscalDocuments'] = [...documents.values()].map(
+    ({ document, matchStatus }) => ({
+      id: document.id,
+      invoiceNumber: document.invoiceNumber,
+      accessKey: document.accessKey,
+      issuerName,
+      issuerDocument: document.issuerDocument,
+      issuedAt: document.fiscalIssuedAt?.toISOString() ?? null,
+      total: document.fiscalTotal === null ? null : Number(document.fiscalTotal),
+      kind: document.kind,
+      matchStatus,
+      fileName: document.fileName,
+      fileAvailable: Boolean(document.storagePath),
+      legacy: false,
+    }),
+  );
+
+  return result;
 }
 
 function toDetailedReportPurchase(purchase: DetailedPurchaseRecord) {
@@ -3101,6 +3232,16 @@ function toApprovalSummary(
     rejectedCount: request.participants.filter(
       (participant) => participant.decision === 'REJECTED',
     ).length,
+    approvedBy: request.participants
+      .filter(
+        (participant): participant is typeof participant & { decidedAt: Date } =>
+          participant.decision === 'APPROVED' && participant.decidedAt !== null,
+      )
+      .map((participant) => ({
+        userId: participant.userId,
+        name: participant.nameSnapshot,
+        decidedAt: (participant.decidedAt as Date).toISOString(),
+      })),
     submittedAt: request.submittedAt.toISOString(),
     resolvedAt: request.resolvedAt?.toISOString() ?? null,
   };

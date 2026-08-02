@@ -92,7 +92,7 @@ export class PurchasesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(updatePurchaseInputSchema)) input: UpdatePurchaseInput,
   ) {
-    return this.purchases.update(actor, organization.id, id, input);
+    return this.purchases.update(actor, organization.id, id, input, organization.role);
   }
 
   @Patch(':id/status')
