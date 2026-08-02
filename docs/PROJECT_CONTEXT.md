@@ -16,11 +16,41 @@ A primeira versao foi criada em Google Sheets e Google Apps Script. Ela possui p
 - PostgreSQL como banco relacional.
 - Supabase Free para desenvolvimento e homologacao inicial.
 - Arquitetura multiempresa desde o primeiro schema.
-- Sem alcada de aprovacao no escopo inicial.
+- Aprovacao de compras por valor, com quorum de uma ou duas pessoas e historico
+  completo por empresa.
+- Aprovacao da compra separada do pagamento; esta fase acompanha contas a pagar
+  e notifica o financeiro, mas nao movimenta dinheiro.
+- Dois Kanbans conectados: compras acompanha o pedido e recebimento, enquanto o
+  financeiro acompanha cada titulo, aprovacao, saldo e baixa comprovada.
+- Uma compra pode possuir varias NF-e e varios recebimentos parciais. O vinculo
+  fiscal exato pode ser automatico; divergencia ou ambiguidade exige revisao.
+- A captura fiscal automatica inicial cobre somente NF-e modelo 55. NFS-e,
+  CT-e, DDA e integracao bancaria permanecem como adaptadores futuros.
+- O papel empresarial `FINANCE` possui permissoes financeiras proprias. A
+  segregacao de funcoes e configuravel e inicia desabilitada nas empresas atuais.
+- O pagamento continua fora do E-Gestao nesta fase. O sistema nao recebe senha
+  bancaria nem executa Pix; ele controla instrucao, aprovacao, comprovante,
+  baixa parcial e auditoria.
+- Notificacoes duraveis por e-mail ou WhatsApp oficial, configuradas somente no
+  servidor e processadas fora da transacao principal.
 - O proprietario global e independente das contas das empresas atendidas.
 - `compras@humanclinic.com.br` pertence somente ao contexto Human Clinic e nao sera proprietario global.
 - O nome do produto e E-Gestao Compras; o nome da empresa ativa continua variavel.
 - A interface possui os temas Normal, Escuro e Branco e barra lateral recolhivel.
+- O motivo para retornar uma compra no Kanban e configuravel por empresa e
+  inicia desabilitado. Administradores podem retornar a etapas anteriores sem
+  romper os bloqueios de faturamento, recebimento e conclusao automatica.
+- O modulo Financeiro separa contas a pagar e contas a receber, mantendo
+  relatorios, permissoes, saldos e baixas independentes.
+- A consulta de fornecedor por CNPJ usa um adaptador da API no servidor. O
+  resultado apenas preenche o formulario para revisao e nunca grava sozinho.
+- Depois da autenticacao, o usuario escolhe entre os modulos Compras, Financeiro
+  e Administracao. Cada modulo possui navegacao lateral propria, filtrada pelas
+  permissoes da empresa ativa, sem separar os dados ou interromper os vinculos
+  entre pedido, documento fiscal, recebimento e titulo financeiro.
+- A execucao local padrao e persistente. Casa e empresa executam a aplicacao
+  localmente contra o mesmo PostgreSQL/Supabase central; o modo demonstracao e
+  uma opcao explicita e descartavel.
 
 ## Ambientes conhecidos
 

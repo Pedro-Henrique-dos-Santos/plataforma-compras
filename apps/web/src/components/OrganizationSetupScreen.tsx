@@ -44,10 +44,10 @@ export function OrganizationSetupScreen({ canCreate, onCreate, onSignOut }: Orga
             <label>
               CNPJ
               <input
-                inputMode="numeric"
+                autoCapitalize="characters"
                 maxLength={18}
-                onChange={(event) => setDocument(event.target.value)}
-                placeholder="00.000.000/0000-00"
+                onChange={(event) => setDocument(event.target.value.toUpperCase())}
+                placeholder="AA.AAA.AAA/AAAA-00"
                 value={document}
               />
             </label>

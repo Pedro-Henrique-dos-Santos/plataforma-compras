@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 import { isoDateSchema, monetaryValueSchema } from './master-data.js';
-import { organizationDocumentSchema } from './organizations.js';
+import {
+  normalizeBrazilianDocument,
+  organizationDocumentSchema,
+} from './organizations.js';
 import { purchaseSummarySchema } from './purchases.js';
 
 const nullableText = (maximum: number) =>
@@ -13,17 +16,30 @@ const nullableText = (maximum: number) =>
 const nullableDocument = z.preprocess(
   (value) => {
     if (value === '' || value === undefined || value === null) return null;
-    return typeof value === 'string' ? value.replace(/\D/g, '') : value;
+    return typeof value === 'string' ? normalizeBrazilianDocument(value) : value;
   },
   organizationDocumentSchema.nullable(),
 );
 
+export function normalizeNfeAccessKey(value: string): string {
+  const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return compact.length === 47 && compact.startsWith('NFE')
+    ? compact.slice(3)
+    : compact;
+}
+
+export const nfeAccessKeySchema = z
+  .string()
+  .trim()
+  .transform(normalizeNfeAccessKey)
+  .refine((value) => /^[A-Z0-9]{44}$/.test(value), 'Informe uma chave de acesso valida.');
+
 const nullableAccessKey = z.preprocess(
   (value) => {
     if (value === '' || value === undefined || value === null) return null;
-    return typeof value === 'string' ? value.replace(/\D/g, '') : value;
+    return typeof value === 'string' ? normalizeNfeAccessKey(value) : value;
   },
-  z.string().length(44).nullable(),
+  nfeAccessKeySchema.nullable(),
 );
 
 export const invoiceDocumentStatusSchema = z.enum([

@@ -2,10 +2,10 @@ import type {
   InvoiceExtractionInstallment,
   InvoiceExtractionItem,
 } from '@compras/contracts';
+import { normalizeNfeAccessKey } from '@compras/contracts';
 import { XMLParser } from 'fast-xml-parser';
 
 import {
-  digits,
   finalizeExtraction,
   inferTriage,
   normalizeDocument,
@@ -49,14 +49,17 @@ function parseNfe(infNfe: Record<string, unknown>, sourceText: string): InvoiceE
     .filter((item): item is InvoiceExtractionItem => Boolean(item));
   const installments = parseNfeInstallments(infNfe);
   const paymentMethod = parsePaymentMethod(infNfe);
-  const accessKey = digits(textValue(infNfe['@_Id'])).slice(-44) || null;
+  const normalizedAccessKey = normalizeNfeAccessKey(textValue(infNfe['@_Id']));
+  const accessKey = /^[A-Z0-9]{44}$/.test(normalizedAccessKey)
+    ? normalizedAccessKey
+    : null;
   const triage = inferTriage(sourceText, 'NFE');
   const warnings: string[] = [];
   if (!items.length) warnings.push('Nenhum item estruturado foi encontrado no XML da NF-e.');
   const extraction = finalizeExtraction(
     {
       invoiceNumber: invoiceNumber || null,
-      accessKey: accessKey?.length === 44 ? accessKey : null,
+      accessKey,
       issuedAt: parseFiscalDate(textValue(ide['dhEmi']) || textValue(ide['dEmi'])),
       supplierName,
       supplierDocument,

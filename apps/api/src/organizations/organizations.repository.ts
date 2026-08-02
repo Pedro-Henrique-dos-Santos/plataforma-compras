@@ -15,6 +15,7 @@ export type RepositoryUser = {
   authUserId: string;
   email: string;
   name: string;
+  phone?: string | null;
 };
 
 export type ProvisionedMember = {

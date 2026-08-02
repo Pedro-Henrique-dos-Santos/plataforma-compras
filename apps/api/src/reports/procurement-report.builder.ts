@@ -4,6 +4,7 @@ import type {
   ProcurementReportFilters,
   PurchaseSource,
   PurchaseStatus,
+  PurchaseWorkflowStage,
 } from '@compras/contracts';
 
 export type ReportPurchaseInput = {
@@ -16,6 +17,7 @@ export type ReportPurchaseInput = {
   category: string | null;
   source: PurchaseSource;
   status: PurchaseStatus;
+  workflowStage: PurchaseWorkflowStage;
   itemCount: number;
   total: number;
   negotiatedSavings: number;
@@ -121,6 +123,7 @@ export function buildProcurementReport(input: {
       ].sort((left, right) => left.localeCompare(right, 'pt-BR')),
       source: purchase.source,
       status: purchase.status,
+      workflowStage: purchase.workflowStage,
       itemCount: purchase.itemCount,
       total: roundMoney(purchase.total),
       negotiatedSavings: roundMoney(purchase.negotiatedSavings),

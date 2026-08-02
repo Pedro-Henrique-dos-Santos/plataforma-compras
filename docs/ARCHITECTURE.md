@@ -7,8 +7,12 @@ Navegador
   -> React/Vite (Supabase Auth)
   -> API NestJS (identidade, tenant e permissoes)
   -> PostgreSQL/Supabase (dados operacionais)
+  -> Worker fiscal NF-e modelo 55 (SEFAZ Distribuicao DF-e)
+  -> Worker de notificacoes (SMTP ou WhatsApp oficial)
+  -> Storage privado (XML, PDF, QR Pix e comprovantes)
   -> Google Sheets API (conciliacao durante a transicao)
   -> Google Drive para documentos durante a transicao
+  -> Adaptador de consulta cadastral de CNPJ
 ```
 
 O front-end nunca recebe a chave privilegiada do banco. A API valida o token do Supabase, a identidade local, a empresa ativa, o papel e a permissao antes de executar operacoes.
@@ -38,19 +42,55 @@ API e interface consomem a mesma matriz compartilhada de permissoes. O menu usa 
 | `PLATFORM_OWNER` | Plataforma | Cria empresas, administra acessos globais e consulta todos os ambientes |
 | `ORGANIZATION_ADMIN` | Empresa | Administra usuarios e dados de uma empresa |
 | `BUYER` | Empresa | Opera compras, fornecedores, precos e notas |
+| `FINANCE` | Empresa | Consulta titulos, decide aprovacoes financeiras e registra baixas conforme permissao |
 | `REPORT_VIEWER` | Empresa | Consulta dashboards e relatorios |
 
-Nao existe papel de aprovador nesta fase.
+O aprovador nao e um papel global adicional. Cada regra seleciona membros ativos
+da empresa com papel `ORGANIZATION_ADMIN` ou `BUYER`; o `PLATFORM_OWNER`
+tambem pode participar quando possui vinculo ativo com a empresa. O
+`ORGANIZATION_ADMIN` configura as regras da propria empresa e o
+`PLATFORM_OWNER` pode administra-las globalmente; `REPORT_VIEWER` permanece
+somente leitura.
 
 ## Persistencia
 
 O schema PostgreSQL usa chaves UUID, valores monetarios em `Decimal`, datas de auditoria e relacionamentos explicitos. PDFs permanecem fora do banco; o banco armazena metadados e links controlados.
 
-O modo `demo` usa repositorios em memoria com os mesmos contratos das implementacoes Prisma. Em homologacao e producao, os repositorios Prisma sao selecionados automaticamente e persistem usuarios, empresas, vinculos, centros de custo, fornecedores, precos, compras, itens, rateios, parcelas e auditoria no PostgreSQL.
+O runtime local inicia em modo persistente e falha de forma explicita quando a
+configuracao do PostgreSQL/Supabase esta ausente. Casa e empresa podem executar
+web e API em cada computador contra o mesmo banco hospedado, mantendo uma unica
+fonte operacional. O modo `demo` usa repositorios em memoria com os mesmos
+contratos Prisma, mas somente e ativado pelo comando dedicado e seus registros
+sao descartaveis. Homologacao e producao sempre selecionam os repositorios
+Prisma e persistem usuarios, empresas, vinculos, centros de custo, fornecedores,
+precos, compras, itens, rateios, parcelas e auditoria no PostgreSQL.
+
+O workflow acrescenta configuracoes e regras de aprovacao, responsaveis,
+solicitacoes, decisoes, historico de etapas e uma outbox de notificacoes. As
+solicitacoes conservam fotografias do total, regra, canal e destinatarios usados
+naquele envio, evitando que uma configuracao futura altere a auditoria passada.
 
 O cadastro da organizacao mantem nome exibido, razao social, CNPJ, contato e endereco. Esses dados pertencem ao tenant e somente o proprietario global ou um administrador da propria empresa pode altera-los.
 
-As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor. Relacoes operacionais tambem usam chaves estrangeiras compostas por `organization_id` e pelo identificador do registro, impedindo que fornecedor, centro de custo, compra, item, rateio, parcela, nota fiscal ou sincronizacao seja ligado a outra empresa mesmo por uma gravacao direta no banco.
+Fornecedores mantem razao social, nome fantasia, CNPJ, contato, endereco,
+situacao cadastral e atividade principal. A consulta por CNPJ passa por um
+endpoint fixo da API, com validacao, limite de requisicoes e tempo maximo no
+servidor. O adaptador inicial usa BrasilAPI e pode ser substituido por SERPRO ou
+outro provedor homologado sem expor o navegador diretamente. Dados consultados
+preenchem o formulario para revisao humana e nao sao persistidos automaticamente.
+
+As importacoes de precos procuram primeiro o codigo do item e, na ausencia dele, usam a descricao normalizada e a unidade. Compras usam numero, origem e referencia externa para impedir repeticoes. Todas as consultas e gravacoes recebem `organizationId` no servidor.
+
+Cada compra tambem recebe um numero sequencial amigavel e imutavel dentro da
+empresa. Esse numero e usado na interface e nas comunicacoes, enquanto a
+referencia original da planilha ou do fornecedor permanece preservada para
+deduplicacao e rastreabilidade.
+
+Relacoes operacionais tambem usam chaves estrangeiras compostas por
+`organization_id` e pelo identificador do registro. Quinze relacoes criticas
+impedem que fornecedor, centro de custo, compra, item, rateio, parcela, nota
+fiscal, sincronizacao, regra, solicitacao, participante ou historico seja ligado
+a outra empresa mesmo por uma gravacao direta no banco.
 
 ## Sincronizacao com Google Sheets
 
@@ -72,13 +112,143 @@ XML fiscal passa por validacao de assinatura, bloqueio de DTD e entidades extern
 
 O modelo OCR e resolvido e validado na inicializacao, usa cache somente leitura e nao depende de download durante o processamento. O container confirma essa disponibilidade com a rede desativada antes do smoke test. A extracao permanece em revisao humana e nunca grava uma compra diretamente.
 
+A integracao fiscal por empresa armazena CNPJ, ambiente, validade, fingerprint,
+estado, `ultNSU`, `maxNSU`, erro e proxima tentativa. Certificado A1 e senha sao
+entradas sem rota de download, criptografadas separadamente com AES-256-GCM. A
+API valida formato, senha, validade e, quando presente no certificado, o CNPJ.
+Substituicao e revogacao usam versao otimista para impedir sobrescrita por uma
+tela desatualizada.
+
+O worker usa trava consultiva por empresa, cursor de NSU, chave de acesso, hash
+e restricoes unicas para repetir lotes sem duplicar documentos. `docZip` e
+descompactado antes do parser. Certificado vencido interrompe novas consultas
+sem apagar o cursor; espera adaptativa respeita indisponibilidade e retornos sem
+novos documentos.
+
+Uma NF-e somente recebe vinculo automatico quando existe uma correspondencia
+unica e integral de tenant, CNPJ, referencia do pedido, itens, quantidades e
+valores. Qualquer diferenca resulta em `REVIEW_REQUIRED`. O rollout possui os
+modos `SHADOW`, `EXACT_MATCH` e `AUTO_SCIENCE`; eventos conclusivos de
+manifestacao permanecem manuais em todos eles.
+
+Um numero de nota existente apenas na planilha e uma referencia historica, nao
+um documento fiscal validado. Ele nao cria card de NF-e, nao libera recebimento
+e nao conta como vinculo fiscal. Somente um arquivo real legivel, extraido e
+conciliado por correspondencia exata ou revisao humana aparece no pedido e pode
+ser aberto por link temporario do storage privado.
+
+O documento fiscal e exigido por padrao. Uma compra pode registrar de forma
+explicita que o documento fiscal nao se aplica; essa classificacao nunca e
+inferida pelo meio de pagamento. A dispensa permite recebimento sem linha fiscal
+e conciliacao do titulo apos o recebimento, mas nao elimina aprovacao, baixa,
+comprovante ou auditoria.
+
 ## Operacao de compras
 
-A consulta detalhada de uma compra devolve itens, rateios, parcelas, observacoes e a referencia fiscal dentro do tenant ativo. A correcao substitui itens e parcelas em uma unica transacao, recalcula total e economia e preserva a origem e a referencia externa da importacao. Fornecedores ou centros de custo historicos que tenham sido inativados podem permanecer no registro existente, mas nao podem ser escolhidos para uma nova classificacao.
+A consulta detalhada de uma compra devolve itens, rateios, parcelas, observacoes e documentos fiscais validados dentro do tenant ativo. A correcao substitui itens e parcelas em uma unica transacao, recalcula total e economia e preserva a origem e a referencia externa da importacao. Administradores podem corrigir pedidos em etapas avancadas enquanto nao houver documento fiscal moderno, recebimento ou pagamento vinculado; esses registros bloqueiam alteracoes estruturais. Fornecedores ou centros de custo historicos que tenham sido inativados podem permanecer no registro existente, mas nao podem ser escolhidos para uma nova classificacao.
 
 Toda edicao exige o `updatedAt` lido pelo usuario. Se outra operacao alterar a compra antes da gravacao, a API rejeita a versao antiga e exige recarregamento. Parcelas pagas permanecem no banco e nao podem ter valor, vencimento, ordem ou existencia alterados pela edicao da compra.
 
-Cancelamento e reativacao exigem motivo, atualizam o estado sem apagar o historico e geram evento de auditoria. Compras canceladas permanecem consultaveis por filtro e nos relatorios de cancelamento, mas nao entram nos indicadores de compras registradas. Nao existe alcada de aprovacao neste ciclo.
+O Kanban usa `Cadastro`, `Solicitacao`, `Aguardando aprovacao`,
+`Pedido de compra`, `Faturado pelo fornecedor`, `Recebido` e `Concluido`.
+Compras manuais iniciam em cadastro; importacoes historicas iniciam como pedido
+formalizado; uma nota fiscal importada inicia como faturada. Cada movimento gera
+historico com autor, instante e motivo quando exigido.
+
+O historico de alteracoes das compras usa os eventos imutaveis de auditoria e
+oferece consulta tabular paginada por periodo, usuario, acao, tipo de evento e
+numero amigavel do pedido. A API resolve solicitacoes e decisoes antigas ate o
+pedido correspondente sem expor registros de outra empresa. Inclusoes,
+alteracoes, importacoes e transicoes exibem os campos disponiveis, o instante e
+o responsavel; eventos sem usuario sao identificados como automacao do sistema.
+O card mostra os nomes apenas de participantes com decisao `APPROVED` gravada.
+
+A exigencia de motivo para retornar uma compra e uma configuracao do tenant e
+inicia desabilitada. Administradores da empresa e proprietarios da plataforma
+podem retornar diretamente a qualquer etapa anterior permitida. Uma NF-e
+vinculada impede retorno anterior a `Pedido de compra`, e movimentos futuros de
+faturamento, recebimento e conclusao continuam controlados pelo fluxo integrado.
+Ao sair de `Aguardando aprovacao`, a solicitacao pendente e cancelada de forma
+auditavel. A interface antecipa apenas o movimento valido e restaura o card se a
+API rejeitar a alteracao.
+
+Ao enviar uma compra para aprovacao, a API escolhe a regra ativa de maior valor
+minimo aplicavel ao total. A regra admite quorum de uma ou duas pessoas. A
+decisao ocorre em transacao serializavel; uma reprovacao exige comentario e
+devolve a compra para solicitacao, enquanto o quorum concluido promove o pedido.
+Edicoes ficam bloqueadas depois do envio e uma nota nao pode ser vinculada antes
+da aprovacao.
+
+O vinculo singular de nota permanece apenas como compatibilidade derivada. A
+relacao oficial aceita varias NF-e por pedido. Recebimentos registram itens,
+quantidades, responsavel, data, observacao e linha fiscal opcional. A quantidade
+recebida nao pode exceder o saldo do pedido nem o saldo da linha fiscal. O pedido
+so conclui quando estiver integralmente recebido, conciliado e sem saldo
+financeiro, salvo encerramento excepcional auditado.
+
+Cancelamento e reativacao exigem motivo, atualizam o estado sem apagar o
+historico e geram evento de auditoria. O cancelamento tambem encerra uma
+solicitacao pendente. Compras canceladas permanecem consultaveis por filtro e
+nos relatorios de cancelamento, mas nao entram nos indicadores de compras
+registradas.
+
+## Notificacoes
+
+Eventos de aprovacao, reprovacao e liberacao para o financeiro sao persistidos
+em uma outbox na mesma transacao da operacao. Um worker separado reivindica as
+mensagens, entrega por SMTP ou por templates da API oficial do WhatsApp,
+registra sucesso ou falha e repete erros transitorios com espera exponencial.
+Chaves de deduplicacao evitam reenvios do mesmo evento.
+
+O modo `log` permite homologar sem provedor externo. Tokens, senhas SMTP e
+identificadores da Meta existem somente no ambiente da API. O destino usado em
+cada solicitacao fica congelado para auditoria, mas credenciais nunca sao
+persistidas.
+
+## Contas a pagar
+
+A aprovacao da compra e o controle financeiro sao fluxos separados. Parcelas
+evoluem como titulos auditaveis vinculaveis a NF-e e recebimento. O Kanban
+financeiro usa `A conciliar`, `Aguardando aprovacao`, `Liberado para pagamento`,
+`Parcialmente pago` e `Pago`; vencimento e um alerta calculado, nao uma coluna.
+
+Cada empresa escolhe `DISABLED`, `PER_TITLE` ou `PER_PURCHASE_SNAPSHOT`. No modo
+agrupado, a fotografia inclui somente os titulos conciliados e elegiveis que
+existiam no pedido no instante da solicitacao. Titulos criados depois exigem uma
+nova aprovacao. Regras financeiras por valor definem responsaveis e quorum de
+uma ou duas pessoas sem reutilizar a regra de aprovacao da compra.
+
+Instrucao de pagamento e congelada por versao na aprovacao. Mudanca posterior
+cancela aprovacoes relacionadas e devolve o titulo para conferencia. Pix valida
+tipo e chave, CPF/CNPJ, telefone, e-mail, UUID v4, BR Code EMV, CRC, moeda, pais,
+valor e beneficiario verificavel. O fornecedor mantem nome e documento do
+beneficiario como referencia para detectar divergencias.
+
+Uma baixa e independente do titulo e exige valor, data, identificador bancario,
+autor e comprovante privado. Varias baixas podem liquidar o mesmo titulo. O
+saldo determina `PARTIALLY_PAID` ou `PAID`; a rota legada nao pode marcar pago
+sem comprovante. Adiantamentos exigem justificativa, evidencia e aprovacao
+extraordinaria.
+
+A segregacao opcional impede que solicitante ou aprovador da compra aprove o
+pagamento e que o aprovador financeiro registre a propria baixa. O sistema
+continua sem acessar conta bancaria, guardar senha, executar Pix ou confirmar
+pagamento automaticamente.
+
+## Contas a receber
+
+Contas a receber formam um dominio financeiro separado das parcelas de compras.
+Cada titulo pertence a uma empresa e registra cliente, CNPJ, descricao, valor,
+emissao, vencimento, origem e referencia externa. Os estados persistidos sao
+`OPEN`, `PARTIALLY_RECEIVED`, `RECEIVED` e `CANCELLED`; atraso e previsao de
+recebimento sao indicadores calculados pela data, nao estados gravados.
+
+Baixas sao registros independentes com valor, data, identificador bancario,
+observacao e autor. O saldo e o estado sao recalculados no servidor, uma baixa
+nao pode exceder o saldo e um titulo com recebimentos nao pode ser cancelado.
+Todas as operacoes usam `organizationId`, chaves estrangeiras compostas,
+concorrencia otimista, auditoria e RLS. A interface oferece filtros, historico,
+baixa parcial e exportacao Excel com neutralizacao de formulas.
 
 ## Indicadores
 
@@ -88,13 +258,41 @@ Quando o filtro informa data inicial e final, os indicadores de valor comprado e
 
 ## Relatorios
 
-Os relatorios usam as compras como fonte unica e aplicam o `organizationId` antes de qualquer filtro. A API consolida valores, economia, ticket medio e contagens e devolve agrupamentos por fornecedor, categoria, departamento e mes. Os valores departamentais usam os montantes exatos dos rateios e mantem itens sem classificacao visiveis.
+Os relatorios usam as compras como fonte unica e aplicam o `organizationId`
+antes de qualquer filtro. A API consolida valores, economia, ticket medio e
+contagens e devolve agrupamentos por fornecedor, categoria, departamento e mes.
+Status operacional e etapa do workflow sao filtros independentes. Os valores
+departamentais usam os montantes exatos dos rateios e mantem itens sem
+classificacao visiveis.
 
-As exportacoes CSV e XLSX repetem os filtros da consulta e neutralizam celulas iniciadas por caracteres de formula. O CSV usa separador compativel com Excel em `pt_BR`. O Excel resumido entrega indicadores, compras e agrupamentos por departamento, fornecedor, categoria e mes. O Excel detalhado acrescenta itens, consolidacao mensal de itens, rateios, parcelas, notas fiscais e dados cadastrais dos fornecedores. Datas, quantidades e valores monetarios permanecem tipados; nenhuma agregacao e calculada no navegador.
+As exportacoes CSV e XLSX repetem os filtros da consulta e neutralizam celulas
+iniciadas por caracteres de formula. O CSV usa separador compativel com Excel em
+`pt_BR`. O Excel resumido entrega indicadores, compras e agrupamentos por
+departamento, fornecedor, categoria e mes. O Excel detalhado acrescenta itens,
+consolidacao mensal de itens, rateios, parcelas, notas fiscais e dados
+cadastrais dos fornecedores. Ambos identificam a etapa da compra. Os Excel de
+contas a pagar e a receber entregam resumos financeiros e titulos filtrados. Datas, quantidades
+e valores monetarios permanecem tipados; nenhuma agregacao e calculada no
+navegador.
 
 ## Interface
 
-O produto usa a marca E-Gestao Compras e exibe o nome da empresa ativa no cabecalho. A barra lateral pode ser recolhida e permanece funcional em telas menores. As preferencias visuais oferecem os temas Normal, Escuro e Branco e sao salvas apenas no navegador do usuario.
+O produto usa a marca E-Gestao Compras e exibe o nome da empresa ativa no
+cabecalho. Depois da autenticacao, um lancador central apresenta os modulos
+Compras, Financeiro e Administracao permitidos ao usuario. Ao entrar em um
+modulo, a barra lateral mostra somente as rotas daquele contexto e permite
+voltar ao lancador para trocar de area.
+
+Essa divisao e exclusivamente de navegacao: pedidos, documentos fiscais,
+recebimentos e titulos financeiros continuam relacionados no mesmo tenant e na
+mesma API. Os menus e comandos permanecem derivados da matriz compartilhada de
+permissoes. A barra lateral pode ser recolhida e permanece funcional em telas
+menores. As preferencias visuais oferecem os temas Normal, Escuro e Branco e
+sao salvas apenas no navegador do usuario.
+
+O Kanban de compras usa a largura operacional disponivel, colunas continuas
+separadas por linhas e cabecalhos fixos durante a rolagem. Os cards preservam
+dimensoes estaveis e o arraste destaca somente destinos aceitos pela API.
 
 ## Operacao e recuperacao
 

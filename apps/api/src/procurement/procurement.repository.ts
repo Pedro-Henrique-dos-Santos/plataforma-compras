@@ -1,8 +1,15 @@
 import type {
   AttachPurchaseInvoiceInput,
+  AccountsPayableFilters,
+  AccountsPayableReport,
+  ApprovalRule,
+  ApprovalSettings,
+  ApprovalTask,
   ChangePurchaseStatusInput,
+  ChangePurchaseWorkflowStageInput,
   CostCenter,
   CreateCostCenterInput,
+  CreateApprovalRuleInput,
   CreatePurchaseInput,
   CreateSupplierInput,
   CreateSupplierPriceInput,
@@ -13,13 +20,20 @@ import type {
   PurchaseImportResult,
   PurchaseDetail,
   PurchaseSummary,
+  PurchaseWorkflowStage,
+  OrganizationRole,
   ProcurementDetailedReport,
   ProcurementReport,
   ProcurementReportFilters,
+  RecordApprovalDecisionInput,
+  SchedulePayableInput,
   Supplier,
   SupplierPrice,
   SupplierPriceImportResult,
   UpdateCostCenterInput,
+  UpdateApprovalRuleInput,
+  UpdateApprovalSettingsInput,
+  UpdatePayableInput,
   UpdatePurchaseInput,
   UpdateSupplierInput,
   UpdateSupplierPriceInput,
@@ -48,10 +62,17 @@ export type PurchaseFilters = {
   dateTo?: string;
   search?: string;
   status?: 'DRAFT' | 'REGISTERED' | 'CANCELLED';
+  workflowStage?: PurchaseWorkflowStage;
 };
 
-export type PersistPurchaseInput = Omit<CreatePurchaseInput, 'issuedAt'> & {
+export type PersistPurchaseInput = Omit<CreatePurchaseInput, 'issuedAt' | 'workflowStage'> & {
   issuedAt: string | null;
+  workflowStage?: CreatePurchaseInput['workflowStage'];
+};
+
+export type WorkflowTransitionContext = {
+  automated?: boolean;
+  organizationRole?: OrganizationRole;
 };
 
 export abstract class ProcurementRepository {
@@ -137,6 +158,7 @@ export abstract class ProcurementRepository {
     organizationId: string,
     id: string,
     input: UpdatePurchaseInput,
+    context?: WorkflowTransitionContext,
   ): Promise<PurchaseDetail>;
 
   abstract changePurchaseStatus(
@@ -145,6 +167,75 @@ export abstract class ProcurementRepository {
     id: string,
     input: ChangePurchaseStatusInput,
   ): Promise<PurchaseSummary>;
+
+  abstract changePurchaseWorkflowStage(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    input: ChangePurchaseWorkflowStageInput,
+    context?: WorkflowTransitionContext,
+  ): Promise<PurchaseDetail>;
+
+  abstract submitPurchaseForApproval(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    expectedUpdatedAt: string,
+  ): Promise<PurchaseDetail>;
+
+  abstract recordApprovalDecision(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: RecordApprovalDecisionInput,
+  ): Promise<PurchaseDetail>;
+
+  abstract listApprovalTasks(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+  ): Promise<ApprovalTask[]>;
+
+  abstract listApprovalRules(organizationId: string): Promise<ApprovalRule[]>;
+
+  abstract createApprovalRule(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: CreateApprovalRuleInput,
+  ): Promise<ApprovalRule>;
+
+  abstract updateApprovalRule(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    input: UpdateApprovalRuleInput,
+  ): Promise<ApprovalRule>;
+
+  abstract getApprovalSettings(organizationId: string): Promise<ApprovalSettings>;
+
+  abstract updateApprovalSettings(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: UpdateApprovalSettingsInput,
+  ): Promise<ApprovalSettings>;
+
+  abstract getAccountsPayable(
+    organizationId: string,
+    filters: AccountsPayableFilters,
+  ): Promise<AccountsPayableReport>;
+
+  abstract schedulePayable(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    purchaseId: string,
+    input: SchedulePayableInput,
+  ): Promise<PurchaseDetail>;
+
+  abstract updatePayable(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    purchaseId: string,
+    sequence: number,
+    input: UpdatePayableInput,
+  ): Promise<PurchaseDetail>;
 
   abstract importPurchases(
     actor: AuthenticatedIdentity,

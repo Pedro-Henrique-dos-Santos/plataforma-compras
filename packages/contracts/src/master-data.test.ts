@@ -44,4 +44,49 @@ describe('master data contracts', () => {
       }),
     ).toThrow();
   });
+
+  it('validates Pix keys according to their selected type', () => {
+    expect(
+      createSupplierInputSchema.safeParse({
+        legalName: 'Fornecedor Pix',
+        pixKeyType: 'CNPJ',
+        pixKey: '11222333000181',
+      }).success,
+    ).toBe(true);
+    expect(
+      createSupplierInputSchema.safeParse({
+        legalName: 'Fornecedor Pix',
+        pixKeyType: 'EMAIL',
+        pixKey: 'chave-invalida',
+      }).success,
+    ).toBe(false);
+    expect(
+      createSupplierInputSchema.safeParse({
+        legalName: 'Fornecedor Pix',
+        pixKeyType: 'PHONE',
+        pixKey: '+5511999999999',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts only HTTPS payment links', () => {
+    expect(
+      createSupplierInputSchema.safeParse({
+        legalName: 'Fornecedor com link',
+        paymentLink: 'https://pagamentos.example/checkout/123',
+      }).success,
+    ).toBe(true);
+    expect(
+      createSupplierInputSchema.safeParse({
+        legalName: 'Fornecedor com link',
+        paymentLink: 'http://pagamentos.example/checkout/123',
+      }).success,
+    ).toBe(false);
+    expect(
+      createSupplierInputSchema.safeParse({
+        legalName: 'Fornecedor com link',
+        paymentLink: 'javascript:alert(1)',
+      }).success,
+    ).toBe(false);
+  });
 });

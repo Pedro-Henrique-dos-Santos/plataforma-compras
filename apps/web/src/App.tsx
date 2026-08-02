@@ -17,9 +17,10 @@ import {
 } from '@compras/contracts';
 
 import logoMark from './assets/egestao-mark.svg';
-import { AppShell, type ViewId } from './components/AppShell';
+import { AppShell } from './components/AppShell';
 import { ConsentScreen } from './components/ConsentScreen';
 import { LoginScreen } from './components/LoginScreen';
+import { ModuleLauncher } from './components/ModuleLauncher';
 import { OrganizationSetupScreen } from './components/OrganizationSetupScreen';
 import { PasswordResetScreen } from './components/PasswordResetScreen';
 import { apiGet, apiPatch, apiPost } from './lib/api';
@@ -27,6 +28,12 @@ import { getOrganizationCapabilities } from './lib/access';
 import { demoMode, supabase } from './lib/auth';
 import { resolveInitialOrganization } from './lib/organizations';
 import { parseThemeMode, type ThemeMode } from './lib/theme';
+import {
+  getDefaultModuleView,
+  getVisibleModules,
+  type AppModuleId,
+  type ViewId,
+} from './module-navigation';
 
 type SessionState = 'checking' | 'signed-out' | 'signed-in' | 'password-recovery';
 
@@ -64,6 +71,31 @@ const PurchasesView = lazy(() =>
     default: module.PurchasesView,
   })),
 );
+const ApprovalsView = lazy(() =>
+  import('./components/ApprovalsView').then((module) => ({
+    default: module.ApprovalsView,
+  })),
+);
+const FinancialWorkflowView = lazy(() =>
+  import('./components/FinancialWorkflowView').then((module) => ({
+    default: module.FinancialWorkflowView,
+  })),
+);
+const ReceivablesView = lazy(() =>
+  import('./components/ReceivablesView').then((module) => ({
+    default: module.ReceivablesView,
+  })),
+);
+const ApprovalSettingsView = lazy(() =>
+  import('./components/ApprovalSettingsView').then((module) => ({
+    default: module.ApprovalSettingsView,
+  })),
+);
+const FinancialSettingsView = lazy(() =>
+  import('./components/FinancialSettingsView').then((module) => ({
+    default: module.FinancialSettingsView,
+  })),
+);
 const SuppliersView = lazy(() =>
   import('./components/SuppliersView').then((module) => ({
     default: module.SuppliersView,
@@ -84,9 +116,9 @@ const IntegrationsView = lazy(() =>
     default: module.IntegrationsView,
   })),
 );
-const InvoiceDocumentsView = lazy(() =>
-  import('./components/InvoiceDocumentsView').then((module) => ({
-    default: module.InvoiceDocumentsView,
+const FiscalWorkspaceView = lazy(() =>
+  import('./components/FiscalWorkspaceView').then((module) => ({
+    default: module.FiscalWorkspaceView,
   })),
 );
 
@@ -103,6 +135,7 @@ export default function App() {
   const [dataRevision, setDataRevision] = useState(0);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [activeModule, setActiveModule] = useState<AppModuleId | null>(null);
   const [view, setView] = useState<ViewId>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
@@ -274,6 +307,7 @@ export default function App() {
     setUser(null);
     setDashboard(null);
     setMembers([]);
+    setActiveModule(null);
     setSessionState('signed-out');
   }
 
@@ -283,6 +317,7 @@ export default function App() {
     setMembers([]);
     setDashboardFilters({ includeUndated: true });
     setError(null);
+    setActiveModule(null);
     setView('dashboard');
   }
 
@@ -302,6 +337,7 @@ export default function App() {
     );
     localStorage.setItem(ACTIVE_ORGANIZATION_KEY, organization.id);
     setActiveOrganizationId(organization.id);
+    setActiveModule(null);
     setView('dashboard');
   }
 
@@ -364,6 +400,34 @@ export default function App() {
     setDataRevision((current) => current + 1);
   }
 
+  function handleModuleSelect(moduleId: AppModuleId) {
+    if (!user || !activeOrganization) {
+      return;
+    }
+    const nextView = getDefaultModuleView(moduleId, user, activeOrganization);
+    if (!nextView) {
+      return;
+    }
+    setError(null);
+    setMobileMenuOpen(false);
+    setActiveModule(moduleId);
+    setView(nextView);
+  }
+
+  function handleOpenSettings() {
+    if (!user || !activeOrganization) {
+      return;
+    }
+    const modules = getVisibleModules(user, activeOrganization);
+    const context = modules.find((module) => module.id === 'administration') ?? modules[0];
+    if (!context) {
+      return;
+    }
+    setError(null);
+    setActiveModule(context.id);
+    setView('settings');
+  }
+
   if (sessionState === 'checking') {
     return <FullPageLoading />;
   }
@@ -404,10 +468,29 @@ export default function App() {
 
   const capabilities = getOrganizationCapabilities(user, activeOrganization);
 
+  if (!activeModule) {
+    return (
+      <ModuleLauncher
+        activeOrganization={activeOrganization}
+        onModuleSelect={handleModuleSelect}
+        onOpenSettings={handleOpenSettings}
+        onOrganizationChange={handleOrganizationChange}
+        onSignOut={() => void handleSignOut()}
+        organizations={user.organizations}
+        user={user}
+      />
+    );
+  }
+
   return (
     <AppShell
+      activeModule={activeModule}
       activeOrganization={activeOrganization}
       mobileMenuOpen={mobileMenuOpen}
+      onModuleExit={() => {
+        setMobileMenuOpen(false);
+        setActiveModule(null);
+      }}
       onMobileMenuChange={setMobileMenuOpen}
       onOrganizationChange={handleOrganizationChange}
       onSidebarCollapsedChange={handleSidebarCollapsedChange}
@@ -442,8 +525,47 @@ export default function App() {
         {view === 'purchases' && (
           <PurchasesView
             accessToken={accessToken}
+            canManageWorkflow={capabilities.canManageApprovals}
             canWrite={capabilities.canWritePurchases}
             onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'approvals' && capabilities.canActOnApprovals && (
+          <ApprovalsView
+            accessToken={accessToken}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'payables' && (
+          <FinancialWorkflowView
+            accessToken={accessToken}
+            canActOnApprovals={capabilities.canActOnPaymentApprovals}
+            canSettle={capabilities.canSettlePayments}
+            canWrite={capabilities.canWritePayables}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'receivables' && (
+          <ReceivablesView
+            accessToken={accessToken}
+            canSettle={capabilities.canSettleReceivables}
+            canWrite={capabilities.canWriteReceivables}
+            onChanged={handleOperationalChanged}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'approval-settings' && capabilities.canManageApprovals && (
+          <ApprovalSettingsView
+            accessToken={accessToken}
+            organizationId={activeOrganization.id}
+          />
+        )}
+        {view === 'financial-settings' && capabilities.canManagePaymentApprovals && (
+          <FinancialSettingsView
+            accessToken={accessToken}
             organizationId={activeOrganization.id}
           />
         )}
@@ -481,8 +603,9 @@ export default function App() {
           />
         )}
         {view === 'invoice-documents' && (
-          <InvoiceDocumentsView
+          <FiscalWorkspaceView
             accessToken={accessToken}
+            canConfigure={capabilities.canManageFiscalIntegration}
             canWrite={capabilities.canWriteInvoices}
             onChanged={handleOperationalChanged}
             organizationId={activeOrganization.id}

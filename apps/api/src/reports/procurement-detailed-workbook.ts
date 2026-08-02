@@ -50,6 +50,7 @@ function addDetailedPurchasesSheet(
     { header: 'Pagamento', key: 'paymentMethod', width: 20 },
     { header: 'Origem', key: 'source', width: 18 },
     { header: 'Status', key: 'status', width: 16 },
+    { header: 'Etapa', key: 'workflowStage', width: 28 },
     { header: 'Itens', key: 'items', width: 10 },
     { header: 'Parcelas', key: 'installments', width: 10 },
     { header: 'Documentos', key: 'documents', width: 12 },
@@ -70,6 +71,7 @@ function addDetailedPurchasesSheet(
       paymentMethod: safeText(purchase.paymentMethod ?? ''),
       source: sourceLabel(purchase.source),
       status: purchaseStatusLabel(purchase.status),
+      workflowStage: workflowStageLabel(purchase.workflowStage),
       items: purchase.items.length,
       installments: purchase.installments.length,
       documents: purchase.invoices.length,
@@ -78,15 +80,15 @@ function addDetailedPurchasesSheet(
       notes: safeText(purchase.notes ?? ''),
     });
     row.getCell(3).numFmt = 'dd/mm/yyyy';
-    row.getCell(12).numFmt = '0';
     row.getCell(13).numFmt = '0';
     row.getCell(14).numFmt = '0';
-    row.getCell(15).numFmt = MONEY_FORMAT;
+    row.getCell(15).numFmt = '0';
     row.getCell(16).numFmt = MONEY_FORMAT;
-    wrapCells(row, [4, 5, 7, 8, 17]);
+    row.getCell(17).numFmt = MONEY_FORMAT;
+    wrapCells(row, [4, 5, 7, 8, 18]);
     if (purchase.notes || purchase.supplier.legalName.length > 44) row.height = 30;
   });
-  finishSheet(sheet, 17);
+  finishSheet(sheet, 18);
 }
 
 function addItemsSheet(workbook: Workbook, purchases: ProcurementDetailedPurchase[]): void {
@@ -471,6 +473,20 @@ function purchaseStatusLabel(status: ProcurementDetailedPurchase['status']): str
     REGISTERED: 'Registrada',
     CANCELLED: 'Cancelada',
   }[status];
+}
+
+function workflowStageLabel(
+  stage: ProcurementDetailedPurchase['workflowStage'],
+): string {
+  return {
+    REGISTRATION: 'Registro',
+    REQUESTED: 'Solicitacao',
+    AWAITING_APPROVAL: 'Aguardando aprovacao',
+    PURCHASE_ORDER: 'Pedido de compra',
+    SUPPLIER_INVOICED: 'Faturado pelo fornecedor',
+    RECEIVED: 'Recebido',
+    COMPLETED: 'Concluido',
+  }[stage];
 }
 
 function invoiceStatusLabel(

@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   createSupplierInputSchema,
   type CreateSupplierInput,
@@ -50,6 +51,13 @@ export class SuppliersController {
     @Query(new ZodValidationPipe(querySchema)) query: z.output<typeof querySchema>,
   ) {
     return this.masterData.listSuppliers(organization.id, query);
+  }
+
+  @Get('cnpj/:document')
+  @RequirePermission('supplier:write')
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
+  lookupCnpj(@Param('document') document: string) {
+    return this.masterData.lookupSupplierCnpj(document);
   }
 
   @Post()

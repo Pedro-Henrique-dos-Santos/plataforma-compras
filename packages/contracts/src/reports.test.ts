@@ -7,8 +7,11 @@ import {
 } from './reports.js';
 
 describe('procurement report contracts', () => {
-  it('defaults operational reports to registered purchases', () => {
-    expect(procurementReportFiltersSchema.parse({})).toEqual({ status: 'REGISTERED' });
+  it('allows operational reports to include every lifecycle status', () => {
+    expect(procurementReportFiltersSchema.parse({})).toEqual({});
+    expect(procurementReportFiltersSchema.parse({ status: 'REGISTERED' })).toEqual({
+      status: 'REGISTERED',
+    });
   });
 
   it('rejects an inverted period', () => {

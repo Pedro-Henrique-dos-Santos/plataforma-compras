@@ -31,6 +31,7 @@ type ReportFilterForm = {
   dateTo: string;
   status: ProcurementReportFilters['status'];
   supplierId: string;
+  workflowStage: ProcurementReportFilters['workflowStage'];
 };
 
 type BreakdownTab = 'supplier' | 'category' | 'department' | 'month';
@@ -237,14 +238,37 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
                 onChange={(event) =>
                   setFilters({
                     ...filters,
-                    status: event.target.value as ReportFilterForm['status'],
+                    status: (event.target.value || undefined) as ReportFilterForm['status'],
                   })
                 }
-                value={filters.status}
+                value={filters.status ?? ''}
               >
+                <option value="">Todos os status</option>
                 <option value="REGISTERED">Registrada</option>
                 <option value="DRAFT">Rascunho</option>
                 <option value="CANCELLED">Cancelada</option>
+              </select>
+            </label>
+            <label>
+              Etapa
+              <select
+                onChange={(event) =>
+                  setFilters({
+                    ...filters,
+                    workflowStage: (event.target.value ||
+                      undefined) as ReportFilterForm['workflowStage'],
+                  })
+                }
+                value={filters.workflowStage ?? ''}
+              >
+                <option value="">Todas as etapas</option>
+                <option value="REGISTRATION">Registro</option>
+                <option value="REQUESTED">Solicitacao</option>
+                <option value="AWAITING_APPROVAL">Aguardando aprovacao</option>
+                <option value="PURCHASE_ORDER">Pedido de compra</option>
+                <option value="SUPPLIER_INVOICED">Faturado pelo fornecedor</option>
+                <option value="RECEIVED">Recebido</option>
+                <option value="COMPLETED">Concluido</option>
               </select>
             </label>
           </div>
@@ -366,7 +390,7 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
                     <th>Fornecedor</th>
                     <th>Categoria</th>
                     <th>Departamento</th>
-                    <th>Status</th>
+                    <th>Etapa</th>
                     <th className="align-right">Total</th>
                     <th className="align-right">Economia</th>
                   </tr>
@@ -383,7 +407,9 @@ export function ReportsView({ accessToken, organizationId }: ReportsViewProps) {
                         <td>{purchase.departments.join(', ') || 'Sem centro de custo'}</td>
                         <td>
                           <span className={`report-status ${purchase.status.toLowerCase()}`}>
-                            {statusLabel(purchase.status)}
+                            {purchase.status === 'CANCELLED'
+                              ? 'Cancelada'
+                              : workflowStageLabel(purchase.workflowStage)}
                           </span>
                         </td>
                         <td className="align-right amount-cell">{currency.format(purchase.total)}</td>
@@ -503,7 +529,9 @@ function selectBreakdown(
 }
 
 function reportQuery(filters: ReportFilterForm): string {
-  const query = new URLSearchParams({ status: filters.status });
+  const query = new URLSearchParams();
+  if (filters.status) query.set('status', filters.status);
+  if (filters.workflowStage) query.set('workflowStage', filters.workflowStage);
   if (filters.dateFrom) query.set('dateFrom', filters.dateFrom);
   if (filters.dateTo) query.set('dateTo', filters.dateTo);
   if (filters.supplierId) query.set('supplierId', filters.supplierId);
@@ -518,13 +546,24 @@ function emptyFilters(): ReportFilterForm {
     costCenterId: '',
     dateFrom: '',
     dateTo: '',
-    status: 'REGISTERED',
+    status: undefined,
     supplierId: '',
+    workflowStage: undefined,
   };
 }
 
-function statusLabel(status: ProcurementReport['purchases'][number]['status']): string {
-  return { CANCELLED: 'Cancelada', DRAFT: 'Rascunho', REGISTERED: 'Registrada' }[status];
+function workflowStageLabel(
+  stage: ProcurementReport['purchases'][number]['workflowStage'],
+): string {
+  return {
+    REGISTRATION: 'Registro',
+    REQUESTED: 'Solicitacao',
+    AWAITING_APPROVAL: 'Aguardando aprovacao',
+    PURCHASE_ORDER: 'Pedido de compra',
+    SUPPLIER_INVOICED: 'Faturado pelo fornecedor',
+    RECEIVED: 'Recebido',
+    COMPLETED: 'Concluido',
+  }[stage];
 }
 
 function formatDate(value: string | null): string {

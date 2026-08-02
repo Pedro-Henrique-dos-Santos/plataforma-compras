@@ -10,14 +10,23 @@ describe('organization capabilities', () => {
     );
 
     expect(capabilities).toEqual({
+      canActOnApprovals: true,
+      canActOnPaymentApprovals: true,
+      canManageApprovals: true,
+      canManageFiscalIntegration: true,
       canManageMembers: true,
       canManageOrganization: true,
+      canManagePaymentApprovals: true,
       canManagePlatform: false,
+      canSettlePayments: true,
+      canSettleReceivables: true,
       canWriteCostCenters: true,
       canWriteIntegrations: true,
       canWriteInvoices: true,
+      canWritePayables: true,
       canWritePrices: true,
       canWritePurchases: true,
+      canWriteReceivables: true,
       canWriteSuppliers: true,
     });
   });
@@ -33,9 +42,31 @@ describe('organization capabilities', () => {
     expect(capabilities.canWritePrices).toBe(true);
     expect(capabilities.canWriteCostCenters).toBe(true);
     expect(capabilities.canWriteInvoices).toBe(true);
+    expect(capabilities.canWritePayables).toBe(true);
+    expect(capabilities.canWriteReceivables).toBe(false);
+    expect(capabilities.canSettleReceivables).toBe(false);
+    expect(capabilities.canActOnApprovals).toBe(true);
+    expect(capabilities.canManageApprovals).toBe(false);
     expect(capabilities.canWriteIntegrations).toBe(false);
     expect(capabilities.canManageOrganization).toBe(false);
     expect(capabilities.canManageMembers).toBe(false);
+  });
+
+  it('limits finance users to payment operations', () => {
+    const capabilities = getOrganizationCapabilities(
+      { platformRoles: [] },
+      { role: 'FINANCE' },
+    );
+
+    expect(capabilities.canWritePayables).toBe(true);
+    expect(capabilities.canActOnPaymentApprovals).toBe(true);
+    expect(capabilities.canSettlePayments).toBe(true);
+    expect(capabilities.canWriteReceivables).toBe(true);
+    expect(capabilities.canSettleReceivables).toBe(true);
+    expect(capabilities.canWritePurchases).toBe(false);
+    expect(capabilities.canManagePaymentApprovals).toBe(false);
+    expect(capabilities.canManageFiscalIntegration).toBe(false);
+    expect(capabilities.canManageOrganization).toBe(false);
   });
 
   it('keeps report viewers read-only', () => {

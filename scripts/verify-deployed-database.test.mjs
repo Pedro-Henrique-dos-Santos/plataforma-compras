@@ -26,7 +26,7 @@ test('accepts completed migrations, RLS, tenant relations and revoked browser-ro
   assert.deepEqual(validateDatabaseSecuritySnapshot(validSnapshot), {
     migrations: 1,
     protectedTables: 2,
-    tenantRelations: 10,
+    tenantRelations: REQUIRED_TENANT_RELATIONS.length,
   });
 });
 

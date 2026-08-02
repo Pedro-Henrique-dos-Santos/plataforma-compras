@@ -65,6 +65,35 @@ export async function apiUpload<T>(
   return readResponse<T>(response);
 }
 
+export async function apiForm<T>(
+  path: string,
+  body: FormData,
+  method: 'POST' | 'PUT',
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    body,
+    cache: 'no-store',
+    headers: requestHeaders(options),
+    method,
+    signal: options.signal,
+  });
+  return readResponse<T>(response);
+}
+
+export async function apiDelete<T>(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    cache: 'no-store',
+    headers: requestHeaders(options),
+    method: 'DELETE',
+    signal: options.signal,
+  });
+  return readResponse<T>(response);
+}
+
 export async function apiDownload(
   path: string,
   options: ApiDownloadOptions = {},
@@ -118,8 +147,9 @@ function requestHeaders(options: ApiRequestOptions): Headers {
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
+  const text = await response.text();
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as
+    const body = (text ? safeJson(text) : null) as
       | { message?: string | string[] }
       | null;
     const message = Array.isArray(body?.message)
@@ -127,7 +157,15 @@ async function readResponse<T>(response: Response): Promise<T> {
       : body?.message;
     throw new Error(message ?? `Falha na API (${response.status}).`);
   }
-  return (await response.json()) as T;
+  return (text ? safeJson(text) : undefined) as T;
+}
+
+function safeJson(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 function responseFileName(disposition: string | null, fallback: string): string {

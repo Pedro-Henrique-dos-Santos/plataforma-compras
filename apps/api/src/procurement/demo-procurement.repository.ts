@@ -3,9 +3,16 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import type {
   AttachPurchaseInvoiceInput,
+  AccountsPayableFilters,
+  AccountsPayableReport,
+  ApprovalRule,
+  ApprovalSettings,
+  ApprovalTask,
   ChangePurchaseStatusInput,
+  ChangePurchaseWorkflowStageInput,
   CostCenter,
   CreateCostCenterInput,
+  CreateApprovalRuleInput,
   CreateSupplierInput,
   CreateSupplierPriceInput,
   DashboardFilters,
@@ -17,19 +24,30 @@ import type {
   PurchaseSource,
   PurchaseStatus,
   PurchaseSummary,
+  PurchaseWorkflowStage,
   ProcurementDetailedReport,
   ProcurementReport,
   ProcurementReportFilters,
+  RecordApprovalDecisionInput,
+  SchedulePayableInput,
   Supplier,
   SupplierPrice,
   SupplierPriceImportResult,
   UpdateCostCenterInput,
+  UpdateApprovalRuleInput,
+  UpdateApprovalSettingsInput,
+  UpdatePayableInput,
   UpdatePurchaseInput,
   UpdateSupplierInput,
   UpdateSupplierPriceInput,
 } from '@compras/contracts';
 
-import { EXAMPLE_COMPANY_ID, HUMAN_CLINIC_ID } from '../demo/demo.data.js';
+import {
+  DEMO_USER_ID,
+  EXAMPLE_COMPANY_ID,
+  HUMAN_CLINIC_ID,
+} from '../demo/demo.data.js';
+import { currentBusinessIsoDate } from '../common/business-date.js';
 import type { AuthenticatedIdentity } from '../domain/identity.js';
 import { buildProcurementReport } from '../reports/procurement-report.builder.js';
 import {
@@ -44,6 +62,7 @@ import {
   type PurchaseFilters,
   type SupplierFilters,
   type SupplierPriceFilters,
+  type WorkflowTransitionContext,
 } from './procurement.repository.js';
 
 type StoredCostCenter = CostCenter & { organizationId: string };
@@ -59,7 +78,37 @@ type StoredInstallment = {
   amount: number;
   dueDate: string;
   paidAt: string | null;
+  paymentChannel: 'PIX' | 'CARD_LINK' | 'BOLETO' | 'BANK_TRANSFER' | 'OTHER' | null;
+  paymentReference: string | null;
+  paymentNotes: string | null;
   sequence: number;
+};
+type StoredApprovalParticipant = {
+  userId: string;
+  name: string;
+  decision: 'PENDING' | 'APPROVED' | 'REJECTED';
+  comment: string | null;
+  decidedAt: string | null;
+};
+type StoredApprovalRequest = {
+  requestId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  ruleName: string;
+  requiredApprovals: number;
+  amountSnapshot: number;
+  submittedAt: string;
+  resolvedAt: string | null;
+  submittedById: string;
+  participants: StoredApprovalParticipant[];
+};
+type StoredStageHistory = {
+  id: string;
+  fromStage: PurchaseWorkflowStage | null;
+  toStage: PurchaseWorkflowStage;
+  changedById: string;
+  changedByName: string;
+  reason: string | null;
+  createdAt: string;
 };
 type StoredPurchaseItem = {
   allocations: StoredAllocation[];
@@ -75,6 +124,7 @@ type StoredPurchaseItem = {
 type StoredPurchase = {
   category: string | null;
   createdAt: string;
+  displaySequence: number;
   id: string;
   issuedAt: string | null;
   items: StoredPurchaseItem[];
@@ -83,18 +133,23 @@ type StoredPurchase = {
   notes: string | null;
   number: string;
   invoiceNumber: string | null;
+  fiscalDocumentRequired: boolean;
   operationNature: string | null;
   organizationId: string;
   paymentMethod: string | null;
   source: PurchaseSource;
   sourceReference: string | null;
   status: PurchaseStatus;
+  workflowStage: PurchaseWorkflowStage;
+  approvalRequests: StoredApprovalRequest[];
+  stageHistory: StoredStageHistory[];
   supplierId: string;
   total: number;
   updatedAt: string;
 };
 
 const INITIAL_DATE = '2026-07-01T12:00:00.000Z';
+const DEMO_BUYER_USER_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 const centerIds = {
   admin: '41000000-0000-4000-8000-000000000003',
@@ -117,6 +172,9 @@ export class DemoProcurementRepository extends ProcurementRepository {
   private readonly suppliers: StoredSupplier[] = seedSuppliers();
   private readonly prices: StoredPrice[] = seedPrices();
   private readonly purchases: StoredPurchase[] = seedPurchases();
+  private readonly approvalRules: Array<ApprovalRule & { organizationId: string }> =
+    seedApprovalRules();
+  private readonly approvalSettings = new Map<string, ApprovalSettings>();
 
   async listCostCenters(
     organizationId: string,
@@ -223,9 +281,23 @@ export class DemoProcurementRepository extends ProcurementRepository {
       category: input.category,
       operationNature: input.operationNature,
       paymentMethod: input.paymentMethod,
+      pixKeyType: input.pixKeyType ?? null,
+      pixKey: input.pixKey ?? null,
+      pixBeneficiaryName: input.pixBeneficiaryName ?? null,
+      pixBeneficiaryDocument: input.pixBeneficiaryDocument ?? null,
+      paymentLink: input.paymentLink ?? null,
       defaultCostCenterId: input.defaultCostCenterId,
       email: input.email,
       phone: input.phone,
+      postalCode: input.postalCode ?? null,
+      street: input.street ?? null,
+      addressNumber: input.addressNumber ?? null,
+      addressComplement: input.addressComplement ?? null,
+      district: input.district ?? null,
+      city: input.city ?? null,
+      state: input.state ?? null,
+      registrationStatus: input.registrationStatus ?? null,
+      primaryActivity: input.primaryActivity ?? null,
       status: 'ACTIVE',
       notes: input.notes,
       createdAt: now,
@@ -361,6 +433,10 @@ export class DemoProcurementRepository extends ProcurementRepository {
       .filter((purchase) => !filters.status || purchase.status === filters.status)
       .filter(
         (purchase) =>
+          !filters.workflowStage || purchase.workflowStage === filters.workflowStage,
+      )
+      .filter(
+        (purchase) =>
           !filters.dateFrom || (purchase.issuedAt !== null && purchase.issuedAt >= filters.dateFrom),
       )
       .filter(
@@ -384,24 +460,56 @@ export class DemoProcurementRepository extends ProcurementRepository {
   }
 
   async createPurchase(
-    _actor: AuthenticatedIdentity,
+    actor: AuthenticatedIdentity,
     organizationId: string,
     input: PersistPurchaseInput,
   ): Promise<PurchaseSummary> {
     const purchase = this.createStoredPurchase(organizationId, input);
+    purchase.stageHistory.push({
+      id: randomUUID(),
+      fromStage: null,
+      toStage: purchase.workflowStage,
+      changedById: actor.id,
+      changedByName: actor.name,
+      reason: 'Compra criada.',
+      createdAt: purchase.createdAt,
+    });
     this.purchases.push(purchase);
     return this.toPurchaseSummary(purchase);
   }
 
   async updatePurchase(
-    _actor: AuthenticatedIdentity,
+    actor: AuthenticatedIdentity,
     organizationId: string,
     id: string,
     input: UpdatePurchaseInput,
+    context: WorkflowTransitionContext = {},
   ): Promise<PurchaseDetail> {
     const purchase = this.requireStoredPurchase(organizationId, id);
     if (purchase.status === 'CANCELLED') {
       throw new BadRequestException('Reative a compra antes de altera-la.');
+    }
+    const adminOverride =
+      actor.platformRoles.includes('PLATFORM_OWNER') ||
+      context.organizationRole === 'ORGANIZATION_ADMIN';
+    const isEarlyStage = ['REGISTRATION', 'REQUESTED'].includes(purchase.workflowStage);
+    if (
+      !isEarlyStage &&
+      !adminOverride
+    ) {
+      throw new BadRequestException(
+        'Os dados da compra so podem ser alterados durante o cadastro ou a solicitacao.',
+      );
+    }
+    if (!isEarlyStage && adminOverride && purchase.invoiceNumber) {
+      throw new BadRequestException(
+        'Este pedido demonstrativo possui evidencia fiscal vinculada e nao pode ter itens ou valores alterados.',
+      );
+    }
+    if ((input.invoiceNumber ?? null) !== purchase.invoiceNumber) {
+      throw new BadRequestException(
+        'Vincule a nota fiscal pela automacao documental depois que o pedido for aprovado.',
+      );
     }
     if (purchase.updatedAt !== input.expectedUpdatedAt) {
       throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
@@ -410,6 +518,8 @@ export class DemoProcurementRepository extends ProcurementRepository {
       organizationId,
       {
         ...input,
+        fiscalDocumentRequired:
+          input.fiscalDocumentRequired ?? purchase.fiscalDocumentRequired,
         source: purchase.source,
         sourceReference: purchase.sourceReference,
       },
@@ -424,6 +534,9 @@ export class DemoProcurementRepository extends ProcurementRepository {
       createdAt: purchase.createdAt,
       id: purchase.id,
       status: purchase.status,
+      workflowStage: purchase.workflowStage,
+      approvalRequests: purchase.approvalRequests,
+      stageHistory: purchase.stageHistory,
       updatedAt: nextTimestamp(purchase.updatedAt),
     });
     Object.assign(purchase, replacement);
@@ -431,7 +544,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
   }
 
   async changePurchaseStatus(
-    _actor: AuthenticatedIdentity,
+    actor: AuthenticatedIdentity,
     organizationId: string,
     id: string,
     input: ChangePurchaseStatusInput,
@@ -443,9 +556,434 @@ export class DemoProcurementRepository extends ProcurementRepository {
     if (purchase.updatedAt !== input.expectedUpdatedAt) {
       throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
     }
-    purchase.status = input.status;
+    const previousStage = purchase.workflowStage;
+    if (input.status === 'CANCELLED' && purchase.workflowStage === 'AWAITING_APPROVAL') {
+      purchase.workflowStage = 'REQUESTED';
+      for (const request of purchase.approvalRequests) {
+        if (request.status === 'PENDING') {
+          request.status = 'CANCELLED';
+          request.resolvedAt = new Date().toISOString();
+        }
+      }
+    }
+    purchase.status =
+      input.status === 'CANCELLED'
+        ? 'CANCELLED'
+        : demoLifecycleStatusForStage(purchase.workflowStage);
     purchase.updatedAt = nextTimestamp(purchase.updatedAt);
+    if (previousStage !== purchase.workflowStage) {
+      purchase.stageHistory.push({
+        id: randomUUID(),
+        fromStage: previousStage,
+        toStage: purchase.workflowStage,
+        changedById: actor.id,
+        changedByName: actor.name,
+        reason: input.reason,
+        createdAt: purchase.updatedAt,
+      });
+    }
     return this.toPurchaseSummary(purchase);
+  }
+
+  async changePurchaseWorkflowStage(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    input: ChangePurchaseWorkflowStageInput,
+    context: WorkflowTransitionContext = {},
+  ): Promise<PurchaseDetail> {
+    const purchase = this.requireStoredPurchase(organizationId, id);
+    if (purchase.status === 'CANCELLED') {
+      throw new BadRequestException('Reative a compra antes de alterar o fluxo.');
+    }
+    if (purchase.updatedAt !== input.expectedUpdatedAt) {
+      throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
+    }
+    if (purchase.workflowStage === input.stage) {
+      return this.toPurchaseDetail(purchase);
+    }
+    const settings = await this.getApprovalSettings(organizationId);
+    assertDemoManualStageTransition(
+      purchase.workflowStage,
+      input.stage,
+      input.reason ?? null,
+      purchase.invoiceNumber !== null,
+      purchase.fiscalDocumentRequired,
+      {
+        adminOverride:
+          actor.platformRoles.includes('PLATFORM_OWNER') ||
+          context.organizationRole === 'ORGANIZATION_ADMIN',
+        automated: context.automated === true,
+        requireReturnReason: settings.requireStageReturnReason,
+      },
+    );
+    if (
+      purchase.workflowStage === 'AWAITING_APPROVAL' &&
+      demoWorkflowStageIndex(input.stage) < demoWorkflowStageIndex(purchase.workflowStage)
+    ) {
+      const now = new Date().toISOString();
+      for (const request of purchase.approvalRequests) {
+        if (request.status === 'PENDING') {
+          request.status = 'CANCELLED';
+          request.resolvedAt = now;
+        }
+      }
+    }
+    this.moveStoredPurchase(purchase, input.stage, actor, input.reason ?? null);
+    return this.toPurchaseDetail(purchase);
+  }
+
+  async submitPurchaseForApproval(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    expectedUpdatedAt: string,
+  ): Promise<PurchaseDetail> {
+    const purchase = this.requireStoredPurchase(organizationId, id);
+    if (
+      purchase.status === 'CANCELLED' ||
+      purchase.workflowStage !== 'REQUESTED'
+    ) {
+      throw new BadRequestException(
+        'A compra precisa estar na etapa Solicitacao para ser enviada a aprovacao.',
+      );
+    }
+    if (purchase.updatedAt !== expectedUpdatedAt) {
+      throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
+    }
+    const rule = this.approvalRules
+      .filter(
+        (candidate) =>
+          candidate.organizationId === organizationId &&
+          candidate.active &&
+          candidate.minimumAmount <= purchase.total,
+      )
+      .sort((left, right) => right.minimumAmount - left.minimumAmount)[0];
+    if (!rule) {
+      throw new BadRequestException(
+        'Nenhuma regra de aprovacao ativa atende ao valor desta compra.',
+      );
+    }
+    if (rule.approvers.length < rule.requiredApprovals) {
+      throw new BadRequestException(
+        'A regra nao possui aprovadores ativos suficientes para o quorum configurado.',
+      );
+    }
+    const now = new Date().toISOString();
+    purchase.approvalRequests.push({
+      requestId: randomUUID(),
+      status: 'PENDING',
+      ruleName: rule.name,
+      requiredApprovals: rule.requiredApprovals,
+      amountSnapshot: purchase.total,
+      submittedAt: now,
+      resolvedAt: null,
+      submittedById: actor.id,
+      participants: rule.approvers.map((approver) => ({
+        userId: approver.userId,
+        name: approver.name,
+        decision: 'PENDING',
+        comment: null,
+        decidedAt: null,
+      })),
+    });
+    this.moveStoredPurchase(
+      purchase,
+      'AWAITING_APPROVAL',
+      actor,
+      `Enviado para ${rule.requiredApprovals} aprovacao(oes).`,
+    );
+    return this.toPurchaseDetail(purchase);
+  }
+
+  async recordApprovalDecision(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: RecordApprovalDecisionInput,
+  ): Promise<PurchaseDetail> {
+    const purchase = this.purchases.find(
+      (candidate) =>
+        candidate.organizationId === organizationId &&
+        candidate.approvalRequests.some(
+          (request) => request.requestId === input.requestId,
+        ),
+    );
+    if (!purchase) {
+      throw new NotFoundException('Aprovacao pendente nao encontrada para este usuario.');
+    }
+    const request = purchase.approvalRequests.find(
+      (candidate) => candidate.requestId === input.requestId,
+    );
+    const participant = request?.participants.find(
+      (candidate) => candidate.userId === actor.id,
+    );
+    if (!request || request.status !== 'PENDING' || !participant) {
+      throw new NotFoundException('Aprovacao pendente nao encontrada para este usuario.');
+    }
+    if (participant.decision !== 'PENDING') {
+      throw new ConflictException('Esta aprovacao ja foi respondida.');
+    }
+    const now = new Date().toISOString();
+    participant.decision = input.decision;
+    participant.comment = input.comment;
+    participant.decidedAt = now;
+    if (input.decision === 'REJECTED') {
+      request.status = 'REJECTED';
+      request.resolvedAt = now;
+      this.moveStoredPurchase(purchase, 'REQUESTED', actor, input.comment);
+    } else if (
+      request.participants.filter((candidate) => candidate.decision === 'APPROVED')
+        .length >= request.requiredApprovals
+    ) {
+      request.status = 'APPROVED';
+      request.resolvedAt = now;
+      this.moveStoredPurchase(
+        purchase,
+        'PURCHASE_ORDER',
+        actor,
+        `Quorum de ${request.requiredApprovals} aprovacao(oes) atingido.`,
+      );
+    } else {
+      purchase.updatedAt = nextTimestamp(purchase.updatedAt);
+    }
+    return this.toPurchaseDetail(purchase);
+  }
+
+  async listApprovalTasks(
+    actor: AuthenticatedIdentity,
+    organizationId: string,
+  ): Promise<ApprovalTask[]> {
+    return this.purchases
+      .filter((purchase) => purchase.organizationId === organizationId)
+      .flatMap((purchase) =>
+        purchase.approvalRequests
+          .filter(
+            (request) =>
+              request.status === 'PENDING' &&
+              request.participants.some(
+                (participant) =>
+                  participant.userId === actor.id &&
+                  participant.decision === 'PENDING',
+              ),
+          )
+          .map((request) => ({
+            requestId: request.requestId,
+            purchaseId: purchase.id,
+            purchaseNumber: purchase.number,
+            supplierName: this.supplierName(purchase.supplierId),
+            total: request.amountSnapshot,
+            category: purchase.category,
+            submittedAt: request.submittedAt,
+            approvedCount: request.participants.filter(
+              (participant) => participant.decision === 'APPROVED',
+            ).length,
+            requiredApprovals: request.requiredApprovals,
+          })),
+      )
+      .sort((left, right) => left.submittedAt.localeCompare(right.submittedAt));
+  }
+
+  async listApprovalRules(organizationId: string): Promise<ApprovalRule[]> {
+    return this.approvalRules
+      .filter((rule) => rule.organizationId === organizationId)
+      .sort((left, right) => left.minimumAmount - right.minimumAmount)
+      .map(({ organizationId: _organizationId, ...rule }) => structuredClone(rule));
+  }
+
+  async createApprovalRule(
+    _actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: CreateApprovalRuleInput,
+  ): Promise<ApprovalRule> {
+    if (
+      this.approvalRules.some(
+        (rule) =>
+          rule.organizationId === organizationId &&
+          rule.minimumAmount === input.minimumAmount,
+      )
+    ) {
+      throw new ConflictException('Ja existe uma regra para este valor minimo.');
+    }
+    const approvers = input.approverUserIds.map((userId) =>
+      requireDemoApprover(userId, input.notificationChannel),
+    );
+    const now = new Date().toISOString();
+    const rule: ApprovalRule & { organizationId: string } = {
+      id: randomUUID(),
+      organizationId,
+      name: input.name,
+      minimumAmount: input.minimumAmount,
+      requiredApprovals: input.requiredApprovals,
+      notificationChannel: input.notificationChannel,
+      active: input.active,
+      approvers,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.approvalRules.push(rule);
+    const { organizationId: _organizationId, ...result } = rule;
+    return structuredClone(result);
+  }
+
+  async updateApprovalRule(
+    _actor: AuthenticatedIdentity,
+    organizationId: string,
+    id: string,
+    input: UpdateApprovalRuleInput,
+  ): Promise<ApprovalRule> {
+    const rule = this.approvalRules.find(
+      (candidate) =>
+        candidate.organizationId === organizationId && candidate.id === id,
+    );
+    if (!rule) {
+      throw new NotFoundException('Regra de aprovacao nao encontrada.');
+    }
+    if (rule.updatedAt !== input.expectedUpdatedAt) {
+      throw new ConflictException(
+        'A regra foi alterada por outro usuario. Atualize os dados.',
+      );
+    }
+    if (
+      this.approvalRules.some(
+        (candidate) =>
+          candidate.organizationId === organizationId &&
+          candidate.id !== id &&
+          candidate.minimumAmount === input.minimumAmount,
+      )
+    ) {
+      throw new ConflictException('Ja existe uma regra para este valor minimo.');
+    }
+    Object.assign(rule, {
+      active: input.active,
+      minimumAmount: input.minimumAmount,
+      name: input.name,
+      notificationChannel: input.notificationChannel,
+      requiredApprovals: input.requiredApprovals,
+      approvers: input.approverUserIds.map((userId) =>
+        requireDemoApprover(userId, input.notificationChannel),
+      ),
+      updatedAt: nextTimestamp(rule.updatedAt),
+    });
+    const { organizationId: _organizationId, ...result } = rule;
+    return structuredClone(result);
+  }
+
+  async getApprovalSettings(organizationId: string): Promise<ApprovalSettings> {
+    return structuredClone(
+      this.approvalSettings.get(organizationId) ?? {
+        financeChannel: null,
+        financeRecipient: null,
+        notifyFinanceOnApproval: false,
+        requireStageReturnReason: false,
+        updatedAt: null,
+      },
+    );
+  }
+
+  async updateApprovalSettings(
+    _actor: AuthenticatedIdentity,
+    organizationId: string,
+    input: UpdateApprovalSettingsInput,
+  ): Promise<ApprovalSettings> {
+    const settings: ApprovalSettings = {
+      ...input,
+      updatedAt: new Date().toISOString(),
+    };
+    this.approvalSettings.set(organizationId, settings);
+    return structuredClone(settings);
+  }
+
+  async getAccountsPayable(
+    organizationId: string,
+    filters: AccountsPayableFilters,
+  ): Promise<AccountsPayableReport> {
+    return buildDemoAccountsPayableReport(
+      this.purchases.filter(
+        (purchase) =>
+          purchase.organizationId === organizationId &&
+          purchase.status !== 'CANCELLED' &&
+          demoWorkflowStageIndex(purchase.workflowStage) >=
+            demoWorkflowStageIndex('PURCHASE_ORDER'),
+      ),
+      this.suppliers,
+      filters,
+    );
+  }
+
+  async schedulePayable(
+    _actor: AuthenticatedIdentity,
+    organizationId: string,
+    purchaseId: string,
+    input: SchedulePayableInput,
+  ): Promise<PurchaseDetail> {
+    const purchase = this.requireStoredPurchase(organizationId, purchaseId);
+    if (
+      purchase.status === 'CANCELLED' ||
+      demoWorkflowStageIndex(purchase.workflowStage) <
+        demoWorkflowStageIndex('PURCHASE_ORDER')
+    ) {
+      throw new NotFoundException('Compra aprovada nao encontrada.');
+    }
+    if (purchase.installments.length) {
+      throw new BadRequestException('Esta compra ja possui parcelas cadastradas.');
+    }
+    if (purchase.updatedAt !== input.expectedUpdatedAt) {
+      throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
+    }
+    purchase.installments.push({
+      sequence: 1,
+      dueDate: input.dueDate,
+      amount: purchase.total,
+      paidAt: null,
+      paymentChannel: input.paymentChannel,
+      paymentReference: input.paymentReference,
+      paymentNotes: input.paymentNotes,
+    });
+    purchase.updatedAt = nextTimestamp(purchase.updatedAt);
+    return this.toPurchaseDetail(purchase);
+  }
+
+  async updatePayable(
+    _actor: AuthenticatedIdentity,
+    organizationId: string,
+    purchaseId: string,
+    sequence: number,
+    input: UpdatePayableInput,
+  ): Promise<PurchaseDetail> {
+    if (input.paidAt !== undefined) {
+      throw new BadRequestException(
+        'Registre o pagamento no fluxo financeiro com valor, identificador e comprovante.',
+      );
+    }
+    const purchase = this.requireStoredPurchase(organizationId, purchaseId);
+    if (
+      purchase.status === 'CANCELLED' ||
+      demoWorkflowStageIndex(purchase.workflowStage) <
+        demoWorkflowStageIndex('PURCHASE_ORDER')
+    ) {
+      throw new NotFoundException('Conta a pagar nao encontrada.');
+    }
+    if (purchase.updatedAt !== input.expectedUpdatedAt) {
+      throw new ConflictException('A compra foi alterada por outro usuario. Atualize os dados.');
+    }
+    const installment = purchase.installments.find(
+      (candidate) => candidate.sequence === sequence,
+    );
+    if (!installment) {
+      throw new NotFoundException('Conta a pagar nao encontrada.');
+    }
+    if (input.dueDate !== undefined) installment.dueDate = input.dueDate;
+    if (input.paymentChannel !== undefined) {
+      installment.paymentChannel = input.paymentChannel;
+    }
+    if (input.paymentReference !== undefined) {
+      installment.paymentReference = input.paymentReference;
+    }
+    if (input.paymentNotes !== undefined) {
+      installment.paymentNotes = input.paymentNotes;
+    }
+    purchase.updatedAt = nextTimestamp(purchase.updatedAt);
+    return this.toPurchaseDetail(purchase);
   }
 
   async importPurchases(
@@ -467,7 +1005,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
   }
 
   async attachPurchaseInvoice(
-    _actor: AuthenticatedIdentity,
+    actor: AuthenticatedIdentity,
     organizationId: string,
     purchaseId: string,
     input: AttachPurchaseInvoiceInput,
@@ -477,6 +1015,11 @@ export class DemoProcurementRepository extends ProcurementRepository {
     );
     if (!purchase) {
       throw new NotFoundException('Compra nao encontrada.');
+    }
+    if (demoWorkflowStageIndex(purchase.workflowStage) < demoWorkflowStageIndex('PURCHASE_ORDER')) {
+      throw new BadRequestException(
+        'A nota fiscal so pode ser vinculada depois da aprovacao da compra.',
+      );
     }
     const duplicate = this.purchases.some(
       (candidate) =>
@@ -489,6 +1032,14 @@ export class DemoProcurementRepository extends ProcurementRepository {
       throw new ConflictException('Esta nota fiscal ja esta vinculada a outra compra.');
     }
     purchase.invoiceNumber = input.invoiceNumber;
+    if (purchase.workflowStage === 'PURCHASE_ORDER') {
+      this.moveStoredPurchase(
+        purchase,
+        'SUPPLIER_INVOICED',
+        actor,
+        'Nota fiscal vinculada.',
+      );
+    }
     purchase.updatedAt = nextTimestamp(purchase.updatedAt);
     return this.toPurchaseSummary(purchase);
   }
@@ -595,7 +1146,11 @@ export class DemoProcurementRepository extends ProcurementRepository {
   ): Promise<ProcurementReport> {
     const purchases = this.purchases
       .filter((purchase) => purchase.organizationId === organizationId)
-      .filter((purchase) => purchase.status === filters.status)
+      .filter((purchase) => !filters.status || purchase.status === filters.status)
+      .filter(
+        (purchase) =>
+          !filters.workflowStage || purchase.workflowStage === filters.workflowStage,
+      )
       .filter(
         (purchase) =>
           !filters.dateFrom || (purchase.issuedAt !== null && purchase.issuedAt >= filters.dateFrom),
@@ -631,6 +1186,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
         category: purchase.category,
         source: purchase.source,
         status: purchase.status,
+        workflowStage: purchase.workflowStage,
         itemCount: purchase.items.length,
         total: purchase.total,
         negotiatedSavings: purchase.negotiatedSavings,
@@ -675,6 +1231,7 @@ export class DemoProcurementRepository extends ProcurementRepository {
           invoiceNumber: purchase.invoiceNumber,
           issuedAt: purchase.issuedAt,
           status: purchase.status,
+          workflowStage: purchase.workflowStage,
           category: purchase.category,
           operationNature: purchase.operationNature,
           paymentMethod: purchase.paymentMethod,
@@ -692,6 +1249,9 @@ export class DemoProcurementRepository extends ProcurementRepository {
             category: supplier.category,
             operationNature: supplier.operationNature,
             paymentMethod: supplier.paymentMethod,
+            pixKeyType: supplier.pixKeyType,
+            pixKey: supplier.pixKey,
+            paymentLink: supplier.paymentLink,
             email: supplier.email,
             phone: supplier.phone,
             defaultCostCenter: supplier.defaultCostCenterId
@@ -727,6 +1287,27 @@ export class DemoProcurementRepository extends ProcurementRepository {
           right.number.localeCompare(left.number),
       );
     return { summary, purchases };
+  }
+
+  private moveStoredPurchase(
+    purchase: StoredPurchase,
+    stage: PurchaseWorkflowStage,
+    actor: AuthenticatedIdentity,
+    reason: string | null,
+  ) {
+    const fromStage = purchase.workflowStage;
+    purchase.workflowStage = stage;
+    purchase.status = demoLifecycleStatusForStage(stage);
+    purchase.updatedAt = nextTimestamp(purchase.updatedAt);
+    purchase.stageHistory.push({
+      id: randomUUID(),
+      fromStage,
+      toStage: stage,
+      changedById: actor.id,
+      changedByName: actor.name,
+      reason,
+      createdAt: purchase.updatedAt,
+    });
   }
 
   private createStoredPurchase(
@@ -791,14 +1372,34 @@ export class DemoProcurementRepository extends ProcurementRepository {
       throw new BadRequestException('A soma das parcelas deve ser igual ao total da compra.');
     }
     const now = new Date().toISOString();
+    const workflowStage = initialDemoWorkflowStage(input);
+    if (
+      input.invoiceNumber &&
+      demoWorkflowStageIndex(workflowStage) < demoWorkflowStageIndex('PURCHASE_ORDER')
+    ) {
+      throw new BadRequestException(
+        'A nota fiscal so pode ser vinculada depois que o pedido for aprovado.',
+      );
+    }
     return {
       id: randomUUID(),
       organizationId,
+      displaySequence:
+        Math.max(
+          0,
+          ...this.purchases
+            .filter((purchase) => purchase.organizationId === organizationId)
+            .map((purchase) => purchase.displaySequence),
+        ) + 1,
       number: input.number,
       invoiceNumber: input.invoiceNumber ?? null,
+      fiscalDocumentRequired: input.fiscalDocumentRequired ?? true,
       supplierId: input.supplierId,
       issuedAt: input.issuedAt,
-      status: 'REGISTERED',
+      status: demoLifecycleStatusForStage(workflowStage),
+      workflowStage,
+      approvalRequests: [],
+      stageHistory: [],
       category: input.category ?? supplier.category,
       operationNature: input.operationNature ?? supplier.operationNature,
       paymentMethod: input.paymentMethod ?? supplier.paymentMethod,
@@ -815,6 +1416,9 @@ export class DemoProcurementRepository extends ProcurementRepository {
         dueDate: installment.dueDate,
         amount: installment.amount,
         paidAt: null,
+        paymentChannel: installment.paymentChannel ?? null,
+        paymentReference: installment.paymentReference ?? null,
+        paymentNotes: installment.paymentNotes ?? null,
       })),
     };
   }
@@ -913,8 +1517,10 @@ export class DemoProcurementRepository extends ProcurementRepository {
   private toPurchaseSummary(purchase: StoredPurchase): PurchaseSummary {
     return {
       id: purchase.id,
+      displayNumber: purchase.displaySequence,
       number: purchase.number,
       invoiceNumber: purchase.invoiceNumber,
+      fiscalDocumentRequired: purchase.fiscalDocumentRequired,
       supplierId: purchase.supplierId,
       supplierName: this.supplierName(purchase.supplierId),
       issuedAt: purchase.issuedAt,
@@ -938,6 +1544,14 @@ export class DemoProcurementRepository extends ProcurementRepository {
       source: purchase.source,
       sourceReference: purchase.sourceReference,
       createdAt: purchase.createdAt,
+      updatedAt: purchase.updatedAt,
+      workflowStage: purchase.workflowStage,
+      invoiceLinked: purchase.invoiceNumber !== null,
+      approval: purchase.approvalRequests.length
+        ? toStoredApprovalSummary(
+            purchase.approvalRequests[purchase.approvalRequests.length - 1]!,
+          )
+        : null,
     };
   }
 
@@ -964,7 +1578,21 @@ export class DemoProcurementRepository extends ProcurementRepository {
         })),
       })),
       installments: purchase.installments.map((installment) => ({ ...installment })),
-      updatedAt: purchase.updatedAt,
+      fiscalDocuments: [],
+      approval: purchase.approvalRequests.length
+        ? {
+            ...toStoredApprovalSummary(
+              purchase.approvalRequests[purchase.approvalRequests.length - 1]!,
+            ),
+            amountSnapshot:
+              purchase.approvalRequests[purchase.approvalRequests.length - 1]!
+                .amountSnapshot,
+            participants: purchase.approvalRequests[
+              purchase.approvalRequests.length - 1
+            ]!.participants.map((participant) => ({ ...participant })),
+          }
+        : null,
+      stageHistory: purchase.stageHistory.map((history) => ({ ...history })),
     };
   }
 
@@ -1132,6 +1760,318 @@ function normalizeSearch(value: string): string {
     .toLowerCase();
 }
 
+function toStoredApprovalSummary(request: StoredApprovalRequest) {
+  return {
+    requestId: request.requestId,
+    status: request.status,
+    ruleName: request.ruleName,
+    requiredApprovals: request.requiredApprovals,
+    approvedCount: request.participants.filter(
+      (participant) => participant.decision === 'APPROVED',
+    ).length,
+    rejectedCount: request.participants.filter(
+      (participant) => participant.decision === 'REJECTED',
+    ).length,
+    approvedBy: request.participants
+      .filter(
+        (participant): participant is typeof participant & { decidedAt: string } =>
+          participant.decision === 'APPROVED' && participant.decidedAt !== null,
+      )
+      .map((participant) => ({
+        userId: participant.userId,
+        name: participant.name,
+        decidedAt: participant.decidedAt,
+      })),
+    submittedAt: request.submittedAt,
+    resolvedAt: request.resolvedAt,
+  };
+}
+
+function initialDemoWorkflowStage(input: PersistPurchaseInput): PurchaseWorkflowStage {
+  if (input.workflowStage) return input.workflowStage;
+  if (input.source === 'INVOICE') return 'SUPPLIER_INVOICED';
+  if (input.source === 'CSV' || input.source === 'GOOGLE_SHEETS') {
+    return 'PURCHASE_ORDER';
+  }
+  return 'REGISTRATION';
+}
+
+const demoWorkflowStages: PurchaseWorkflowStage[] = [
+  'REGISTRATION',
+  'REQUESTED',
+  'AWAITING_APPROVAL',
+  'PURCHASE_ORDER',
+  'SUPPLIER_INVOICED',
+  'RECEIVED',
+  'COMPLETED',
+];
+
+function demoWorkflowStageIndex(stage: PurchaseWorkflowStage): number {
+  return demoWorkflowStages.indexOf(stage);
+}
+
+function demoLifecycleStatusForStage(stage: PurchaseWorkflowStage): 'DRAFT' | 'REGISTERED' {
+  return demoWorkflowStageIndex(stage) >= demoWorkflowStageIndex('PURCHASE_ORDER')
+    ? 'REGISTERED'
+    : 'DRAFT';
+}
+
+function assertDemoManualStageTransition(
+  from: PurchaseWorkflowStage,
+  to: PurchaseWorkflowStage,
+  reason: string | null,
+  invoiceLinked: boolean,
+  fiscalDocumentRequired: boolean,
+  options: {
+    adminOverride: boolean;
+    automated: boolean;
+    requireReturnReason: boolean;
+  },
+) {
+  const movingBackwards = demoWorkflowStageIndex(to) < demoWorkflowStageIndex(from);
+  if (options.automated) {
+    const exemptReceiptTransition =
+      !fiscalDocumentRequired && from === 'PURCHASE_ORDER' && to === 'RECEIVED';
+    if (
+      !exemptReceiptTransition &&
+      demoWorkflowStageIndex(to) !== demoWorkflowStageIndex(from) + 1
+    ) {
+      throw new BadRequestException('A automacao tentou ignorar uma etapa do fluxo de compras.');
+    }
+    return;
+  }
+
+  const allowed: Record<PurchaseWorkflowStage, PurchaseWorkflowStage[]> = {
+    REGISTRATION: ['REQUESTED'],
+    REQUESTED: ['REGISTRATION'],
+    AWAITING_APPROVAL: [],
+    PURCHASE_ORDER: ['REQUESTED', 'SUPPLIER_INVOICED'],
+    SUPPLIER_INVOICED: ['PURCHASE_ORDER', 'RECEIVED'],
+    RECEIVED: ['SUPPLIER_INVOICED', 'COMPLETED'],
+    COMPLETED: ['RECEIVED'],
+  };
+  if (!allowed[from].includes(to) && !(options.adminOverride && movingBackwards)) {
+    if (to === 'AWAITING_APPROVAL' || to === 'PURCHASE_ORDER') {
+      throw new BadRequestException(
+        'Use a acao de enviar para aprovacao; estas etapas nao podem ser ignoradas.',
+      );
+    }
+    throw new BadRequestException('Esta mudanca de etapa nao e permitida.');
+  }
+  if (demoWorkflowStageIndex(to) > demoWorkflowStageIndex(from)) {
+    if (to === 'SUPPLIER_INVOICED') {
+      throw new BadRequestException(
+        'Vincule uma nota fiscal ao pedido; o faturamento e atualizado pela conciliacao fiscal.',
+      );
+    }
+    if (to === 'RECEIVED') {
+      throw new BadRequestException(
+        'Confirme os itens recebidos; o recebimento nao pode ser avancado manualmente.',
+      );
+    }
+    if (to === 'COMPLETED') {
+      throw new BadRequestException(
+        'O pedido sera concluido quando estiver integralmente recebido e sem saldo financeiro.',
+      );
+    }
+  }
+  if ((to === 'SUPPLIER_INVOICED' || to === 'COMPLETED') && !invoiceLinked) {
+    throw new BadRequestException(
+      'Vincule uma nota fiscal antes de concluir esta etapa.',
+    );
+  }
+  if (
+    demoWorkflowStageIndex(to) < demoWorkflowStageIndex('PURCHASE_ORDER') &&
+    invoiceLinked
+  ) {
+    throw new BadRequestException(
+      'Uma compra com nota fiscal vinculada nao pode voltar para antes do pedido de compra.',
+    );
+  }
+  if (movingBackwards && options.requireReturnReason && !reason) {
+    throw new BadRequestException('Informe o motivo para retornar a compra de etapa.');
+  }
+}
+
+function requireDemoApprover(
+  userId: string,
+  channel: 'EMAIL' | 'WHATSAPP',
+): ApprovalRule['approvers'][number] {
+  const users: Record<
+    string,
+    { name: string; email: string; phone: string | null }
+  > = {
+    [DEMO_USER_ID]: {
+      name: 'Proprietario da plataforma',
+      email: 'proprietario@plataforma.local',
+      phone: '+5511999999999',
+    },
+    [DEMO_BUYER_USER_ID]: {
+      name: 'Equipe de Compras',
+      email: 'compras@humanclinic.com.br',
+      phone: '+5511988888888',
+    },
+  };
+  const user = users[userId];
+  if (!user) {
+    throw new BadRequestException(
+      'Todos os aprovadores devem ser usuarios ativos desta empresa.',
+    );
+  }
+  if (channel === 'WHATSAPP' && !user.phone) {
+    throw new BadRequestException(
+      'O aprovador precisa ter um WhatsApp no formato internacional.',
+    );
+  }
+  return { userId, ...user };
+}
+
+function buildDemoAccountsPayableReport(
+  purchases: StoredPurchase[],
+  suppliers: StoredSupplier[],
+  filters: AccountsPayableFilters,
+): AccountsPayableReport {
+  const today = currentBusinessIsoDate();
+  const allRows: AccountsPayableReport['rows'] = [];
+  for (const purchase of purchases) {
+    if (filters.supplierId && purchase.supplierId !== filters.supplierId) continue;
+    if (filters.workflowStage && purchase.workflowStage !== filters.workflowStage) {
+      continue;
+    }
+    const supplier = suppliers.find(
+      (candidate) =>
+        candidate.organizationId === purchase.organizationId &&
+        candidate.id === purchase.supplierId,
+    );
+    if (!supplier) continue;
+    const defaultChannel = supplier.pixKey
+      ? ('PIX' as const)
+      : supplier.paymentLink
+        ? ('CARD_LINK' as const)
+        : null;
+    const defaultReference = supplier.pixKey ?? supplier.paymentLink ?? null;
+    if (!purchase.installments.length) {
+      allRows.push({
+        id: `unscheduled-${purchase.id}`,
+        purchaseId: purchase.id,
+        purchaseNumber: purchase.number,
+        purchaseUpdatedAt: purchase.updatedAt,
+        invoiceNumber: purchase.invoiceNumber,
+        invoiceNumbers: purchase.invoiceNumber ? [purchase.invoiceNumber] : [],
+        supplierId: purchase.supplierId,
+        supplierName: supplier.tradeName ?? supplier.legalName,
+        sequence: 0,
+        dueDate: null,
+        amount: purchase.total,
+        paidAmount: 0,
+        balance: purchase.total,
+        paidAt: null,
+        status: 'UNSCHEDULED',
+        paymentChannel: defaultChannel,
+        paymentReference: defaultReference,
+        paymentNotes: null,
+        paymentWorkflowStage: null,
+        received: ['RECEIVED', 'COMPLETED'].includes(purchase.workflowStage),
+        advancePayment: false,
+        settlementCount: 0,
+        workflowStage: purchase.workflowStage,
+      });
+      continue;
+    }
+    for (const installment of purchase.installments) {
+      allRows.push({
+        id: `${purchase.id}-${installment.sequence}`,
+        purchaseId: purchase.id,
+        purchaseNumber: purchase.number,
+        purchaseUpdatedAt: purchase.updatedAt,
+        invoiceNumber: purchase.invoiceNumber,
+        invoiceNumbers: purchase.invoiceNumber ? [purchase.invoiceNumber] : [],
+        supplierId: purchase.supplierId,
+        supplierName: supplier.tradeName ?? supplier.legalName,
+        sequence: installment.sequence,
+        dueDate: installment.dueDate,
+        amount: installment.amount,
+        paidAmount: installment.paidAt ? installment.amount : 0,
+        balance: installment.paidAt ? 0 : installment.amount,
+        paidAt: installment.paidAt,
+        status: installment.paidAt
+          ? 'PAID'
+          : installment.dueDate < today
+            ? 'OVERDUE'
+            : 'PENDING',
+        paymentChannel: installment.paymentChannel ?? defaultChannel,
+        paymentReference: installment.paymentReference ?? defaultReference,
+        paymentNotes: installment.paymentNotes,
+        paymentWorkflowStage: installment.paidAt ? 'PAID' : 'MATCHING_REQUIRED',
+        received: ['RECEIVED', 'COMPLETED'].includes(purchase.workflowStage),
+        advancePayment: false,
+        settlementCount: installment.paidAt ? 1 : 0,
+        workflowStage: purchase.workflowStage,
+      });
+    }
+  }
+  const rows = allRows
+    .filter((row) => !filters.status || row.status === filters.status)
+    .filter(
+      (row) =>
+        !filters.paymentChannel || row.paymentChannel === filters.paymentChannel,
+    )
+    .filter(
+      (row) =>
+        (!filters.dateFrom ||
+          (row.dueDate !== null && row.dueDate >= filters.dateFrom)) &&
+        (!filters.dateTo ||
+          (row.dueDate !== null && row.dueDate <= filters.dateTo)),
+    )
+    .sort(
+      (left, right) =>
+        (left.dueDate ?? '9999-12-31').localeCompare(
+          right.dueDate ?? '9999-12-31',
+        ) || left.purchaseNumber.localeCompare(right.purchaseNumber),
+    );
+  const sumBalance = (...statuses: Array<AccountsPayableReport['rows'][number]['status']>) =>
+    roundMoney(
+      rows
+        .filter((row) => statuses.includes(row.status))
+        .reduce((sum, row) => sum + row.balance, 0),
+    );
+  const dueIn = (days: number) => {
+    const end = addDemoIsoDays(today, days);
+    return roundMoney(
+      rows
+        .filter(
+          (row) =>
+            (row.status === 'PENDING' || row.status === 'PARTIALLY_PAID') &&
+            row.dueDate !== null &&
+            row.dueDate >= today &&
+            row.dueDate <= end,
+        )
+        .reduce((sum, row) => sum + row.balance, 0),
+    );
+  };
+  return {
+    dataSource: 'DEMO',
+    generatedAt: new Date().toISOString(),
+    totals: {
+      open: sumBalance('PENDING', 'PARTIALLY_PAID', 'OVERDUE'),
+      overdue: sumBalance('OVERDUE'),
+      dueIn7Days: dueIn(7),
+      dueIn15Days: dueIn(15),
+      dueIn30Days: dueIn(30),
+      paid: roundMoney(rows.reduce((sum, row) => sum + row.paidAmount, 0)),
+      unscheduled: sumBalance('UNSCHEDULED'),
+      rowCount: rows.length,
+    },
+    rows,
+  };
+}
+
+function addDemoIsoDays(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function nextTimestamp(previous: string): string {
   return new Date(Math.max(Date.now(), Date.parse(previous) + 1)).toISOString();
 }
@@ -1180,9 +2120,23 @@ function supplier(
     category,
     operationNature: 'Compra de materiais e servicos',
     paymentMethod: 'Boleto',
+    pixKeyType: null,
+    pixKey: null,
+    pixBeneficiaryName: null,
+    pixBeneficiaryDocument: null,
+    paymentLink: null,
     defaultCostCenterId,
     email: null,
     phone: null,
+    postalCode: null,
+    street: null,
+    addressNumber: null,
+    addressComplement: null,
+    district: null,
+    city: null,
+    state: null,
+    registrationStatus: null,
+    primaryActivity: null,
     status: 'ACTIVE',
     notes: null,
     createdAt: INITIAL_DATE,
@@ -1273,11 +2227,26 @@ function seededPurchase(
   return {
     id,
     organizationId,
+    displaySequence: Number(id.slice(-12)),
     number,
     invoiceNumber: null,
+    fiscalDocumentRequired: true,
     supplierId,
     issuedAt,
     status: 'REGISTERED',
+    workflowStage: 'PURCHASE_ORDER',
+    approvalRequests: [],
+    stageHistory: [
+      {
+        id: randomUUID(),
+        fromStage: null,
+        toStage: 'PURCHASE_ORDER',
+        changedById: DEMO_USER_ID,
+        changedByName: 'Proprietario da plataforma',
+        reason: 'Registro historico demonstrativo.',
+        createdAt: timestamp,
+      },
+    ],
     category,
     operationNature: null,
     paymentMethod: 'Boleto',
@@ -1289,7 +2258,68 @@ function seededPurchase(
     createdAt: timestamp,
     updatedAt: timestamp,
     items: reconciledItems,
-    installments: [],
+    installments: [
+      {
+        sequence: 1,
+        dueDate: addDemoIsoDays(issuedAt, 30),
+        amount: total,
+        paidAt: null,
+        paymentChannel: 'BOLETO',
+        paymentReference: null,
+        paymentNotes: null,
+      },
+    ],
+  };
+}
+
+function seedApprovalRules(): Array<ApprovalRule & { organizationId: string }> {
+  return [
+    demoApprovalRule(
+      HUMAN_CLINIC_ID,
+      '81000000-0000-4000-8000-000000000001',
+      'Aprovacao simples',
+      0,
+      1,
+      [DEMO_USER_ID],
+    ),
+    demoApprovalRule(
+      HUMAN_CLINIC_ID,
+      '81000000-0000-4000-8000-000000000002',
+      'Dupla aprovacao',
+      5_000,
+      2,
+      [DEMO_USER_ID, DEMO_BUYER_USER_ID],
+    ),
+    demoApprovalRule(
+      EXAMPLE_COMPANY_ID,
+      '82000000-0000-4000-8000-000000000001',
+      'Aprovacao padrao',
+      0,
+      1,
+      [DEMO_USER_ID],
+    ),
+  ];
+}
+
+function demoApprovalRule(
+  organizationId: string,
+  id: string,
+  name: string,
+  minimumAmount: number,
+  requiredApprovals: number,
+  userIds: string[],
+): ApprovalRule & { organizationId: string } {
+  return {
+    id,
+    organizationId,
+    name,
+    minimumAmount,
+    requiredApprovals,
+    notificationChannel: 'EMAIL',
+    active: true,
+    approvers: userIds.map((userId) => requireDemoApprover(userId, 'EMAIL')),
+    createdAt: INITIAL_DATE,
+    updatedAt: INITIAL_DATE,
   };
 }
 

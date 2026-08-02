@@ -6,7 +6,8 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 
 - O portal de producao em Apps Script continua preservado em `legacy/apps-script`.
 - A nova aplicacao nao substitui a versao em producao automaticamente.
-- O modo demonstracao permite desenvolver sem credenciais do Supabase.
+- A execucao local padrao usa PostgreSQL/Supabase e preserva os dados; o modo
+  demonstracao precisa ser iniciado explicitamente.
 - O Supabase Free de homologacao esta criado, migrado, protegido por RLS e com armazenamento privado.
 - A identidade possui nome exibido editavel, criacao de conta e aceite versionado dos documentos legais.
 - Empresas, convites e papeis possuem API e persistencia; administradores podem manter CNPJ, contato e endereco da empresa.
@@ -14,6 +15,12 @@ Aplicacao multiempresa para controle de compras, fornecedores, precos negociados
 - Centros de custo e fornecedores possuem cadastro por empresa, status e regras padrao.
 - A tabela de precos aceita varias linhas e importacao CSV idempotente por fornecedor.
 - Compras suportam varios itens, economia negociada, centro automatico, rateios e parcelas opcionais.
+- O Kanban acompanha cadastro, solicitacao, aprovacao, pedido, faturamento,
+  recebimento e conclusao, com historico por compra.
+- Regras por valor selecionam aprovadores da empresa e aceitam quorum de uma ou
+  duas pessoas, com notificacoes duraveis por e-mail ou WhatsApp oficial.
+- O financeiro recebe os dados aprovados e acompanha contas nao programadas,
+  abertas, vencidas e pagas, com previsoes e exportacao Excel.
 - O dashboard abre em todo o historico, filtra periodo, fornecedor, centro de custo e categoria e inclui gastos por categoria e departamento.
 - Os relatorios filtram compras por periodo, fornecedor, departamento, categoria e status, com CSV, Excel resumido e Excel detalhado com itens por mes.
 - As compras possuem detalhe, correcao transacional, cancelamento e reativacao auditados; parcelas pagas permanecem protegidas.
@@ -43,15 +50,29 @@ docs                 arquitetura, contexto, decisoes e roteiro
 
 ## Primeira execucao
 
-```bash
+```powershell
+Copy-Item .env.example .env.local
+# Preencha .env.local com as credenciais do ambiente compartilhado.
 pnpm install
-pnpm db:generate
+pnpm local:check
+pnpm local:setup
 pnpm dev
 ```
 
-O portal abre em `http://localhost:5173` e a API em `http://localhost:3333/api`. Sem credenciais, mantenha `VITE_DEMO_MODE=true` e `DEMO_MODE=true` em um arquivo `.env` local.
+O portal abre em `http://127.0.0.1:5173` e a API em
+`http://127.0.0.1:3333/api`. O comando `pnpm dev` exige configuracao persistente
+e nunca troca silenciosamente para dados em memoria. Para um ambiente
+descartavel, use conscientemente `pnpm dev:demo`.
 
-Para conectar um projeto Supabase real, siga [supabase/README.md](supabase/README.md). O modo de producao nao inicia sem as variaveis obrigatorias e sem a lista independente de proprietarios globais.
+Casa e empresa devem usar o mesmo projeto Supabase para enxergar os mesmos
+registros. Cada computador executa web e API localmente, mas os dados ficam no
+PostgreSQL central. Duas bases PostgreSQL locais sao independentes e nao se
+sincronizam automaticamente.
+
+O arquivo `.env.local` e ignorado pelo Git e nunca deve ser enviado ao
+repositorio. Consulte [Execucao local persistente](docs/LOCAL_PERSISTENCE.md) e
+[Configuracao do Supabase](supabase/README.md). O modo de producao nao inicia sem
+as variaveis obrigatorias e sem a lista independente de proprietarios globais.
 
 ## Qualidade
 
@@ -61,11 +82,13 @@ pnpm check
 
 Esse comando executa lint, verificacao de tipos, testes e build de todos os pacotes.
 
-Na versao `0.10.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
-importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets e
-automacao documental com revisao obrigatoria, relatorios filtrados, exportacao segura em CSV e XLSX e
-edicao concorrente e ciclo auditado das compras, alem da prontidao operacional. O CI aplica todas as migracoes em um PostgreSQL descartavel e executa
-testes de isolamento dos repositorios, das protecoes RLS e de recuperacao completa do banco.
+Na versao `0.11.0`, a verificacao inclui contratos compartilhados, isolamento multiempresa,
+importacoes idempotentes, rateios, agregacoes do dashboard, conciliacao com Google Sheets,
+automacao documental com revisao obrigatoria, Kanban, aprovacao por valor, notificacoes,
+contas a pagar, relatorios filtrados, exportacao segura em CSV e XLSX, edicao concorrente e
+ciclo auditado das compras, alem da prontidao operacional. O CI aplica todas as migracoes em
+um PostgreSQL descartavel e executa testes de isolamento dos repositorios, das protecoes RLS
+e de recuperacao completa do banco.
 Um workflow manual protegido prepara e valida o Supabase de homologacao sem armazenar segredos no codigo.
 
 O roteiro reproduzivel de validacao esta em `docs/ACCEPTANCE_TESTS.md`.
@@ -82,7 +105,9 @@ Nunca envie `.env`, chaves do Supabase, tokens do Google ou chaves da OpenAI ao 
 - [Contexto e decisoes confirmadas](docs/PROJECT_CONTEXT.md)
 - [Integracao com Google Sheets](docs/GOOGLE_SHEETS_INTEGRATION.md)
 - [Automacao de documentos fiscais](docs/INVOICE_AUTOMATION.md)
+- [Compras, aprovacoes e contas a pagar](docs/PURCHASE_APPROVALS.md)
 - [Relatorios operacionais](docs/REPORTS.md)
 - [Prontidao para producao](docs/PRODUCTION_READINESS.md)
+- [Execucao local persistente](docs/LOCAL_PERSISTENCE.md)
 - [Recuperacao e backups](docs/RECOVERY_RUNBOOK.md)
 - [Implantacao e imagens](docs/DEPLOYMENT.md)

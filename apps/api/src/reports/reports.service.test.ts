@@ -163,6 +163,7 @@ function report(supplierName: string): ProcurementReport {
         departments: ['Administrativo'],
         source: 'MANUAL',
         status: 'REGISTERED',
+        workflowStage: 'SUPPLIER_INVOICED',
         itemCount: 1,
         total: 100,
         negotiatedSavings: 10,
@@ -181,6 +182,7 @@ function detailedReport(supplierName: string): ProcurementDetailedReport {
         invoiceNumber: 'NF-001',
         issuedAt: '2026-07-14',
         status: 'REGISTERED',
+        workflowStage: 'SUPPLIER_INVOICED',
         category: 'Materiais',
         operationNature: 'Compra de materiais',
         paymentMethod: 'Boleto',
@@ -198,6 +200,9 @@ function detailedReport(supplierName: string): ProcurementDetailedReport {
           category: 'Materiais',
           operationNature: 'Venda',
           paymentMethod: 'Boleto',
+          pixKeyType: 'CNPJ',
+          pixKey: '11222333000181',
+          paymentLink: null,
           email: 'fornecedor@example.com',
           phone: null,
           defaultCostCenter: {
@@ -231,7 +236,15 @@ function detailedReport(supplierName: string): ProcurementDetailedReport {
           },
         ],
         installments: [
-          { sequence: 1, dueDate: '2026-08-14', amount: 100, paidAt: null },
+          {
+            sequence: 1,
+            dueDate: '2026-08-14',
+            amount: 100,
+            paidAt: null,
+            paymentChannel: 'BOLETO',
+            paymentReference: '34191.79001 01043.510047 91020.150008 3 93410000010000',
+            paymentNotes: null,
+          },
         ],
         invoices: [
           {

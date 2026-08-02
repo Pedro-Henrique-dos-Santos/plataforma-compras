@@ -3,8 +3,17 @@ import { describe, expect, it } from 'vitest';
 import { validateEnvironment } from './environment.js';
 
 describe('validateEnvironment', () => {
-  it('defaults local development to demo mode', () => {
-    const environment = validateEnvironment({ NODE_ENV: 'development' });
+  it('defaults local development to persistent mode and rejects missing configuration', () => {
+    expect(() => validateEnvironment({ NODE_ENV: 'development' })).toThrow(
+      /Missing persistent environment variables/,
+    );
+  });
+
+  it('supports demo repositories only when explicitly requested', () => {
+    const environment = validateEnvironment({
+      DEMO_MODE: 'true',
+      NODE_ENV: 'development',
+    });
 
     expect(environment['DEMO_MODE']).toBe('true');
     expect(environment['REQUIRE_VERIFIED_EMAIL']).toBe('false');
@@ -18,7 +27,7 @@ describe('validateEnvironment', () => {
   it('rejects an incomplete production environment', () => {
     expect(() =>
       validateEnvironment({ NODE_ENV: 'production', DEMO_MODE: 'false' }),
-    ).toThrow(/Missing production environment variables/);
+    ).toThrow(/Missing persistent environment variables/);
   });
 
   it('rejects demo mode and unverified identities in production', () => {
@@ -71,6 +80,22 @@ describe('validateEnvironment', () => {
     expect(environment['SUPABASE_SECRET_KEY']).toBe('sb_secret_example');
   });
 
+  it('accepts the loopback Supabase stack during local development', () => {
+    const environment = validateEnvironment({
+      APP_WEB_URL: 'http://localhost:5173',
+      CORS_ORIGIN: 'http://localhost:5173,http://127.0.0.1:5173',
+      DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:54322/postgres',
+      DEMO_MODE: 'false',
+      NODE_ENV: 'development',
+      PLATFORM_OWNER_EMAILS: 'owner@example.com',
+      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_example',
+      SUPABASE_SECRET_KEY: 'sb_secret_example',
+      SUPABASE_URL: 'http://127.0.0.1:54321',
+    });
+
+    expect(environment['SUPABASE_URL']).toBe('http://127.0.0.1:54321');
+  });
+
   it('normalizes trailing slashes from configured origins', () => {
     const environment = validateEnvironment({
       APP_WEB_URL: 'https://compras.example.com/',
@@ -94,6 +119,7 @@ describe('validateEnvironment', () => {
   it('rejects origins containing paths or credentials', () => {
     expect(() =>
       validateEnvironment({
+        DEMO_MODE: 'true',
         CORS_ORIGIN: 'https://user:secret@compras.example.com/api',
         NODE_ENV: 'development',
       }),
@@ -129,6 +155,7 @@ describe('validateEnvironment', () => {
   it('rejects ambiguous or malformed Google service account configuration', () => {
     expect(() =>
       validateEnvironment({
+        DEMO_MODE: 'true',
         NODE_ENV: 'development',
         GOOGLE_SERVICE_ACCOUNT_JSON: '{}',
         GOOGLE_SERVICE_ACCOUNT_JSON_BASE64: 'e30=',
@@ -137,6 +164,7 @@ describe('validateEnvironment', () => {
 
     expect(() =>
       validateEnvironment({
+        DEMO_MODE: 'true',
         NODE_ENV: 'development',
         GOOGLE_SERVICE_ACCOUNT_JSON: '{"client_email":"invalid"}',
       }),
@@ -146,10 +174,102 @@ describe('validateEnvironment', () => {
   it('rejects an unsafe invoice storage bucket name', () => {
     expect(() =>
       validateEnvironment({
+        DEMO_MODE: 'true',
         INVOICE_STORAGE_BUCKET: '../public documents',
         NODE_ENV: 'development',
       }),
     ).toThrow(/valid private bucket name/);
+  });
+
+  it('requires a complete provider when live notifications are enabled', () => {
+    expect(() =>
+      validateEnvironment({
+        DEMO_MODE: 'true',
+        NODE_ENV: 'development',
+        NOTIFICATION_DELIVERY_MODE: 'live',
+      }),
+    ).toThrow(/requires SMTP or WhatsApp/);
+
+    const environment = validateEnvironment({
+      DEMO_MODE: 'true',
+      NODE_ENV: 'development',
+      NOTIFICATION_DELIVERY_MODE: 'live',
+      SMTP_FROM: 'E-Gestao Compras <compras@example.com>',
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+    });
+    expect(environment['NOTIFICATION_DELIVERY_MODE']).toBe('live');
+  });
+
+  it('limits notification provider request timeouts', () => {
+    expect(() =>
+      validateEnvironment({
+        DEMO_MODE: 'true',
+        NODE_ENV: 'development',
+        NOTIFICATION_REQUEST_TIMEOUT_MS: '999',
+      }),
+    ).toThrow(/between 1000 and 120000/);
+
+    expect(
+      validateEnvironment({
+        DEMO_MODE: 'true',
+        NODE_ENV: 'development',
+        NOTIFICATION_REQUEST_TIMEOUT_MS: '20000',
+      })['NOTIFICATION_REQUEST_TIMEOUT_MS'],
+    ).toBe('20000');
+  });
+
+  it('limits public CNPJ lookup timeouts', () => {
+    expect(
+      validateEnvironment({ DEMO_MODE: 'true', NODE_ENV: 'development' })[
+        'CNPJ_LOOKUP_TIMEOUT_MS'
+      ],
+    ).toBe('6000');
+    expect(() =>
+      validateEnvironment({
+        DEMO_MODE: 'true',
+        NODE_ENV: 'development',
+        CNPJ_LOOKUP_TIMEOUT_MS: '999',
+      }),
+    ).toThrow(/between 1000 and 15000/);
+  });
+
+  it('keeps fiscal automation in shadow mode and validates its secrets and URLs', () => {
+    const defaults = validateEnvironment({ DEMO_MODE: 'true', NODE_ENV: 'development' });
+    expect(defaults['FISCAL_ROLLOUT_MODE']).toBe('SHADOW');
+    expect(defaults['FISCAL_SYNC_WORKER_ENABLED']).toBe('false');
+
+    expect(() =>
+      validateEnvironment({
+        DEMO_MODE: 'true',
+        NODE_ENV: 'development',
+        FISCAL_CREDENTIAL_ENCRYPTION_KEY: 'invalid',
+      }),
+    ).toThrow(/32 bytes in base64/);
+    expect(() =>
+      validateEnvironment({
+        DEMO_MODE: 'true',
+        NODE_ENV: 'development',
+        SEFAZ_NFE_DISTRIBUTION_PRODUCTION_URL: 'http://sefaz.example.com',
+      }),
+    ).toThrow(/explicit HTTPS URL/);
+    expect(() =>
+      validateEnvironment({
+        DEMO_MODE: 'false',
+        FISCAL_SYNC_WORKER_ENABLED: 'true',
+        NODE_ENV: 'development',
+      }),
+    ).toThrow(/FISCAL_CREDENTIAL_ENCRYPTION_KEY is required/);
+  });
+
+  it('rejects partial WhatsApp provider configuration', () => {
+    expect(() =>
+      validateEnvironment({
+        DEMO_MODE: 'true',
+        NODE_ENV: 'development',
+        WHATSAPP_ACCESS_TOKEN: 'token-example',
+      }),
+    ).toThrow(/WhatsApp configuration is incomplete/);
   });
 });
 

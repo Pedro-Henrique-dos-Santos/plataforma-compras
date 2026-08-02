@@ -7,14 +7,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type {
-  InvoiceDocumentDetail,
-  InvoiceDocumentSummary,
-  InvoiceImportAction,
-  InvoiceImportResult,
-  InvoiceReviewInput,
-  PurchaseSummary,
-  Supplier,
+import {
+  normalizeBrazilianDocument,
+  type InvoiceDocumentDetail,
+  type InvoiceDocumentSummary,
+  type InvoiceImportAction,
+  type InvoiceImportResult,
+  type InvoiceReviewInput,
+  type PurchaseSummary,
+  type Supplier,
 } from '@compras/contracts';
 
 import type { AuthenticatedIdentity } from '../domain/identity.js';
@@ -232,7 +233,9 @@ export class InvoiceDocumentsService {
     });
     const exact = review.supplierDocument
       ? candidates.filter(
-          (supplier) => digitsOnly(supplier.document) === review.supplierDocument,
+          (supplier) =>
+            normalizeBrazilianDocument(supplier.document ?? '') ===
+            review.supplierDocument,
         )
       : candidates.filter(
           (supplier) =>
@@ -306,6 +309,18 @@ export class InvoiceDocumentsService {
   ): Promise<{ action: InvoiceImportAction; purchase: PurchaseSummary }> {
     const review = document.review;
     if (!review) throw new ConflictException('A nota precisa estar revisada.');
+    if (document.purchaseId) {
+      const linked = await this.procurement.getPurchase(
+        organizationId,
+        document.purchaseId,
+      );
+      if (linked.supplierId !== supplier.id) {
+        throw new ConflictException(
+          'O fornecedor revisado diverge do pedido ja vinculado ao documento.',
+        );
+      }
+      return { action: 'LINKED_EXISTING', purchase: linked };
+    }
     const candidates = await this.findPurchaseCandidates(organizationId, [
       document.id,
       review.invoiceNumber,
@@ -427,8 +442,4 @@ function normalize(value: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
-}
-
-function digitsOnly(value: string | null): string {
-  return (value ?? '').replace(/\D/g, '');
 }

@@ -8,6 +8,7 @@ import { GUARDS_METADATA, METHOD_METADATA } from '@nestjs/common/constants.js';
 import { describe, expect, it } from 'vitest';
 
 import { GoogleSheetsController } from '../automation/google-sheets.controller.js';
+import { AuditController } from '../audit/audit.controller.js';
 import { AuthController } from '../auth/auth.controller.js';
 import { ALLOW_PENDING_LEGAL_ACCEPTANCE } from '../auth/legal-acceptance.decorator.js';
 import { DashboardController } from '../dashboard/dashboard.controller.js';
@@ -18,7 +19,11 @@ import { SupplierPricesController } from '../master-data/supplier-prices.control
 import { SuppliersController } from '../master-data/suppliers.controller.js';
 import { MembersController } from '../organizations/members.controller.js';
 import { OrganizationsController } from '../organizations/organizations.controller.js';
+import { ApprovalsController } from '../purchases/approvals.controller.js';
+import { PayablesController } from '../purchases/payables.controller.js';
 import { PurchasesController } from '../purchases/purchases.controller.js';
+import { ProcureToPayController } from '../procure-to-pay/procure-to-pay.controller.js';
+import { ReceivablesController } from '../receivables/receivables.controller.js';
 import { ReportsController } from '../reports/reports.controller.js';
 import { REQUIRED_PERMISSIONS_KEY } from './require-permission.decorator.js';
 
@@ -33,12 +38,17 @@ type RouteHandler = {
 };
 
 const tenantControllers: ControllerClass[] = [
+  AuditController,
   GoogleSheetsController,
   CostCentersController,
   DashboardController,
   InvoiceDocumentsController,
   MembersController,
+  ApprovalsController,
+  PayablesController,
   PurchasesController,
+  ProcureToPayController,
+  ReceivablesController,
   ReportsController,
   SupplierPricesController,
   SuppliersController,
@@ -52,6 +62,7 @@ const allControllers: ControllerClass[] = [
 ];
 
 const expectedControllerFiles = [
+  'audit/audit.controller.ts',
   'auth/auth.controller.ts',
   'automation/google-sheets.controller.ts',
   'dashboard/dashboard.controller.ts',
@@ -62,7 +73,11 @@ const expectedControllerFiles = [
   'master-data/suppliers.controller.ts',
   'organizations/members.controller.ts',
   'organizations/organizations.controller.ts',
+  'purchases/approvals.controller.ts',
+  'purchases/payables.controller.ts',
   'purchases/purchases.controller.ts',
+  'procure-to-pay/procure-to-pay.controller.ts',
+  'receivables/receivables.controller.ts',
   'reports/reports.controller.ts',
 ].sort();
 

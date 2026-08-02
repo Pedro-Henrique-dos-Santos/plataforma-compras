@@ -41,6 +41,18 @@ describe('invoice review contract', () => {
     expect(result.success).toBe(false);
   });
 
+  it('preserves alphanumeric CNPJ and NF-e access keys', () => {
+    const accessKey = '35260712ABC34501DE35550010000000011123456789';
+    const parsed = invoiceReviewInputSchema.parse({
+      ...validReview,
+      supplierDocument: '12.ABC.345/01DE-35',
+      accessKey: `NFe${accessKey}`,
+    });
+
+    expect(parsed.supplierDocument).toBe('12ABC34501DE35');
+    expect(parsed.accessKey).toBe(accessKey);
+  });
+
   it('rejects item totals that do not match the invoice', () => {
     const result = invoiceReviewInputSchema.safeParse({ ...validReview, total: 120 });
     expect(result.success).toBe(false);

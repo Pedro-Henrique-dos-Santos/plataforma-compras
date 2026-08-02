@@ -2,8 +2,57 @@
 
 ## Nao publicado
 
+- Tornado o runtime local persistente por padrao, com validacao previa das
+  credenciais, PostgreSQL/Supabase obrigatorio e modo demonstracao apenas no
+  comando explicito `pnpm dev:demo`.
+- Adicionados comandos de verificacao e preparo idempotente, testes contra
+  regressao para memoria e guia para operar a mesma base em casa e na empresa.
+- Aplicadas e verificadas em homologacao as onze migracoes atuais, com 38
+  tabelas protegidas por RLS e 34 relacionamentos multiempresa auditados.
+- Adicionado lancador central para os modulos Compras, Financeiro e
+  Administracao, com menus laterais contextuais derivados das permissoes do
+  usuario e retorno rapido para a selecao de area.
+- Preservada a continuidade entre pedidos, documentos fiscais, recebimentos e
+  contas a pagar apesar da separacao visual dos modulos.
+
+## 0.11.0 - 2026-08-01
+
+- Adicionados Kanban financeiro, aprovacao por titulo ou fotografia do pedido,
+  regras por valor, quorum separado e segregacao opcional de funcoes.
+- Adicionados recebimentos parciais por item e linha fiscal, com responsavel,
+  controle de saldo e conclusao condicionada ao recebimento e pagamento.
+- Substituido o vinculo singular por relacao auditavel de varias NF-e por pedido,
+  preservando os campos legados como compatibilidade derivada.
+- Adicionada integracao NF-e modelo 55 por empresa com certificado A1 cifrado,
+  cursor de NSU, worker idempotente, espera adaptativa e rollout em modo sombra.
+- Adicionada conciliacao fiscal exata com revisao humana obrigatoria para CNPJ,
+  referencia, item, quantidade ou valor divergente.
+- Adicionados snapshots de instrucao Pix com validacao EMV, CRC e beneficiario,
+  alem de invalidacao de aprovacao quando os dados mudam.
+- Adicionadas baixas parciais com comprovante privado, saldo calculado e bloqueio
+  da marcacao legada de pagamento sem evidencia.
+- Adicionados papel empresarial `FINANCE`, permissoes fiscais e financeiras,
+  links temporarios e controle otimista nos novos fluxos.
+- Ampliadas notificacoes e exportacoes Excel com conciliacao, recebimentos,
+  titulos, saldos, baixas e situacao financeira.
+- Documentado o rollout `SHADOW`, `EXACT_MATCH` e `AUTO_SCIENCE`, mantendo NFS-e,
+  CT-e, DDA e integracao bancaria como adaptadores futuros.
+
 - Adicionadas chaves estrangeiras compostas que impedem relacionamentos entre empresas diferentes mesmo em gravacoes que contornem a API.
-- Ampliada a verificacao do banco e o teste PostgreSQL para comprovar dez vinculos operacionais protegidos por `organization_id`.
+- Ampliada a verificacao do banco e o teste PostgreSQL para comprovar quinze vinculos operacionais protegidos por `organization_id`.
+- Adicionado Kanban de compras com cadastro, solicitacao, aprovacao, pedido,
+  faturamento, recebimento, conclusao e historico auditavel.
+- Adicionadas regras de aprovacao por valor, quorum de uma ou duas pessoas,
+  responsaveis por empresa, fotografia imutavel e decisao serializavel.
+- Bloqueadas edicoes e vinculacoes fiscais em etapas incompativeis, com
+  reprovacao motivada e encerramento da solicitacao no cancelamento.
+- Adicionada outbox deduplicada para notificacoes por log, SMTP ou templates
+  oficiais do WhatsApp, com repeticao e sanitizacao de erros.
+- Adicionada notificacao financeira com parcelas e instrucoes de Pix, boleto,
+  cartao ou link do fornecedor.
+- Adicionados painel e Excel de contas a pagar com itens nao programados,
+  pendentes, vencidos, pagos e previsoes de 7, 15 e 30 dias.
+- Adicionados filtro e coluna da etapa do Kanban nos relatorios operacionais.
 - Validado o cabecalho `x-organization-id` como UUID antes de consultar o banco, com testes diretos dos guardas de tenant e permissoes.
 - Adicionado contrato transversal que classifica todos os controllers e rejeita novas rotas operacionais sem autenticacao, tenant e permissao explicita.
 - Alinhados menu e controles de escrita da interface a mesma matriz de permissoes usada pela API, sem expor sincronizacao a compradores sem `integration:write`.

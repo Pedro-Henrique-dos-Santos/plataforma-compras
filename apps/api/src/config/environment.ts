@@ -1,4 +1,4 @@
-const requiredProductionKeys = [
+const requiredPersistentKeys = [
   'APP_WEB_URL',
   'CORS_ORIGIN',
   'DATABASE_URL',
@@ -13,7 +13,7 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
     throw new Error('NODE_ENV must be development, test or production.');
   }
 
-  const demoMode = booleanValue(raw['DEMO_MODE'], nodeEnvironment !== 'production');
+  const demoMode = booleanValue(raw['DEMO_MODE'], false);
   environment['NODE_ENV'] = nodeEnvironment;
   environment['DEMO_MODE'] = String(demoMode);
   const requireVerifiedEmail = booleanValue(
@@ -22,6 +22,84 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
   );
   environment['REQUIRE_VERIFIED_EMAIL'] = String(requireVerifiedEmail);
   environment['TRUST_PROXY'] = String(booleanValue(raw['TRUST_PROXY'], false));
+  environment['NOTIFICATION_WORKER_ENABLED'] = String(
+    booleanValue(raw['NOTIFICATION_WORKER_ENABLED'], true),
+  );
+  const fiscalWorkerEnabled = booleanValue(raw['FISCAL_SYNC_WORKER_ENABLED'], false);
+  environment['FISCAL_SYNC_WORKER_ENABLED'] = String(fiscalWorkerEnabled);
+  const fiscalRolloutMode = textValue(raw['FISCAL_ROLLOUT_MODE']) || 'SHADOW';
+  if (!['SHADOW', 'EXACT_MATCH', 'AUTO_SCIENCE'].includes(fiscalRolloutMode)) {
+    throw new Error('FISCAL_ROLLOUT_MODE must be SHADOW, EXACT_MATCH or AUTO_SCIENCE.');
+  }
+  environment['FISCAL_ROLLOUT_MODE'] = fiscalRolloutMode;
+  const fiscalPollInterval = numberValue(raw['FISCAL_SYNC_POLL_INTERVAL_MS'], 60_000);
+  if (fiscalPollInterval < 60_000 || fiscalPollInterval > 3_600_000) {
+    throw new Error('FISCAL_SYNC_POLL_INTERVAL_MS must be between 60000 and 3600000.');
+  }
+  environment['FISCAL_SYNC_POLL_INTERVAL_MS'] = String(fiscalPollInterval);
+  const sefazRequestTimeout = numberValue(raw['SEFAZ_REQUEST_TIMEOUT_MS'], 30_000);
+  if (sefazRequestTimeout < 1_000 || sefazRequestTimeout > 120_000) {
+    throw new Error('SEFAZ_REQUEST_TIMEOUT_MS must be between 1000 and 120000.');
+  }
+  environment['SEFAZ_REQUEST_TIMEOUT_MS'] = String(sefazRequestTimeout);
+  const cnpjLookupTimeout = numberValue(raw['CNPJ_LOOKUP_TIMEOUT_MS'], 6_000);
+  if (cnpjLookupTimeout < 1_000 || cnpjLookupTimeout > 15_000) {
+    throw new Error('CNPJ_LOOKUP_TIMEOUT_MS must be between 1000 and 15000.');
+  }
+  environment['CNPJ_LOOKUP_TIMEOUT_MS'] = String(cnpjLookupTimeout);
+  for (const key of [
+    'SEFAZ_NFE_DISTRIBUTION_HOMOLOGATION_URL',
+    'SEFAZ_NFE_DISTRIBUTION_PRODUCTION_URL',
+    'SEFAZ_NFE_MANIFESTATION_HOMOLOGATION_URL',
+    'SEFAZ_NFE_MANIFESTATION_PRODUCTION_URL',
+  ]) {
+    const configuredUrl = textValue(raw[key]);
+    if (configuredUrl && !isHttpsUrl(configuredUrl)) {
+      throw new Error(`${key} must be an explicit HTTPS URL.`);
+    }
+  }
+  const fiscalCredentialKey = textValue(raw['FISCAL_CREDENTIAL_ENCRYPTION_KEY']);
+  if (fiscalCredentialKey && Buffer.from(fiscalCredentialKey, 'base64').length !== 32) {
+    throw new Error('FISCAL_CREDENTIAL_ENCRYPTION_KEY must contain 32 bytes in base64.');
+  }
+  if (fiscalWorkerEnabled && !demoMode && !fiscalCredentialKey) {
+    throw new Error('FISCAL_CREDENTIAL_ENCRYPTION_KEY is required when the fiscal worker is enabled.');
+  }
+  const notificationMode =
+    textValue(raw['NOTIFICATION_DELIVERY_MODE']).toLowerCase() || 'log';
+  if (!['log', 'live'].includes(notificationMode)) {
+    throw new Error('NOTIFICATION_DELIVERY_MODE must be log or live.');
+  }
+  environment['NOTIFICATION_DELIVERY_MODE'] = notificationMode;
+  const notificationPollInterval = numberValue(
+    raw['NOTIFICATION_POLL_INTERVAL_MS'],
+    10_000,
+  );
+  if (notificationPollInterval < 1_000 || notificationPollInterval > 300_000) {
+    throw new Error(
+      'NOTIFICATION_POLL_INTERVAL_MS must be between 1000 and 300000.',
+    );
+  }
+  environment['NOTIFICATION_POLL_INTERVAL_MS'] = String(
+    notificationPollInterval,
+  );
+  const notificationRequestTimeout = numberValue(
+    raw['NOTIFICATION_REQUEST_TIMEOUT_MS'],
+    15_000,
+  );
+  if (
+    notificationRequestTimeout < 1_000 ||
+    notificationRequestTimeout > 120_000
+  ) {
+    throw new Error(
+      'NOTIFICATION_REQUEST_TIMEOUT_MS must be between 1000 and 120000.',
+    );
+  }
+  environment['NOTIFICATION_REQUEST_TIMEOUT_MS'] = String(
+    notificationRequestTimeout,
+  );
+  environment['SMTP_SECURE'] = String(booleanValue(raw['SMTP_SECURE'], false));
+  validateNotificationProviders(raw, notificationMode);
   if (nodeEnvironment === 'production' && demoMode) {
     throw new Error('DEMO_MODE must be false in production.');
   }
@@ -71,11 +149,11 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
       textValue(raw['SUPABASE_PUBLISHABLE_KEY']) || textValue(raw['SUPABASE_ANON_KEY']);
     const supabaseSecretKey =
       textValue(raw['SUPABASE_SECRET_KEY']) || textValue(raw['SUPABASE_SERVICE_ROLE_KEY']);
-    const missing: string[] = requiredProductionKeys.filter((key) => !textValue(raw[key]));
+    const missing: string[] = requiredPersistentKeys.filter((key) => !textValue(raw[key]));
     if (!supabasePublishableKey) missing.push('SUPABASE_PUBLISHABLE_KEY');
     if (!supabaseSecretKey) missing.push('SUPABASE_SECRET_KEY');
     if (missing.length) {
-      throw new Error(`Missing production environment variables: ${missing.join(', ')}.`);
+      throw new Error(`Missing persistent environment variables: ${missing.join(', ')}.`);
     }
     environment['SUPABASE_PUBLISHABLE_KEY'] = supabasePublishableKey;
     environment['SUPABASE_SECRET_KEY'] = supabaseSecretKey;
@@ -99,8 +177,14 @@ export function validateEnvironment(raw: Record<string, unknown>): Record<string
     }
 
     const supabaseOrigin = normalizeHttpOrigin(textValue(raw['SUPABASE_URL']));
-    if (!supabaseOrigin?.startsWith('https://')) {
-      throw new Error('SUPABASE_URL must be a valid HTTPS origin.');
+    if (
+      !supabaseOrigin ||
+      (!supabaseOrigin.startsWith('https://') &&
+        (nodeEnvironment === 'production' || !isLoopbackOrigin(supabaseOrigin)))
+    ) {
+      throw new Error(
+        'SUPABASE_URL must use HTTPS, except for a loopback URL in local development.',
+      );
     }
     environment['SUPABASE_URL'] = supabaseOrigin;
 
@@ -143,6 +227,15 @@ function textValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function numberValue(value: unknown, fallback: number): number {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) {
+    throw new Error('Numeric environment values must be integers.');
+  }
+  return parsed;
+}
+
 function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -172,4 +265,76 @@ function parseGoogleCredentials(value: string): {
   } catch {
     return null;
   }
+}
+
+function isLoopbackOrigin(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname;
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
+function isHttpsUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function validateNotificationProviders(
+  raw: Record<string, unknown>,
+  mode: string,
+) {
+  const smtpHost = textValue(raw['SMTP_HOST']);
+  const smtpPort = textValue(raw['SMTP_PORT']);
+  const smtpFrom = textValue(raw['SMTP_FROM']);
+  const smtpUser = textValue(raw['SMTP_USER']);
+  const smtpPassword = textValue(raw['SMTP_PASSWORD']);
+  const anySmtp = Boolean(smtpHost || smtpFrom || smtpUser || smtpPassword);
+  if (anySmtp) {
+    const port = Number(smtpPort);
+    if (!smtpHost || !smtpFrom || !Number.isInteger(port) || port < 1 || port > 65_535) {
+      throw new Error('SMTP_HOST, SMTP_PORT and SMTP_FROM must be valid.');
+    }
+    if (!isEmailAddressFrom(smtpFrom)) {
+      throw new Error('SMTP_FROM must contain a valid email address.');
+    }
+    if (Boolean(smtpUser) !== Boolean(smtpPassword)) {
+      throw new Error('SMTP_USER and SMTP_PASSWORD must be configured together.');
+    }
+  }
+
+  const whatsappKeys = [
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'WHATSAPP_APPROVAL_TEMPLATE',
+    'WHATSAPP_REJECTION_TEMPLATE',
+    'WHATSAPP_FINANCE_TEMPLATE',
+    'WHATSAPP_FISCAL_TEMPLATE',
+  ] as const;
+  const configuredWhatsApp = whatsappKeys.filter((key) => textValue(raw[key]));
+  if (
+    configuredWhatsApp.length > 0 &&
+    configuredWhatsApp.length !== whatsappKeys.length
+  ) {
+    throw new Error(
+      `WhatsApp configuration is incomplete: ${whatsappKeys
+        .filter((key) => !textValue(raw[key]))
+        .join(', ')}.`,
+    );
+  }
+  if (mode === 'live' && !anySmtp && configuredWhatsApp.length === 0) {
+    throw new Error(
+      'Live notification delivery requires SMTP or WhatsApp configuration.',
+    );
+  }
+}
+
+function isEmailAddressFrom(value: string): boolean {
+  const bracketMatch = value.match(/<([^>]+)>/);
+  return isEmail((bracketMatch?.[1] ?? value).trim());
 }

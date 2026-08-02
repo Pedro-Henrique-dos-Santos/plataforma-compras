@@ -10,6 +10,7 @@ export type AuthenticatedIdentity = Pick<
   'id' | 'email' | 'name' | 'platformRoles'
 > & {
   authUserId: string;
+  phone?: string | null;
   termsAcceptedAt?: string | null;
   termsVersion?: string | null;
   privacyAcceptedAt?: string | null;

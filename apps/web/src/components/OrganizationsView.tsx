@@ -186,7 +186,7 @@ export function OrganizationsView({
               </label>
               <label>
                 CNPJ
-                <input inputMode="numeric" maxLength={18} onChange={(event) => setDocument(event.target.value)} placeholder="00.000.000/0000-00" value={document} />
+                <input autoCapitalize="characters" maxLength={18} onChange={(event) => setDocument(event.target.value.toUpperCase())} placeholder="AA.AAA.AAA/AAAA-00" value={document} />
               </label>
               {error && <div className="form-error">{error}</div>}
               <footer className="modal-actions">
@@ -217,7 +217,7 @@ export function OrganizationsView({
               <div className="form-grid two-columns">
                 <label>Nome exibido<input autoFocus maxLength={120} onChange={(event) => formField('name', event.target.value)} required value={form.name} /></label>
                 <label>Razao social<input maxLength={160} onChange={(event) => formField('legalName', event.target.value)} value={form.legalName} /></label>
-                <label>CNPJ<input inputMode="numeric" maxLength={18} onChange={(event) => formField('document', event.target.value)} placeholder="00.000.000/0000-00" value={form.document} /></label>
+                <label>CNPJ<input autoCapitalize="characters" maxLength={18} onChange={(event) => formField('document', event.target.value.toUpperCase())} placeholder="AA.AAA.AAA/AAAA-00" value={form.document} /></label>
                 <label>E-mail<input maxLength={255} onChange={(event) => formField('email', event.target.value)} type="email" value={form.email} /></label>
                 <label>Telefone<input maxLength={30} onChange={(event) => formField('phone', event.target.value)} value={form.phone} /></label>
                 <label>CEP<input inputMode="numeric" maxLength={9} onChange={(event) => formField('postalCode', event.target.value)} placeholder="00000-000" value={form.postalCode} /></label>
@@ -265,13 +265,14 @@ function roleLabel(role: OrganizationSummary['role']) {
   const labels: Record<OrganizationSummary['role'], string> = {
     ORGANIZATION_ADMIN: 'Administrador da empresa',
     BUYER: 'Comprador',
+    FINANCE: 'Financeiro',
     REPORT_VIEWER: 'Consulta de relatorios',
   };
   return labels[role];
 }
 
 function formatCnpj(value: string): string {
-  return value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  return value.replace(/^([A-Z0-9]{2})([A-Z0-9]{3})([A-Z0-9]{3})([A-Z0-9]{4})(\d{2})$/i, '$1.$2.$3/$4-$5');
 }
 
 function formatPostalCode(value: string): string {

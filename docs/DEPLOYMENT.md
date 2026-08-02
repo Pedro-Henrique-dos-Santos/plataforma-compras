@@ -64,13 +64,44 @@ Configure os seguintes valores no gerenciador de segredos da hospedagem:
 | `REQUIRE_VERIFIED_EMAIL` | `true` |
 | `TRUST_PROXY` | `true` apenas atras de proxy confiavel |
 | `INVOICE_STORAGE_BUCKET` | bucket privado, por padrao `invoice-documents` |
+| `FISCAL_CREDENTIAL_ENCRYPTION_KEY` | exatamente 32 bytes em base64; nunca reutilizar chave do banco ou do Supabase |
+| `FISCAL_ROLLOUT_MODE` | iniciar em `SHADOW`; depois `EXACT_MATCH` e opcionalmente `AUTO_SCIENCE` |
+| `FISCAL_SYNC_WORKER_ENABLED` | `false` ate concluir migracao e homologacao do A1 |
+| `FISCAL_SYNC_POLL_INTERVAL_MS` | intervalo de varredura entre 60000 e 3600000 ms |
+| `SEFAZ_REQUEST_TIMEOUT_MS` | limite entre 1000 e 120000 ms |
+| `SEFAZ_NFE_DISTRIBUTION_HOMOLOGATION_URL` | endpoint oficial autorizado para Distribuicao DF-e em homologacao |
+| `SEFAZ_NFE_DISTRIBUTION_PRODUCTION_URL` | endpoint oficial autorizado para Distribuicao DF-e em producao |
+| `SEFAZ_NFE_MANIFESTATION_HOMOLOGATION_URL` | endpoint oficial autorizado para eventos em homologacao |
+| `SEFAZ_NFE_MANIFESTATION_PRODUCTION_URL` | endpoint oficial autorizado para eventos em producao |
 | `OCR_LANGUAGE_DATA_PATH` | sobrescrita opcional; a imagem ja inclui o modelo portugues |
+| `NOTIFICATION_WORKER_ENABLED` | `true` para processar a outbox |
+| `NOTIFICATION_DELIVERY_MODE` | `log` para homologacao sem envio ou `live` para provedores reais |
+| `NOTIFICATION_POLL_INTERVAL_MS` | intervalo de consulta da fila |
+| `NOTIFICATION_REQUEST_TIMEOUT_MS` | limite de cada chamada ao provedor, por padrao 15 segundos |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` | conexao SMTP quando o modo for `smtp` |
+| `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | credenciais e remetente SMTP |
+| `WHATSAPP_ACCESS_TOKEN` | token da API oficial da Meta |
+| `WHATSAPP_PHONE_NUMBER_ID` | identificador do numero remetente |
+| `WHATSAPP_API_VERSION` | versao da Graph API |
+| `WHATSAPP_TEMPLATE_LANGUAGE` | idioma aprovado dos templates |
+| `WHATSAPP_APPROVAL_TEMPLATE` | template de solicitacao de aprovacao |
+| `WHATSAPP_REJECTION_TEMPLATE` | template de reprovacao |
+| `WHATSAPP_FINANCE_TEMPLATE` | template de liberacao financeira |
+| `WHATSAPP_FISCAL_TEMPLATE` | template de divergencia ou revisao fiscal |
 
 Com `NODE_ENV=production`, a API encerra a inicializacao se `DEMO_MODE` nao for `false`, se `REQUIRE_VERIFIED_EMAIL` nao for `true` ou se qualquer entrada de `CORS_ORIGIN` usar HTTP. Essa verificacao ocorre antes de abrir a porta da aplicacao.
 
 Para Google Sheets, configure somente uma das variaveis `GOOGLE_SERVICE_ACCOUNT_JSON` ou `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64`. O JSON nunca deve ser montado na interface web ou gravado no banco.
 
 O modelo Tesseract em portugues e uma dependencia de producao da API. O container valida o arquivo com a rede desativada antes do smoke test, portanto a leitura de PDFs digitalizados nao depende de download em tempo de execucao.
+
+Em homologacao, use `NOTIFICATION_DELIVERY_MODE=log` ate que um provedor esteja
+configurado. O modo `live` exige pelo menos um provedor completo. Mensagens de
+canal `EMAIL` usam SMTP e mensagens de canal `WHATSAPP` usam a API da Meta; toda
+regra ativa precisa escolher um canal configurado no ambiente. WhatsApp exige
+token, numero e os tres templates previamente aprovados. As variaveis nao devem
+ser incorporadas na imagem nem expostas ao navegador. Consulte
+`docs/PURCHASE_APPROVALS.md` para os parametros de cada template.
 
 ## Publicacao versionada
 
@@ -83,8 +114,8 @@ pnpm release:verify
 Depois do merge aprovado na `main`, crie uma tag imutavel correspondente:
 
 ```bash
-git tag v0.10.0
-git push origin v0.10.0
+git tag v0.11.0
+git push origin v0.11.0
 ```
 
 O workflow `Publish Container Images` valida a tag e publica no GHCR:
@@ -106,11 +137,14 @@ O identificador de backup serve como barreira operacional; o arquivo real deve p
 2. Gerar e verificar um backup fora do GitHub.
 3. Criar a tag semantica e aguardar as duas imagens no GHCR.
 4. Executar `Supabase Production` com aprovacao do ambiente.
-5. Implantar a API e aguardar `/api/health/ready` retornar `ready`.
-6. Implantar a web com os dominios definitivos.
-7. Testar login, empresa ativa, escrita, nota fiscal e relatorios.
-8. Comparar totais entre PostgreSQL e a planilha.
-9. Liberar um grupo pequeno de usuarios mantendo o Apps Script disponivel.
+5. Manter o worker fiscal desabilitado e reconciliar a migracao de compras,
+   parcelas, notas e baixas existentes.
+6. Implantar a API e aguardar `/api/health/ready` retornar `ready`.
+7. Implantar a web com os dominios definitivos.
+8. Testar login, empresa ativa, escrita, nota fiscal e relatorios.
+9. Habilitar o worker somente em `SHADOW` e acompanhar NSU, erros e duplicidade.
+10. Comparar totais entre PostgreSQL, documentos capturados e a planilha.
+11. Liberar um grupo pequeno de usuarios mantendo o Apps Script disponivel.
 
 ## Reversao
 

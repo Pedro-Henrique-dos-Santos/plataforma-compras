@@ -9,6 +9,8 @@ import { OrganizationsRepository } from '../organizations/organizations.reposito
 import { organizationsRepositoryProvider } from '../organizations/organizations.repository.provider.js';
 import { ProcurementRepository } from '../procurement/procurement.repository.js';
 import { procurementRepositoryProvider } from '../procurement/procurement.repository.provider.js';
+import { ReceivablesRepository } from '../receivables/receivables.repository.js';
+import { receivablesRepositoryProvider } from '../receivables/receivables.repository.provider.js';
 
 @Global()
 @Module({
@@ -18,12 +20,14 @@ import { procurementRepositoryProvider } from '../procurement/procurement.reposi
     procurementRepositoryProvider,
     automationRepositoryProvider,
     invoiceDocumentsRepositoryProvider,
+    receivablesRepositoryProvider,
   ],
   exports: [
     OrganizationsRepository,
     ProcurementRepository,
     AutomationRepository,
     InvoiceDocumentsRepository,
+    ReceivablesRepository,
   ],
 })
 export class PersistenceModule {}

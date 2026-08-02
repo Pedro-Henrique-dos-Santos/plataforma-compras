@@ -14,6 +14,7 @@ enum PlatformRole {
 enum OrganizationRole {
   ORGANIZATION_ADMIN
   BUYER
+  FINANCE
   REPORT_VIEWER
 }
 
@@ -38,6 +39,131 @@ enum PurchaseStatus {
   DRAFT
   REGISTERED
   CANCELLED
+}
+
+enum PurchaseWorkflowStage {
+  REGISTRATION
+  REQUESTED
+  AWAITING_APPROVAL
+  PURCHASE_ORDER
+  SUPPLIER_INVOICED
+  RECEIVED
+  COMPLETED
+}
+
+enum ApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ApprovalDecisionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+enum PaymentChannel {
+  PIX
+  CARD_LINK
+  BOLETO
+  BANK_TRANSFER
+  OTHER
+}
+
+enum PixKeyType {
+  CPF
+  CNPJ
+  EMAIL
+  PHONE
+  RANDOM
+}
+
+enum PaymentWorkflowStage {
+  MATCHING_REQUIRED
+  AWAITING_APPROVAL
+  READY_TO_PAY
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum PaymentApprovalMode {
+  DISABLED
+  PER_TITLE
+  PER_PURCHASE_SNAPSHOT
+}
+
+enum FiscalEnvironment {
+  HOMOLOGATION
+  PRODUCTION
+}
+
+enum FiscalIntegrationStatus {
+  NOT_CONFIGURED
+  READY
+  SYNCING
+  BACKOFF
+  CERTIFICATE_EXPIRED
+  ERROR
+}
+
+enum RecipientManifestationMode {
+  MANUAL
+  AUTO_SCIENCE
+}
+
+enum RecipientManifestation {
+  SCIENCE
+  CONFIRMATION
+  UNKNOWN_OPERATION
+  OPERATION_NOT_PERFORMED
+}
+
+enum FiscalDocumentSource {
+  UPLOAD
+  SEFAZ
+}
+
+enum FiscalMatchStatus {
+  UNMATCHED
+  MATCHED_EXACT
+  MATCHED_MANUAL
+  REVIEW_REQUIRED
+  REJECTED
+}
+
+enum ReceiptStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum ReceivableStatus {
+  OPEN
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum ReceivableSource {
+  MANUAL
+  INVOICE
+  IMPORT
+  SALE
 }
 
 enum AuditAction {
@@ -80,25 +206,40 @@ enum InvoiceDocumentKind {
 }
 
 model User {
-  id                       String                   @id @default(uuid()) @db.Uuid
-  authUserId               String                   @unique @map("auth_user_id") @db.Uuid
-  email                    String                   @unique @db.VarChar(255)
-  name                     String                   @db.VarChar(120)
-  active                   Boolean                  @default(true)
-  termsAcceptedAt          DateTime?                @map("terms_accepted_at")
-  termsVersion             String?                  @map("terms_version") @db.VarChar(40)
-  privacyAcceptedAt        DateTime?                @map("privacy_accepted_at")
-  privacyVersion           String?                  @map("privacy_version") @db.VarChar(40)
-  createdAt                DateTime                 @default(now()) @map("created_at")
-  updatedAt                DateTime                 @updatedAt @map("updated_at")
-  platformRoles            PlatformRoleAssignment[]
-  memberships              OrganizationMembership[]
-  auditEvents              AuditLog[]               @relation("AuditActor")
-  createdOrganizations     Organization[]           @relation("OrganizationCreator")
-  sheetSyncRuns            SheetSyncRun[]           @relation("SheetSyncRunCreator")
-  createdInvoiceDocuments  InvoiceDocument[]        @relation("InvoiceDocumentCreator")
-  reviewedInvoiceDocuments InvoiceDocument[]        @relation("InvoiceDocumentReviewer")
-  importedInvoiceDocuments InvoiceDocument[]        @relation("InvoiceDocumentImporter")
+  id                            String                        @id @default(uuid()) @db.Uuid
+  authUserId                    String                        @unique @map("auth_user_id") @db.Uuid
+  email                         String                        @unique @db.VarChar(255)
+  name                          String                        @db.VarChar(120)
+  phone                         String?                       @db.VarChar(30)
+  active                        Boolean                       @default(true)
+  termsAcceptedAt               DateTime?                     @map("terms_accepted_at")
+  termsVersion                  String?                       @map("terms_version") @db.VarChar(40)
+  privacyAcceptedAt             DateTime?                     @map("privacy_accepted_at")
+  privacyVersion                String?                       @map("privacy_version") @db.VarChar(40)
+  createdAt                     DateTime                      @default(now()) @map("created_at")
+  updatedAt                     DateTime                      @updatedAt @map("updated_at")
+  platformRoles                 PlatformRoleAssignment[]
+  memberships                   OrganizationMembership[]
+  auditEvents                   AuditLog[]                    @relation("AuditActor")
+  createdOrganizations          Organization[]                @relation("OrganizationCreator")
+  sheetSyncRuns                 SheetSyncRun[]                @relation("SheetSyncRunCreator")
+  createdInvoiceDocuments       InvoiceDocument[]             @relation("InvoiceDocumentCreator")
+  reviewedInvoiceDocuments      InvoiceDocument[]             @relation("InvoiceDocumentReviewer")
+  importedInvoiceDocuments      InvoiceDocument[]             @relation("InvoiceDocumentImporter")
+  approvalRuleAssignments       ApprovalRuleApprover[]
+  submittedApprovals            PurchaseApprovalRequest[]     @relation("ApprovalRequestSubmitter")
+  approvalParticipations        PurchaseApprovalParticipant[]
+  purchaseStageChanges          PurchaseStageHistory[]        @relation("PurchaseStageChangedBy")
+  fiscalMatches                 PurchaseInvoiceLink[]         @relation("FiscalMatchActor")
+  confirmedReceipts             GoodsReceipt[]                @relation("ReceiptConfirmer")
+  receiptResponsibilities       ReceiptResponsibility[]
+  paymentRuleAssignments        PaymentApprovalRuleApprover[]
+  submittedPaymentApprovals     PaymentApprovalRequest[]      @relation("PaymentApprovalSubmitter")
+  paymentApprovalParticipations PaymentApprovalParticipant[]
+  paymentInstructions           PaymentInstructionSnapshot[]  @relation("PaymentInstructionCreator")
+  paymentSettlements            PaymentSettlement[]           @relation("PaymentSettlementCreator")
+  createdReceivables            Receivable[]                  @relation("ReceivableCreator")
+  receivableSettlements         ReceivableSettlement[]        @relation("ReceivableSettlementCreator")
 
   @@map("users")
 }
@@ -115,34 +256,58 @@ model PlatformRoleAssignment {
 }
 
 model Organization {
-  id                      String                   @id @default(uuid()) @db.Uuid
-  name                    String                   @db.VarChar(120)
-  legalName               String?                  @map("legal_name") @db.VarChar(160)
-  slug                    String                   @unique @db.VarChar(80)
-  document                String?                  @unique @db.VarChar(18)
-  email                   String?                  @db.VarChar(255)
-  phone                   String?                  @db.VarChar(30)
-  postalCode              String?                  @map("postal_code") @db.VarChar(8)
-  street                  String?                  @db.VarChar(160)
-  addressNumber           String?                  @map("address_number") @db.VarChar(30)
-  addressComplement       String?                  @map("address_complement") @db.VarChar(100)
-  district                String?                  @db.VarChar(100)
-  city                    String?                  @db.VarChar(100)
-  state                   String?                  @db.Char(2)
-  active                  Boolean                  @default(true)
-  createdById             String?                  @map("created_by_id") @db.Uuid
-  createdAt               DateTime                 @default(now()) @map("created_at")
-  updatedAt               DateTime                 @updatedAt @map("updated_at")
-  createdBy               User?                    @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  memberships             OrganizationMembership[]
-  costCenters             CostCenter[]
-  suppliers               Supplier[]
-  supplierPrices          SupplierPrice[]
-  purchases               Purchase[]
-  invoiceDocuments        InvoiceDocument[]
-  auditLogs               AuditLog[]
-  googleSheetsIntegration GoogleSheetsIntegration?
-  sheetSyncRuns           SheetSyncRun[]
+  id                          String                        @id @default(uuid()) @db.Uuid
+  name                        String                        @db.VarChar(120)
+  legalName                   String?                       @map("legal_name") @db.VarChar(160)
+  slug                        String                        @unique @db.VarChar(80)
+  document                    String?                       @unique @db.VarChar(18)
+  email                       String?                       @db.VarChar(255)
+  phone                       String?                       @db.VarChar(30)
+  postalCode                  String?                       @map("postal_code") @db.VarChar(8)
+  street                      String?                       @db.VarChar(160)
+  addressNumber               String?                       @map("address_number") @db.VarChar(30)
+  addressComplement           String?                       @map("address_complement") @db.VarChar(100)
+  district                    String?                       @db.VarChar(100)
+  city                        String?                       @db.VarChar(100)
+  state                       String?                       @db.Char(2)
+  active                      Boolean                       @default(true)
+  createdById                 String?                       @map("created_by_id") @db.Uuid
+  createdAt                   DateTime                      @default(now()) @map("created_at")
+  updatedAt                   DateTime                      @updatedAt @map("updated_at")
+  createdBy                   User?                         @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  memberships                 OrganizationMembership[]
+  costCenters                 CostCenter[]
+  suppliers                   Supplier[]
+  supplierPrices              SupplierPrice[]
+  purchases                   Purchase[]
+  installments                Installment[]
+  invoiceDocuments            InvoiceDocument[]
+  auditLogs                   AuditLog[]
+  googleSheetsIntegration     GoogleSheetsIntegration?
+  sheetSyncRuns               SheetSyncRun[]
+  approvalSettings            ApprovalSettings?
+  approvalRules               ApprovalRule[]
+  approvalRuleApprovers       ApprovalRuleApprover[]
+  approvalRequests            PurchaseApprovalRequest[]
+  approvalParticipants        PurchaseApprovalParticipant[]
+  purchaseStageHistory        PurchaseStageHistory[]
+  notificationOutbox          NotificationOutbox[]
+  fiscalIntegration           FiscalIntegration?
+  purchaseInvoiceLinks        PurchaseInvoiceLink[]
+  fiscalDocumentItems         FiscalDocumentItem[]
+  goodsReceipts               GoodsReceipt[]
+  goodsReceiptItems           GoodsReceiptItem[]
+  receiptResponsibilities     ReceiptResponsibility[]
+  paymentSettings             PaymentSettings?
+  paymentApprovalRules        PaymentApprovalRule[]
+  paymentRuleApprovers        PaymentApprovalRuleApprover[]
+  paymentApprovalRequests     PaymentApprovalRequest[]
+  paymentApprovalParticipants PaymentApprovalParticipant[]
+  paymentApprovalTitles       PaymentApprovalTitle[]
+  paymentInstructions         PaymentInstructionSnapshot[]
+  paymentSettlements          PaymentSettlement[]
+  receivables                 Receivable[]
+  receivableSettlements       ReceivableSettlement[]
 
   @@map("organizations")
 }
@@ -164,17 +329,18 @@ model OrganizationMembership {
 }
 
 model CostCenter {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String           @map("organization_id") @db.Uuid
-  code           String           @db.VarChar(40)
-  name           String           @db.VarChar(120)
-  active         Boolean          @default(true)
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  suppliers      Supplier[]
-  purchaseItems  PurchaseItem[]
-  allocations    CostAllocation[]
+  id                      String                  @id @default(uuid()) @db.Uuid
+  organizationId          String                  @map("organization_id") @db.Uuid
+  code                    String                  @db.VarChar(40)
+  name                    String                  @db.VarChar(120)
+  active                  Boolean                 @default(true)
+  createdAt               DateTime                @default(now()) @map("created_at")
+  updatedAt               DateTime                @updatedAt @map("updated_at")
+  organization            Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  suppliers               Supplier[]
+  purchaseItems           PurchaseItem[]
+  allocations             CostAllocation[]
+  receiptResponsibilities ReceiptResponsibility[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -183,26 +349,40 @@ model CostCenter {
 }
 
 model Supplier {
-  id                  String          @id @default(uuid()) @db.Uuid
-  organizationId      String          @map("organization_id") @db.Uuid
-  legalName           String          @map("legal_name") @db.VarChar(160)
-  tradeName           String?         @map("trade_name") @db.VarChar(160)
-  document            String?         @db.VarChar(18)
-  category            String?         @db.VarChar(100)
-  operationNature     String?         @map("operation_nature") @db.VarChar(100)
-  paymentMethod       String?         @map("payment_method") @db.VarChar(80)
-  defaultCostCenterId String?         @map("default_cost_center_id") @db.Uuid
-  email               String?         @db.VarChar(255)
-  phone               String?         @db.VarChar(30)
-  status              SupplierStatus  @default(ACTIVE)
-  notes               String?
-  createdAt           DateTime        @default(now()) @map("created_at")
-  updatedAt           DateTime        @updatedAt @map("updated_at")
-  organization        Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                     String          @id @default(uuid()) @db.Uuid
+  organizationId         String          @map("organization_id") @db.Uuid
+  legalName              String          @map("legal_name") @db.VarChar(160)
+  tradeName              String?         @map("trade_name") @db.VarChar(160)
+  document               String?         @db.VarChar(18)
+  category               String?         @db.VarChar(100)
+  operationNature        String?         @map("operation_nature") @db.VarChar(100)
+  paymentMethod          String?         @map("payment_method") @db.VarChar(80)
+  pixKeyType             PixKeyType?     @map("pix_key_type")
+  pixKey                 String?         @map("pix_key") @db.VarChar(160)
+  pixBeneficiaryName     String?         @map("pix_beneficiary_name") @db.VarChar(160)
+  pixBeneficiaryDocument String?         @map("pix_beneficiary_document") @db.VarChar(18)
+  paymentLink            String?         @map("payment_link") @db.VarChar(500)
+  defaultCostCenterId    String?         @map("default_cost_center_id") @db.Uuid
+  email                  String?         @db.VarChar(255)
+  phone                  String?         @db.VarChar(30)
+  postalCode             String?         @map("postal_code") @db.VarChar(8)
+  street                 String?         @db.VarChar(160)
+  addressNumber          String?         @map("address_number") @db.VarChar(30)
+  addressComplement      String?         @map("address_complement") @db.VarChar(100)
+  district               String?         @db.VarChar(100)
+  city                   String?         @db.VarChar(100)
+  state                  String?         @db.Char(2)
+  registrationStatus     String?         @map("registration_status") @db.VarChar(80)
+  primaryActivity        String?         @map("primary_activity") @db.VarChar(240)
+  status                 SupplierStatus  @default(ACTIVE)
+  notes                  String?
+  createdAt              DateTime        @default(now()) @map("created_at")
+  updatedAt              DateTime        @updatedAt @map("updated_at")
+  organization           Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   /// The migration uses PostgreSQL column-specific SET NULL for defaultCostCenterId.
-  defaultCostCenter   CostCenter?     @relation(fields: [organizationId, defaultCostCenterId], references: [organizationId, id], onDelete: NoAction)
-  prices              SupplierPrice[]
-  purchases           Purchase[]
+  defaultCostCenter      CostCenter?     @relation(fields: [organizationId, defaultCostCenterId], references: [organizationId, id], onDelete: NoAction)
+  prices                 SupplierPrice[]
+  purchases              Purchase[]
 
   @@unique([organizationId, document])
   @@unique([organizationId, id])
@@ -237,35 +417,45 @@ model SupplierPrice {
 }
 
 model Purchase {
-  id                String            @id @default(uuid()) @db.Uuid
-  organizationId    String            @map("organization_id") @db.Uuid
-  supplierId        String            @map("supplier_id") @db.Uuid
-  number            String            @db.VarChar(40)
-  invoiceNumber     String?           @map("invoice_number") @db.VarChar(60)
-  issuedAt          DateTime?         @map("issued_at") @db.Date
-  status            PurchaseStatus    @default(REGISTERED)
-  category          String?           @db.VarChar(100)
-  operationNature   String?           @map("operation_nature") @db.VarChar(100)
-  paymentMethod     String?           @map("payment_method") @db.VarChar(80)
-  total             Decimal           @db.Decimal(14, 2)
-  negotiatedSavings Decimal           @default(0) @map("negotiated_savings") @db.Decimal(14, 2)
-  source            String            @default("MANUAL") @db.VarChar(40)
-  sourceReference   String?           @map("source_reference") @db.VarChar(120)
-  notes             String?
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier          Supplier          @relation(fields: [organizationId, supplierId], references: [organizationId, id], onDelete: Restrict)
-  items             PurchaseItem[]
-  installments      Installment[]
-  invoiceDocuments  InvoiceDocument[]
+  id                      String                    @id @default(uuid()) @db.Uuid
+  organizationId          String                    @map("organization_id") @db.Uuid
+  supplierId              String                    @map("supplier_id") @db.Uuid
+  displaySequence         Int                       @map("display_sequence")
+  number                  String                    @db.VarChar(40)
+  invoiceNumber           String?                   @map("invoice_number") @db.VarChar(60)
+  fiscalDocumentRequired  Boolean                   @default(true) @map("fiscal_document_required")
+  issuedAt                DateTime?                 @map("issued_at") @db.Date
+  status                  PurchaseStatus            @default(DRAFT)
+  workflowStage           PurchaseWorkflowStage     @default(REGISTRATION) @map("workflow_stage")
+  category                String?                   @db.VarChar(100)
+  operationNature         String?                   @map("operation_nature") @db.VarChar(100)
+  paymentMethod           String?                   @map("payment_method") @db.VarChar(80)
+  total                   Decimal                   @db.Decimal(14, 2)
+  negotiatedSavings       Decimal                   @default(0) @map("negotiated_savings") @db.Decimal(14, 2)
+  source                  String                    @default("MANUAL") @db.VarChar(40)
+  sourceReference         String?                   @map("source_reference") @db.VarChar(120)
+  notes                   String?
+  createdAt               DateTime                  @default(now()) @map("created_at")
+  updatedAt               DateTime                  @updatedAt @map("updated_at")
+  organization            Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier                Supplier                  @relation(fields: [organizationId, supplierId], references: [organizationId, id], onDelete: Restrict)
+  items                   PurchaseItem[]
+  installments            Installment[]
+  invoiceDocuments        InvoiceDocument[]
+  approvalRequests        PurchaseApprovalRequest[]
+  stageHistory            PurchaseStageHistory[]
+  fiscalDocumentLinks     PurchaseInvoiceLink[]
+  goodsReceipts           GoodsReceipt[]
+  paymentApprovalRequests PaymentApprovalRequest[]
 
   @@unique([organizationId, number])
+  @@unique([organizationId, displaySequence])
   @@unique([organizationId, id])
   @@unique([organizationId, supplierId, invoiceNumber])
   @@unique([organizationId, source, sourceReference])
   @@index([organizationId, issuedAt])
   @@index([organizationId, supplierId])
+  @@index([organizationId, workflowStage, updatedAt])
   @@map("purchases")
 }
 
@@ -316,22 +506,24 @@ model SheetSyncRun {
 }
 
 model PurchaseItem {
-  id              String           @id @default(uuid()) @db.Uuid
-  organizationId  String           @map("organization_id") @db.Uuid
-  purchaseId      String           @map("purchase_id") @db.Uuid
-  costCenterId    String?          @map("cost_center_id") @db.Uuid
-  description     String           @db.VarChar(240)
-  quantity        Decimal          @default(1) @db.Decimal(14, 4)
-  unit            String?          @db.VarChar(30)
-  unitPrice       Decimal          @map("unit_price") @db.Decimal(14, 4)
-  negotiatedPrice Decimal?         @map("negotiated_price") @db.Decimal(14, 4)
-  total           Decimal          @db.Decimal(14, 2)
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
-  purchase        Purchase         @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  id                  String               @id @default(uuid()) @db.Uuid
+  organizationId      String               @map("organization_id") @db.Uuid
+  purchaseId          String               @map("purchase_id") @db.Uuid
+  costCenterId        String?              @map("cost_center_id") @db.Uuid
+  description         String               @db.VarChar(240)
+  quantity            Decimal              @default(1) @db.Decimal(14, 4)
+  unit                String?              @db.VarChar(30)
+  unitPrice           Decimal              @map("unit_price") @db.Decimal(14, 4)
+  negotiatedPrice     Decimal?             @map("negotiated_price") @db.Decimal(14, 4)
+  total               Decimal              @db.Decimal(14, 2)
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  purchase            Purchase             @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
   /// The migration uses PostgreSQL column-specific SET NULL for costCenterId.
-  costCenter      CostCenter?      @relation(fields: [organizationId, costCenterId], references: [organizationId, id], onDelete: NoAction)
-  allocations     CostAllocation[]
+  costCenter          CostCenter?          @relation(fields: [organizationId, costCenterId], references: [organizationId, id], onDelete: NoAction)
+  allocations         CostAllocation[]
+  receiptItems        GoodsReceiptItem[]
+  fiscalDocumentItems FiscalDocumentItem[]
 
   @@unique([organizationId, id])
   @@index([organizationId, purchaseId])
@@ -355,59 +547,561 @@ model CostAllocation {
 }
 
 model Installment {
-  id             String    @id @default(uuid()) @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
-  purchaseId     String    @map("purchase_id") @db.Uuid
-  sequence       Int
-  dueDate        DateTime  @map("due_date") @db.Date
-  amount         Decimal   @db.Decimal(14, 2)
-  paidAt         DateTime? @map("paid_at") @db.Date
-  purchase       Purchase  @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  id                   String                       @id @default(uuid()) @db.Uuid
+  organizationId       String                       @map("organization_id") @db.Uuid
+  purchaseId           String                       @map("purchase_id") @db.Uuid
+  fiscalDocumentId     String?                      @map("fiscal_document_id") @db.Uuid
+  sequence             Int
+  dueDate              DateTime                     @map("due_date") @db.Date
+  amount               Decimal                      @db.Decimal(14, 2)
+  paidAt               DateTime?                    @map("paid_at") @db.Date
+  paymentChannel       PaymentChannel?              @map("payment_channel")
+  paymentReference     String?                      @map("payment_reference") @db.VarChar(500)
+  paymentNotes         String?                      @map("payment_notes") @db.VarChar(500)
+  paymentStage         PaymentWorkflowStage         @default(MATCHING_REQUIRED) @map("payment_stage")
+  advancePayment       Boolean                      @default(false) @map("advance_payment")
+  advanceReason        String?                      @map("advance_reason") @db.VarChar(500)
+  advanceEvidencePath  String?                      @map("advance_evidence_path") @db.VarChar(500)
+  createdAt            DateTime                     @default(now()) @map("created_at")
+  updatedAt            DateTime                     @updatedAt @map("updated_at")
+  organization         Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase             Purchase                     @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  fiscalDocument       InvoiceDocument?             @relation(fields: [organizationId, fiscalDocumentId], references: [organizationId, id], onDelete: NoAction)
+  instructionSnapshots PaymentInstructionSnapshot[]
+  settlements          PaymentSettlement[]
+  approvalTitles       PaymentApprovalTitle[]
 
   @@unique([purchaseId, sequence])
+  @@unique([organizationId, id])
   @@index([organizationId, dueDate])
+  @@index([organizationId, paymentStage, dueDate])
+  @@index([organizationId, fiscalDocumentId])
   @@map("installments")
 }
 
+model Receivable {
+  id               String                 @id @default(uuid()) @db.Uuid
+  organizationId   String                 @map("organization_id") @db.Uuid
+  customerName     String                 @map("customer_name") @db.VarChar(160)
+  customerDocument String?                @map("customer_document") @db.VarChar(18)
+  description      String                 @db.VarChar(240)
+  category         String?                @db.VarChar(100)
+  documentNumber   String?                @map("document_number") @db.VarChar(80)
+  invoiceNumber    String?                @map("invoice_number") @db.VarChar(80)
+  issuedAt         DateTime?              @map("issued_at") @db.Date
+  dueDate          DateTime               @map("due_date") @db.Date
+  expectedAt       DateTime?              @map("expected_at") @db.Date
+  amount           Decimal                @db.Decimal(14, 2)
+  status           ReceivableStatus       @default(OPEN)
+  source           ReceivableSource       @default(MANUAL)
+  notes            String?
+  createdById      String                 @map("created_by_id") @db.Uuid
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy        User                   @relation("ReceivableCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  settlements      ReceivableSettlement[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, status, dueDate])
+  @@index([organizationId, customerName])
+  @@map("receivables")
+}
+
+model ReceivableSettlement {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  receivableId   String       @map("receivable_id") @db.Uuid
+  amount         Decimal      @db.Decimal(14, 2)
+  receivedAt     DateTime     @map("received_at") @db.Date
+  transactionId  String?      @map("transaction_id") @db.VarChar(120)
+  notes          String?      @db.VarChar(500)
+  createdById    String       @map("created_by_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  receivable     Receivable   @relation(fields: [organizationId, receivableId], references: [organizationId, id], onDelete: Cascade)
+  createdBy      User         @relation("ReceivableSettlementCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, transactionId])
+  @@index([organizationId, receivableId, receivedAt])
+  @@map("receivable_settlements")
+}
+
+model ApprovalSettings {
+  organizationId           String               @id @map("organization_id") @db.Uuid
+  financeChannel           NotificationChannel? @map("finance_channel")
+  financeRecipient         String?              @map("finance_recipient") @db.VarChar(255)
+  notifyFinanceOnApproval  Boolean              @default(false) @map("notify_finance_on_approval")
+  requireStageReturnReason Boolean              @default(false) @map("require_stage_return_reason")
+  createdAt                DateTime             @default(now()) @map("created_at")
+  updatedAt                DateTime             @updatedAt @map("updated_at")
+  organization             Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("approval_settings")
+}
+
+model ApprovalRule {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  organizationId      String                    @map("organization_id") @db.Uuid
+  name                String                    @db.VarChar(120)
+  minimumAmount       Decimal                   @map("minimum_amount") @db.Decimal(14, 2)
+  requiredApprovals   Int                       @map("required_approvals")
+  notificationChannel NotificationChannel       @default(EMAIL) @map("notification_channel")
+  active              Boolean                   @default(true)
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
+  organization        Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approvers           ApprovalRuleApprover[]
+  requests            PurchaseApprovalRequest[]
+
+  @@unique([organizationId, minimumAmount])
+  @@unique([organizationId, id])
+  @@index([organizationId, active, minimumAmount])
+  @@map("approval_rules")
+}
+
+model ApprovalRuleApprover {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ruleId         String       @map("rule_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rule           ApprovalRule @relation(fields: [organizationId, ruleId], references: [organizationId, id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, ruleId, userId])
+  @@index([organizationId, userId])
+  @@map("approval_rule_approvers")
+}
+
+model PurchaseApprovalRequest {
+  id                  String                        @id @default(uuid()) @db.Uuid
+  organizationId      String                        @map("organization_id") @db.Uuid
+  purchaseId          String                        @map("purchase_id") @db.Uuid
+  ruleId              String                        @map("rule_id") @db.Uuid
+  submittedById       String                        @map("submitted_by_id") @db.Uuid
+  ruleNameSnapshot    String                        @map("rule_name_snapshot") @db.VarChar(120)
+  notificationChannel NotificationChannel           @map("notification_channel")
+  amountSnapshot      Decimal                       @map("amount_snapshot") @db.Decimal(14, 2)
+  requiredApprovals   Int                           @map("required_approvals")
+  status              ApprovalRequestStatus         @default(PENDING)
+  submittedAt         DateTime                      @default(now()) @map("submitted_at")
+  resolvedAt          DateTime?                     @map("resolved_at")
+  organization        Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase            Purchase                      @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  rule                ApprovalRule                  @relation(fields: [organizationId, ruleId], references: [organizationId, id], onDelete: Restrict)
+  submittedBy         User                          @relation("ApprovalRequestSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
+  participants        PurchaseApprovalParticipant[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, purchaseId, status])
+  @@index([organizationId, submittedAt])
+  @@map("purchase_approval_requests")
+}
+
+model PurchaseApprovalParticipant {
+  id                String                  @id @default(uuid()) @db.Uuid
+  organizationId    String                  @map("organization_id") @db.Uuid
+  requestId         String                  @map("request_id") @db.Uuid
+  userId            String                  @map("user_id") @db.Uuid
+  nameSnapshot      String                  @map("name_snapshot") @db.VarChar(120)
+  recipientSnapshot String                  @map("recipient_snapshot") @db.VarChar(255)
+  channel           NotificationChannel
+  decision          ApprovalDecisionStatus  @default(PENDING)
+  comment           String?                 @db.VarChar(500)
+  decidedAt         DateTime?               @map("decided_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request           PurchaseApprovalRequest @relation(fields: [organizationId, requestId], references: [organizationId, id], onDelete: Cascade)
+  user              User                    @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, requestId, userId])
+  @@index([organizationId, userId, decision])
+  @@map("purchase_approval_participants")
+}
+
+model PurchaseStageHistory {
+  id             String                 @id @default(uuid()) @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  purchaseId     String                 @map("purchase_id") @db.Uuid
+  fromStage      PurchaseWorkflowStage? @map("from_stage")
+  toStage        PurchaseWorkflowStage  @map("to_stage")
+  changedById    String?                @map("changed_by_id") @db.Uuid
+  reason         String?                @db.VarChar(500)
+  createdAt      DateTime               @default(now()) @map("created_at")
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase       Purchase               @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  changedBy      User?                  @relation("PurchaseStageChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, purchaseId, createdAt])
+  @@map("purchase_stage_history")
+}
+
+model NotificationOutbox {
+  id                String                     @id @default(uuid()) @db.Uuid
+  organizationId    String                     @map("organization_id") @db.Uuid
+  deduplicationKey  String                     @map("deduplication_key") @db.VarChar(220)
+  eventType         String                     @map("event_type") @db.VarChar(80)
+  channel           NotificationChannel
+  recipient         String                     @db.VarChar(255)
+  subject           String?                    @db.VarChar(200)
+  payload           Json
+  status            NotificationDeliveryStatus @default(PENDING)
+  attempts          Int                        @default(0)
+  availableAt       DateTime                   @default(now()) @map("available_at")
+  sentAt            DateTime?                  @map("sent_at")
+  lastError         String?                    @map("last_error") @db.VarChar(1000)
+  providerMessageId String?                    @map("provider_message_id") @db.VarChar(255)
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+  organization      Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, deduplicationKey])
+  @@index([status, availableAt])
+  @@index([organizationId, createdAt])
+  @@map("notification_outbox")
+}
+
 model InvoiceDocument {
-  id             String                @id @default(uuid()) @db.Uuid
-  organizationId String                @map("organization_id") @db.Uuid
-  purchaseId     String?               @map("purchase_id") @db.Uuid
-  createdById    String?               @map("created_by_id") @db.Uuid
-  reviewedById   String?               @map("reviewed_by_id") @db.Uuid
-  importedById   String?               @map("imported_by_id") @db.Uuid
-  invoiceNumber  String?               @map("invoice_number") @db.VarChar(60)
-  accessKey      String?               @map("access_key") @db.VarChar(60)
-  fileName       String                @map("file_name") @db.VarChar(255)
-  mimeType       String                @map("mime_type") @db.VarChar(100)
-  kind           InvoiceDocumentKind
-  size           Int                   @default(0)
-  sha256         String?               @db.Char(64)
-  storagePath    String                @map("storage_path") @db.VarChar(500)
-  status         InvoiceDocumentStatus @default(PROCESSING)
-  parser         String?               @db.VarChar(80)
-  confidence     Decimal?              @db.Decimal(5, 4)
-  parsedData     Json?                 @map("parsed_data")
-  reviewData     Json?                 @map("review_data")
-  warnings       Json                  @default("[]")
-  errors         Json                  @default("[]")
-  createdAt      DateTime              @default(now()) @map("created_at")
-  updatedAt      DateTime              @updatedAt @map("updated_at")
-  processedAt    DateTime?             @map("processed_at")
-  reviewedAt     DateTime?             @map("reviewed_at")
-  importedAt     DateTime?             @map("imported_at")
-  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                String                  @id @default(uuid()) @db.Uuid
+  organizationId    String                  @map("organization_id") @db.Uuid
+  purchaseId        String?                 @map("purchase_id") @db.Uuid
+  createdById       String?                 @map("created_by_id") @db.Uuid
+  reviewedById      String?                 @map("reviewed_by_id") @db.Uuid
+  importedById      String?                 @map("imported_by_id") @db.Uuid
+  invoiceNumber     String?                 @map("invoice_number") @db.VarChar(60)
+  accessKey         String?                 @map("access_key") @db.VarChar(60)
+  source            FiscalDocumentSource    @default(UPLOAD)
+  sefazNsu          String?                 @map("sefaz_nsu") @db.VarChar(30)
+  fiscalModel       String?                 @map("fiscal_model") @db.VarChar(10)
+  issuerDocument    String?                 @map("issuer_document") @db.VarChar(18)
+  recipientDocument String?                 @map("recipient_document") @db.VarChar(18)
+  fiscalIssuedAt    DateTime?               @map("fiscal_issued_at")
+  fiscalTotal       Decimal?                @map("fiscal_total") @db.Decimal(14, 2)
+  matchStatus       FiscalMatchStatus       @default(UNMATCHED) @map("match_status")
+  manifestation     RecipientManifestation?
+  manifestedAt      DateTime?               @map("manifested_at")
+  fileName          String                  @map("file_name") @db.VarChar(255)
+  mimeType          String                  @map("mime_type") @db.VarChar(100)
+  kind              InvoiceDocumentKind
+  size              Int                     @default(0)
+  sha256            String?                 @db.Char(64)
+  storagePath       String                  @map("storage_path") @db.VarChar(500)
+  status            InvoiceDocumentStatus   @default(PROCESSING)
+  parser            String?                 @db.VarChar(80)
+  confidence        Decimal?                @db.Decimal(5, 4)
+  parsedData        Json?                   @map("parsed_data")
+  reviewData        Json?                   @map("review_data")
+  warnings          Json                    @default("[]")
+  errors            Json                    @default("[]")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+  processedAt       DateTime?               @map("processed_at")
+  reviewedAt        DateTime?               @map("reviewed_at")
+  importedAt        DateTime?               @map("imported_at")
+  organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   /// The migration uses PostgreSQL column-specific SET NULL for purchaseId.
-  purchase       Purchase?             @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: NoAction)
-  createdBy      User?                 @relation("InvoiceDocumentCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  reviewedBy     User?                 @relation("InvoiceDocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-  importedBy     User?                 @relation("InvoiceDocumentImporter", fields: [importedById], references: [id], onDelete: SetNull)
+  purchase          Purchase?               @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: NoAction)
+  createdBy         User?                   @relation("InvoiceDocumentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedBy        User?                   @relation("InvoiceDocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  importedBy        User?                   @relation("InvoiceDocumentImporter", fields: [importedById], references: [id], onDelete: SetNull)
+  purchaseLinks     PurchaseInvoiceLink[]
+  fiscalItems       FiscalDocumentItem[]
+  installments      Installment[]
 
   @@unique([organizationId, sha256])
+  @@unique([organizationId, id])
+  @@unique([organizationId, accessKey])
+  @@unique([organizationId, sefazNsu])
   @@index([organizationId, invoiceNumber])
-  @@index([organizationId, accessKey])
   @@index([organizationId, status, createdAt])
+  @@index([organizationId, matchStatus, createdAt])
   @@map("invoice_documents")
+}
+
+model FiscalIntegration {
+  organizationId                 String                     @id @map("organization_id") @db.Uuid
+  environment                    FiscalEnvironment          @default(HOMOLOGATION)
+  taxpayerDocument               String                     @map("taxpayer_document") @db.VarChar(18)
+  certificateEncrypted           Bytes                      @map("certificate_encrypted")
+  certificatePassphraseEncrypted Bytes                      @map("certificate_passphrase_encrypted")
+  certificateFingerprint         String                     @map("certificate_fingerprint") @db.VarChar(128)
+  certificateExpiresAt           DateTime                   @map("certificate_expires_at")
+  status                         FiscalIntegrationStatus    @default(READY)
+  manifestationMode              RecipientManifestationMode @default(MANUAL) @map("manifestation_mode")
+  lastNsu                        String                     @default("000000000000000") @map("last_nsu") @db.VarChar(30)
+  maxNsu                         String                     @default("000000000000000") @map("max_nsu") @db.VarChar(30)
+  lastSyncedAt                   DateTime?                  @map("last_synced_at")
+  nextPollAt                     DateTime?                  @map("next_poll_at")
+  lastError                      String?                    @map("last_error") @db.VarChar(1000)
+  createdAt                      DateTime                   @default(now()) @map("created_at")
+  updatedAt                      DateTime                   @updatedAt @map("updated_at")
+  organization                   Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextPollAt])
+  @@map("fiscal_integrations")
+}
+
+model PurchaseInvoiceLink {
+  id                String            @id @default(uuid()) @db.Uuid
+  organizationId    String            @map("organization_id") @db.Uuid
+  purchaseId        String            @map("purchase_id") @db.Uuid
+  invoiceDocumentId String            @map("invoice_document_id") @db.Uuid
+  matchStatus       FiscalMatchStatus @map("match_status")
+  matchedById       String?           @map("matched_by_id") @db.Uuid
+  matchReason       String?           @map("match_reason") @db.VarChar(500)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase          Purchase          @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  invoiceDocument   InvoiceDocument   @relation(fields: [organizationId, invoiceDocumentId], references: [organizationId, id], onDelete: Cascade)
+  matchedBy         User?             @relation("FiscalMatchActor", fields: [matchedById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, purchaseId, invoiceDocumentId])
+  @@index([organizationId, invoiceDocumentId])
+  @@map("purchase_invoice_links")
+}
+
+model FiscalDocumentItem {
+  id                    String             @id @default(uuid()) @db.Uuid
+  organizationId        String             @map("organization_id") @db.Uuid
+  invoiceDocumentId     String             @map("invoice_document_id") @db.Uuid
+  matchedPurchaseItemId String?            @map("matched_purchase_item_id") @db.Uuid
+  sequence              Int
+  itemCode              String?            @map("item_code") @db.VarChar(80)
+  purchaseReference     String?            @map("purchase_reference") @db.VarChar(80)
+  description           String             @db.VarChar(240)
+  quantity              Decimal            @db.Decimal(14, 4)
+  unit                  String?            @db.VarChar(30)
+  unitPrice             Decimal            @map("unit_price") @db.Decimal(14, 4)
+  total                 Decimal            @db.Decimal(14, 2)
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceDocument       InvoiceDocument    @relation(fields: [organizationId, invoiceDocumentId], references: [organizationId, id], onDelete: Cascade)
+  matchedPurchaseItem   PurchaseItem?      @relation(fields: [organizationId, matchedPurchaseItemId], references: [organizationId, id], onDelete: NoAction)
+  receiptItems          GoodsReceiptItem[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, invoiceDocumentId, sequence])
+  @@index([organizationId, matchedPurchaseItemId])
+  @@map("fiscal_document_items")
+}
+
+model GoodsReceipt {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  purchaseId     String             @map("purchase_id") @db.Uuid
+  status         ReceiptStatus      @default(CONFIRMED)
+  receivedAt     DateTime           @map("received_at") @db.Date
+  confirmedById  String             @map("confirmed_by_id") @db.Uuid
+  notes          String?            @db.VarChar(1000)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase       Purchase           @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  confirmedBy    User               @relation("ReceiptConfirmer", fields: [confirmedById], references: [id], onDelete: Restrict)
+  items          GoodsReceiptItem[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, purchaseId, receivedAt])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItem {
+  id                    String              @id @default(uuid()) @db.Uuid
+  organizationId        String              @map("organization_id") @db.Uuid
+  receiptId             String              @map("receipt_id") @db.Uuid
+  purchaseItemId        String              @map("purchase_item_id") @db.Uuid
+  invoiceDocumentItemId String?             @map("invoice_document_item_id") @db.Uuid
+  quantity              Decimal             @db.Decimal(14, 4)
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  receipt               GoodsReceipt        @relation(fields: [organizationId, receiptId], references: [organizationId, id], onDelete: Cascade)
+  purchaseItem          PurchaseItem        @relation(fields: [organizationId, purchaseItemId], references: [organizationId, id], onDelete: Restrict)
+  invoiceDocumentItem   FiscalDocumentItem? @relation(fields: [organizationId, invoiceDocumentItemId], references: [organizationId, id], onDelete: NoAction)
+
+  @@unique([receiptId, purchaseItemId, invoiceDocumentItemId])
+  @@index([organizationId, purchaseItemId])
+  @@index([organizationId, invoiceDocumentItemId])
+  @@map("goods_receipt_items")
+}
+
+model ReceiptResponsibility {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  costCenterId   String?      @map("cost_center_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  costCenter     CostCenter?  @relation(fields: [organizationId, costCenterId], references: [organizationId, id], onDelete: NoAction)
+
+  @@unique([organizationId, userId, costCenterId])
+  @@index([organizationId, costCenterId])
+  @@map("receipt_responsibilities")
+}
+
+model PaymentSettings {
+  organizationId        String               @id @map("organization_id") @db.Uuid
+  approvalMode          PaymentApprovalMode  @default(DISABLED) @map("approval_mode")
+  segregationEnabled    Boolean              @default(false) @map("segregation_enabled")
+  notificationChannel   NotificationChannel? @map("notification_channel")
+  notificationRecipient String?              @map("notification_recipient") @db.VarChar(255)
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
+  organization          Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("payment_settings")
+}
+
+model PaymentApprovalRule {
+  id                  String                        @id @default(uuid()) @db.Uuid
+  organizationId      String                        @map("organization_id") @db.Uuid
+  name                String                        @db.VarChar(120)
+  minimumAmount       Decimal                       @map("minimum_amount") @db.Decimal(14, 2)
+  requiredApprovals   Int                           @map("required_approvals")
+  notificationChannel NotificationChannel           @default(EMAIL) @map("notification_channel")
+  active              Boolean                       @default(true)
+  createdAt           DateTime                      @default(now()) @map("created_at")
+  updatedAt           DateTime                      @updatedAt @map("updated_at")
+  organization        Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approvers           PaymentApprovalRuleApprover[]
+  requests            PaymentApprovalRequest[]
+
+  @@unique([organizationId, minimumAmount])
+  @@unique([organizationId, id])
+  @@index([organizationId, active, minimumAmount])
+  @@map("payment_approval_rules")
+}
+
+model PaymentApprovalRuleApprover {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  ruleId         String              @map("rule_id") @db.Uuid
+  userId         String              @map("user_id") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at")
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rule           PaymentApprovalRule @relation(fields: [organizationId, ruleId], references: [organizationId, id], onDelete: Cascade)
+  user           User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, ruleId, userId])
+  @@index([organizationId, userId])
+  @@map("payment_approval_rule_approvers")
+}
+
+model PaymentApprovalRequest {
+  id                String                       @id @default(uuid()) @db.Uuid
+  organizationId    String                       @map("organization_id") @db.Uuid
+  purchaseId        String                       @map("purchase_id") @db.Uuid
+  ruleId            String                       @map("rule_id") @db.Uuid
+  submittedById     String                       @map("submitted_by_id") @db.Uuid
+  mode              PaymentApprovalMode
+  ruleNameSnapshot  String                       @map("rule_name_snapshot") @db.VarChar(120)
+  amountSnapshot    Decimal                      @map("amount_snapshot") @db.Decimal(14, 2)
+  requiredApprovals Int                          @map("required_approvals")
+  status            ApprovalRequestStatus        @default(PENDING)
+  submittedAt       DateTime                     @default(now()) @map("submitted_at")
+  resolvedAt        DateTime?                    @map("resolved_at")
+  organization      Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchase          Purchase                     @relation(fields: [organizationId, purchaseId], references: [organizationId, id], onDelete: Cascade)
+  rule              PaymentApprovalRule          @relation(fields: [organizationId, ruleId], references: [organizationId, id], onDelete: Restrict)
+  submittedBy       User                         @relation("PaymentApprovalSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
+  participants      PaymentApprovalParticipant[]
+  titles            PaymentApprovalTitle[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, purchaseId, status])
+  @@index([organizationId, submittedAt])
+  @@map("payment_approval_requests")
+}
+
+model PaymentApprovalParticipant {
+  id                String                 @id @default(uuid()) @db.Uuid
+  organizationId    String                 @map("organization_id") @db.Uuid
+  requestId         String                 @map("request_id") @db.Uuid
+  userId            String                 @map("user_id") @db.Uuid
+  nameSnapshot      String                 @map("name_snapshot") @db.VarChar(120)
+  recipientSnapshot String                 @map("recipient_snapshot") @db.VarChar(255)
+  channel           NotificationChannel
+  decision          ApprovalDecisionStatus @default(PENDING)
+  comment           String?                @db.VarChar(500)
+  decidedAt         DateTime?              @map("decided_at")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  organization      Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request           PaymentApprovalRequest @relation(fields: [organizationId, requestId], references: [organizationId, id], onDelete: Cascade)
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, requestId, userId])
+  @@index([organizationId, userId, decision])
+  @@map("payment_approval_participants")
+}
+
+model PaymentApprovalTitle {
+  id                     String                 @id @default(uuid()) @db.Uuid
+  organizationId         String                 @map("organization_id") @db.Uuid
+  requestId              String                 @map("request_id") @db.Uuid
+  installmentId          String                 @map("installment_id") @db.Uuid
+  amountSnapshot         Decimal                @map("amount_snapshot") @db.Decimal(14, 2)
+  instructionFingerprint String                 @map("instruction_fingerprint") @db.Char(64)
+  organization           Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request                PaymentApprovalRequest @relation(fields: [organizationId, requestId], references: [organizationId, id], onDelete: Cascade)
+  installment            Installment            @relation(fields: [organizationId, installmentId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, requestId, installmentId])
+  @@index([organizationId, installmentId])
+  @@map("payment_approval_titles")
+}
+
+model PaymentInstructionSnapshot {
+  id                  String         @id @default(uuid()) @db.Uuid
+  organizationId      String         @map("organization_id") @db.Uuid
+  installmentId       String         @map("installment_id") @db.Uuid
+  version             Int
+  paymentChannel      PaymentChannel @map("payment_channel")
+  paymentReference    String?        @map("payment_reference") @db.VarChar(500)
+  pixKeyType          PixKeyType?    @map("pix_key_type")
+  pixKey              String?        @map("pix_key") @db.VarChar(160)
+  beneficiaryName     String?        @map("beneficiary_name") @db.VarChar(160)
+  beneficiaryDocument String?        @map("beneficiary_document") @db.VarChar(18)
+  pixCopyPaste        String?        @map("pix_copy_paste") @db.VarChar(1000)
+  pixQrStoragePath    String?        @map("pix_qr_storage_path") @db.VarChar(500)
+  pixQrFileName       String?        @map("pix_qr_file_name") @db.VarChar(255)
+  pixQrSha256         String?        @map("pix_qr_sha256") @db.Char(64)
+  notes               String?        @db.VarChar(500)
+  validationWarnings  Json           @default("[]") @map("validation_warnings")
+  fingerprint         String         @db.Char(64)
+  createdById         String         @map("created_by_id") @db.Uuid
+  createdAt           DateTime       @default(now()) @map("created_at")
+  organization        Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  installment         Installment    @relation(fields: [organizationId, installmentId], references: [organizationId, id], onDelete: Cascade)
+  createdBy           User           @relation("PaymentInstructionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, installmentId, version])
+  @@index([organizationId, installmentId, createdAt])
+  @@map("payment_instruction_snapshots")
+}
+
+model PaymentSettlement {
+  id               String       @id @default(uuid()) @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  installmentId    String       @map("installment_id") @db.Uuid
+  amount           Decimal      @db.Decimal(14, 2)
+  paidAt           DateTime     @map("paid_at") @db.Date
+  transactionId    String       @map("transaction_id") @db.VarChar(160)
+  proofFileName    String       @map("proof_file_name") @db.VarChar(255)
+  proofMimeType    String       @map("proof_mime_type") @db.VarChar(100)
+  proofSize        Int          @map("proof_size")
+  proofSha256      String       @map("proof_sha256") @db.Char(64)
+  proofStoragePath String       @map("proof_storage_path") @db.VarChar(500)
+  createdById      String       @map("created_by_id") @db.Uuid
+  createdAt        DateTime     @default(now()) @map("created_at")
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  installment      Installment  @relation(fields: [organizationId, installmentId], references: [organizationId, id], onDelete: Cascade)
+  createdBy        User         @relation("PaymentSettlementCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, installmentId, transactionId])
+  @@unique([organizationId, proofSha256])
+  @@index([organizationId, paidAt])
+  @@map("payment_settlements")
 }
 
 model AuditLog {
@@ -425,6 +1119,7 @@ model AuditLog {
   actor          User?         @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt])
+  @@index([organizationId, resource, createdAt])
   @@index([actorUserId, createdAt])
   @@map("audit_logs")
 }

@@ -2,14 +2,24 @@
 
 ## Estado do codigo
 
-O codigo cobre identidade, multiempresa, papeis, cadastros, precos, compras, rateios, parcelas, conciliacao com Google Sheets, documentos fiscais, indicadores, relatorios e exportacao. A homologacao funcional e a reconciliacao do primeiro lote real foram concluidas. A entrada em producao ainda depende da configuracao externa, da revisao juridica e do corte controlado.
+O codigo cobre identidade, multiempresa, papeis, cadastros, precos, compras,
+rateios, parcelas, Kanban, aprovacao por valor, notificacoes, contas a pagar,
+conciliacao com Google Sheets, documentos fiscais, indicadores, relatorios e
+exportacao. A homologacao funcional anterior e a reconciliacao do primeiro lote
+real foram concluidas. O novo fluxo de aprovacao ainda precisa receber a
+migracao e o aceite multiusuario no Supabase de homologacao. A entrada em
+producao continua dependente da configuracao externa, da revisao juridica e do
+corte controlado.
 
 Web e API possuem imagens independentes, usuarios nao privilegiados, health checks e smoke tests com sistema de arquivos somente leitura. Tags semanticas coerentes podem publicar as imagens no GitHub Container Registry com SBOM e proveniencia. A migracao de producao permanece manual e exige ambiente protegido, tag imutavel, referencia de backup e confirmacao explicita.
 
 ## Estado da homologacao
 
-- Todas as migracoes versionadas estao aplicadas no PostgreSQL de homologacao.
-- O teste de integracao confirmou RLS em todas as tabelas e isolamento entre empresas.
+- As oito migracoes anteriores estao aplicadas no PostgreSQL de homologacao; a
+  migracao de workflow permanece pendente de promocao controlada.
+- O teste anterior confirmou RLS e isolamento das tabelas ja implantadas. O CI
+  do candidato precisa repetir a prova nas vinte e duas tabelas antes da
+  promocao.
 - O primeiro lote real foi aplicado apos previa, reconciliacao e comparacao com o lote anterior.
 - Uma segunda previa da mesma fonte nao apresentou criacoes nem atualizacoes, comprovando idempotencia.
 - Dashboard, Excel resumido e Excel detalhado reconciliaram a mesma base operacional.
@@ -20,7 +30,9 @@ Web e API possuem imagens independentes, usuarios nao privilegiados, health chec
 - O aceite visual nao encontrou erros no console nem rolagem horizontal da pagina; os totais do dashboard e dos relatorios foram reconciliados, a fixture foi removida e uma segunda limpeza confirmou a idempotencia.
 - `pnpm audit --prod` nao encontrou vulnerabilidades conhecidas depois das atualizacoes controladas de `uuid` e `fast-xml-parser`.
 
-Ainda faltam a configuracao permanente do conector Google por conta de servico, a revisao juridica e a implantacao controlada.
+Ainda faltam a configuracao permanente do conector Google por conta de servico,
+a migracao e o aceite externo do workflow, um provedor real de notificacoes, a
+revisao juridica e a implantacao controlada.
 
 ## Verificacoes da API
 
@@ -35,6 +47,12 @@ Ainda faltam a configuracao permanente do conector Google por conta de servico, 
 - Cada requisicao gera um log JSON com metodo, caminho sem query string, status, duracao e identificador.
 - A aplicacao encerra conexoes ao receber sinais de desligamento.
 - As rotas XLSX usam resposta de arquivo transmitido, evitando serializacao acidental do `Buffer` como JSON.
+- Compras em aprovacao conservam a regra e os destinatarios usados, e as
+  decisoes concorrentes sao serializadas.
+- A vinculacao fiscal e a edicao do pedido ficam bloqueadas nas etapas
+  incompativeis.
+- O worker de notificacoes processa uma outbox deduplicada e nao participa da
+  transacao que decide a compra.
 
 O balanceador deve retirar a instancia do trafego quando `ready` retornar `503`, mas reiniciar o processo somente quando `live` falhar.
 
@@ -44,7 +62,8 @@ O balanceador deve retirar a instancia do trafego quando `ready` retornar `503`,
 - `pnpm db:verify:deployed` confirma migracoes concluidas, RLS em todas as tabelas da aplicacao e ausencia de privilegios para `PUBLIC`, `anon` e `authenticated`.
 - O catalogo e validado para garantir RLS em todas as tabelas da aplicacao.
 - Chaves de negocio iguais sao exercitadas em duas empresas sem conflito entre tenants.
-- Dez relacoes operacionais usam chaves estrangeiras compostas e rejeitam referencias cujo registro pai pertence a outra empresa.
+- Quinze relacoes operacionais usam chaves estrangeiras compostas e rejeitam
+  referencias cujo registro pai pertence a outra empresa.
 - Fornecedor e centro de custo de outra empresa sao rejeitados pelo repositorio.
 - Dashboard, relatorio, compras, fornecedores e auditoria sao conferidos por organizacao.
 - Um backup customizado e restaurado em outro banco, com reconciliacao de migracoes, RLS, contagens e totais.
@@ -58,6 +77,9 @@ Configurar alertas no provedor de hospedagem para:
 - Percentil 95 acima de um segundo por dez minutos.
 - Falha em sincronizacoes com Google Sheets.
 - Crescimento de documentos fiscais em `FAILED` ou `REJECTED`.
+- Crescimento de notificacoes em `FAILED` ou presas em `PROCESSING`.
+- Compras pendentes de aprovacao acima do prazo definido pela operacao.
+- Contas a pagar vencidas sem baixa ou responsavel.
 - Backup ausente dentro da janela definida.
 
 Os limites sao pontos de partida e devem ser recalibrados depois da homologacao.
@@ -85,11 +107,19 @@ O padrao executa 100 requisicoes com concorrencia 10 e falha quando ocorre erro 
 5. Configurar HTTPS, CORS explicito e `TRUST_PROXY=true` somente atras de proxy confiavel.
 6. Publicar API e interface em ambientes separados de homologacao e producao.
 7. Executar testes de login, troca de empresa, isolamento, escrita, relatorios e recuperacao de senha.
-8. Conciliar os totais da planilha e do PostgreSQL antes de alterar a fonte primaria.
-9. Confirmar o ensaio automatizado do CI e repetir a restauracao com um backup da homologacao.
-10. Aprovar juridicamente os Termos de uso, o Aviso de privacidade e o processo de atendimento aos titulares.
-11. Liberar usuarios em grupos pequenos e manter o Apps Script disponivel durante a estabilizacao.
-12. Configurar as variaveis publicas do build web, os segredos da API e os ambientes protegidos `staging` e `production` no GitHub.
-13. Publicar uma tag semantica somente depois do merge e validar as imagens geradas no GitHub Container Registry.
+8. Aplicar a migracao de aprovacao e executar o aceite com dois aprovadores
+   sinteticos de empresas diferentes.
+9. Definir `APP_WEB_URL`, escolher `NOTIFICATION_DELIVERY_MODE` e configurar
+   SMTP ou templates oficiais da Meta no gerenciador de segredos.
+10. Confirmar entrega, repeticao, deduplicacao e sanitizacao de erros sem usar
+    dados reais.
+11. Conciliar os totais da planilha e do PostgreSQL antes de alterar a fonte primaria.
+12. Conciliar contas a pagar com parcelas e confirmar que o sistema nao executa
+    movimentacao bancaria.
+13. Confirmar o ensaio automatizado do CI e repetir a restauracao com um backup da homologacao.
+14. Aprovar juridicamente os Termos de uso, o Aviso de privacidade e o processo de atendimento aos titulares.
+15. Liberar usuarios em grupos pequenos e manter o Apps Script disponivel durante a estabilizacao.
+16. Configurar as variaveis publicas do build web, os segredos da API e os ambientes protegidos `staging` e `production` no GitHub.
+17. Publicar uma tag semantica somente depois do merge e validar as imagens geradas no GitHub Container Registry.
 
 Em implantacoes, use `pnpm db:deploy`. O comando `pnpm db:migrate` e reservado ao desenvolvimento local porque pode criar ou alterar migracoes interativamente.
