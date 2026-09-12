@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "ReportSection43bf5d676c2e4323f3dbf2b6",
+  "displayName": "Todas as compras - Executivo",
+  "displayOption": "FitToPage",
+  "height": 972,
+  "width": 1280,
+  "filterConfig": {
+    "filters": []
+  }
+}

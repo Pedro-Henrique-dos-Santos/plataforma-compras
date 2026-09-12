@@ -1,0 +1,302 @@
+{
+  "algorithm": "SHA-256",
+  "scope": "Public synthetic template files only",
+  "selfExcluded": "manifest-sha256.json",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 14,
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 33,
+      "sha256": "937811df3760cbf3a752a1dfc4c03f44dea0ca67e7cf26872dc9ca8aeb81fa6e"
+    },
+    {
+      "path": "dados-ficticios.json",
+      "bytes": 6215,
+      "sha256": "adcff473c6f09c611377044c9f86fe31327f690efcfe70f81cc7c1191a900bc4"
+    },
+    {
+      "path": "LEIA-ME.txt",
+      "bytes": 229,
+      "sha256": "a23f89a8bf8ec45fa62d9cf47e4d5b0df6551f0adfa3aed9432ea45db182434f"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 1322,
+      "sha256": "fe730764b6da791c7fdedfe85300966389e934035d494451a77508220427faa8"
+    },
+    {
+      "path": "Modelo Compras.pbip",
+      "bytes": 281,
+      "sha256": "425987a11f06d1d4b820540e5d44025833bdb32d8c0b6954e6950ba2d407149f"
+    },
+    {
+      "path": "Modelo Compras.Report/.platform",
+      "bytes": 299,
+      "sha256": "48bd04574462758923ee4ec2d0f80bc16a74d502b72d9b3cfb23b0e0cfc29b8c"
+    },
+    {
+      "path": "Modelo Compras.Report/definition.pbir",
+      "bytes": 241,
+      "sha256": "9589b996dccb490412360a4db142af3a430d6b0fa0cbcdf471a0577eeea5f416"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/pages.json",
+      "bytes": 343,
+      "sha256": "ea3ef5ba9edd214a9cddd1d6ae4d33d1ee24fa7080249602a9820853456e6ab3"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/page.json",
+      "bytes": 306,
+      "sha256": "85e15b8c2412c893aa54917a98c867e55d193dfb5c531fb3ddee76717e3a48da"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/02ecc466e46b94a7b3f8/visual.json",
+      "bytes": 2191,
+      "sha256": "ca0951217c5de4354f2de16c3f854a6147c196c44777d7c2a1b7a681bf5df1c1"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/17a00abceab98289fbe7/visual.json",
+      "bytes": 2200,
+      "sha256": "9925079754a6be1a6e7bf41de06659ea201cab43c7c2da1f85dd51ce58a3526f"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/1e332f94c65c89ca569e/visual.json",
+      "bytes": 2186,
+      "sha256": "2adacf2a28e1b97ae0181658325aca9b6506e28841c2fb636e60ee6a54ca93ad"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/1f8302843a8f55c3e650/visual.json",
+      "bytes": 3340,
+      "sha256": "13b215372602c3946691478a2ab42afaf47120b9cbfb30469fd0463256516aed"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/2f3da58cc445b2d96db8/visual.json",
+      "bytes": 2185,
+      "sha256": "fd9eea05f86810f8e3fd9c02634c7ccfdd6a04ccb9201ef1746aca210b3ff415"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/6c670e18d968a43b68c2/visual.json",
+      "bytes": 3330,
+      "sha256": "d6ce9a888b5d52a665d5b390754625c82b8f9ff79028d4b1d875f4c0fd52f1a1"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/8e5e5290fc06e0adb3d5/visual.json",
+      "bytes": 3647,
+      "sha256": "d7e38d81c1fe681f1db08bfeeaab45eb7eb54f629813de3e1830efb5b707bc27"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/bfee52bbbd5b45bd97bb/visual.json",
+      "bytes": 2194,
+      "sha256": "fefbfe627a1175f7ce7dd0635db57280eb12022f52ec871458306de1ad1ba7e8"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/d8ac4e99ef55c7dca3e3/visual.json",
+      "bytes": 3450,
+      "sha256": "9ffb0468d24f81a11baba1b51d0e2fbb1adc5b8a84507258024e69390e1a70ef"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/e1b53b462f6c8ead2425/visual.json",
+      "bytes": 2201,
+      "sha256": "11e0d47d28dbddd92053f04600d05fc88298ec5de3a964c92fe5902a67778141"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection00ff92c772c23913b2af1d3d/visuals/f0edc125d2e7ba0609a3/visual.json",
+      "bytes": 2179,
+      "sha256": "de66449e3fa3c0175ee3afb57fef16b06ee58f3575aecccfd290f9561174e081"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/page.json",
+      "bytes": 326,
+      "sha256": "70e7989f99df8388aa5c04264a4387ccb37d08c4619ecbc393e135fb076715b3"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/1b6001b8d8c8b0c4cf3e/visual.json",
+      "bytes": 2469,
+      "sha256": "89f2ea5cf1650d77224a9ab2922a39eb231b537e1673da382a4cca6b86e959e2"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/21febffde271c465ba2e/visual.json",
+      "bytes": 2200,
+      "sha256": "55437f089edb9aff70d5597646535b901221a25367b1c184aab195d183031fac"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/241b974fed58b1142e63/visual.json",
+      "bytes": 2186,
+      "sha256": "7c3dad45a869a93251399f629a68afc7e4063008c8794f369c6663f5e99fc595"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/2f9ab19d71d530651401/visual.json",
+      "bytes": 2956,
+      "sha256": "cc28f6b7d4cd5cf8849b413d2554135919c08a3a00d2ca294b05a07fd6ccce2f"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/3cff5f803513475f7318/visual.json",
+      "bytes": 2449,
+      "sha256": "d5896a2cc6715bacd8c19f6adaf484a9641d8b822157aa3941b7425d6882ed1d"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/41aab2daf942e2f11f49/visual.json",
+      "bytes": 2191,
+      "sha256": "107fa08c961a5394855ded30985ca05a34ff71f5a8b30c33bdd7b847f5356f4c"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/5066d19ac89abdd69d92/visual.json",
+      "bytes": 3647,
+      "sha256": "a075cfb79c1d03aff3c12ba05a2466ba1ae0d682c46533a9c71dd775bb4f4d3d"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/62d352a95cad9642fc5e/visual.json",
+      "bytes": 2796,
+      "sha256": "1c7cdc9858d0b9339bcc0377db80b9a98f6237187db5ed91de600dd9b318734d"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/6426a354685d671e424c/visual.json",
+      "bytes": 3012,
+      "sha256": "d8815868ed4a53c56eb3def640edf7f620cdccd5f5c94a2d396f99bbd2bb120f"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/6e2ae6bc76010aac9e79/visual.json",
+      "bytes": 5130,
+      "sha256": "a387bc7fca92ccb0cc205b75f920ebefe55911f33455d268443272d1b15c3db1"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/721dde254f81cbe3f9a4/visual.json",
+      "bytes": 2179,
+      "sha256": "1b219dcbb4cbc88f4e85722208970c46040a46c654d82be1b5a935fc92cd187d"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/a07a96856303ff7fb219/visual.json",
+      "bytes": 2410,
+      "sha256": "b36b215afac404f6d138f67370391eb0e26279fa283052b45f1ccde55343a99c"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/b9a101d55182afa1c783/visual.json",
+      "bytes": 2201,
+      "sha256": "7ba696e364340b795336af7cda5dfa5ed9fd16862d963da4a91fdfb63ed404c3"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/bd9f707e558a51192f94/visual.json",
+      "bytes": 2782,
+      "sha256": "4ae94753ba857b157b34e2be35dc9c91434b261c01c284bddcb4934321d09ff6"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/c9ea2ca10d943a2dce95/visual.json",
+      "bytes": 2185,
+      "sha256": "f047b3d5defd2f627d6992d31f9a2f87c6e2a0a946d30252cc271ddcafe1ef84"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/dd6278cf384ff129a15e/visual.json",
+      "bytes": 2194,
+      "sha256": "3fca032e03bd2ee94714fb1c308f6750d95c753b0f6d93942be7615beb8c50dc"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection43bf5d676c2e4323f3dbf2b6/visuals/e84282c2fb057edeb5f1/visual.json",
+      "bytes": 2165,
+      "sha256": "5a7b246fb935cf4424c9b0b53f1b96597dcb1bcb0a5487ece20a1dd77c7c0802"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/page.json",
+      "bytes": 308,
+      "sha256": "df489cc694eefddc7e34723db02f958c61941c1db7d1601f00cf6b9df0a9c030"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/08789ecec8627653c9a8/visual.json",
+      "bytes": 2194,
+      "sha256": "491296b13acff5183241272b5db05dd768d1a7a0050dfc85d88ddd76963f4587"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/0e0fbf441aee8422c09a/visual.json",
+      "bytes": 5130,
+      "sha256": "bbac0462cd1bff7bb96c3df389527f2b70820d90d2fcaac9167e8732fcf31f80"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/234f208c973e683bb139/visual.json",
+      "bytes": 2185,
+      "sha256": "3f91c4ef43178f34c6609117d62f9ad35123de2bc25c6696f84b9ac12d233707"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/372f8794eeb28b7b6886/visual.json",
+      "bytes": 2200,
+      "sha256": "adc01f3b8291efdb48f5aad4e147072fc1d366677157445b87d31c3d47c0ea59"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/51185776a6aae47dd38d/visual.json",
+      "bytes": 2179,
+      "sha256": "a6666cbb7315ced91b3f38befe6caeddd7f11759b630398cdc3eb41049a2de01"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/6b122f4ec77abf1b79fb/visual.json",
+      "bytes": 2184,
+      "sha256": "20850f3bf04ffed10919559977e879c7c51c323693187a395386e3bb568d8876"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/8436fabf00a2b197f201/visual.json",
+      "bytes": 2201,
+      "sha256": "15a201e5951289ffb5bd4f810174ff4d1e2c14a5179d4bbd6c8a0c1f86d850e4"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/8780ec9bfe0b1348c9dd/visual.json",
+      "bytes": 3666,
+      "sha256": "bc6c4d9559d770a565a88c89b9c4799ed15411f83745bcaab2af8e853d3a828d"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/8f0e5d9571678fe02ab5/visual.json",
+      "bytes": 3647,
+      "sha256": "d6e82d0a207adc752c66c561bcdcafd7578d6861b8436ee0c6df9fc18d70e824"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/978feefd2ee73c70b2dc/visual.json",
+      "bytes": 2186,
+      "sha256": "2603e66fd4e15f6cbe0fdf0cfc5a06809d5a48f4e98e51a25636a1890c15f7b2"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/pages/ReportSection45d10075bb72b8460acdf6f0/visuals/f07e29d6dcd6532c9bd4/visual.json",
+      "bytes": 2191,
+      "sha256": "99e6b26739f684e32156385d4a61f60e59bf3cd035adce7929c216dd5beeeda4"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/report.json",
+      "bytes": 703,
+      "sha256": "ce0d1dfe4d7409021124d464470b08167eda6dabcd446d422604acd583f217f9"
+    },
+    {
+      "path": "Modelo Compras.Report/definition/version.json",
+      "bytes": 150,
+      "sha256": "0f9f217a60981bf882d7b1963977fc72cc051078df8512b46caa607aff2e5220"
+    },
+    {
+      "path": "Modelo Compras.Report/StaticResources/RegisteredResources/ModeloComprasTema.json",
+      "bytes": 2220,
+      "sha256": "ee27935d4e1add53c3cef2319fd1a20ce55916822037bd25725b627945e55470"
+    },
+    {
+      "path": "Modelo Compras.SemanticModel/.platform",
+      "bytes": 306,
+      "sha256": "8fc193e5826d20893c020bfdf98978ddb6f53a7977b1bf3cd7e8915afd15b8a0"
+    },
+    {
+      "path": "Modelo Compras.SemanticModel/definition.pbism",
+      "bytes": 194,
+      "sha256": "792193b6309aadb09922b9a4de45b2688e2d3498f62dc7eb77f81f90d398da6e"
+    },
+    {
+      "path": "Modelo Compras.SemanticModel/model.bim",
+      "bytes": 17246,
+      "sha256": "df5914b5a6bb0a6d98e8506e3765822e2a44467043750cc599ae5a79b4202a01"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4236,
+      "sha256": "0d37a8dabc79a608402bc019b342b13974e077b3f065899a3d4ab720667064b1"
+    },
+    {
+      "path": "verificacao-publica.json",
+      "bytes": 1291,
+      "sha256": "3bcbf1fc6b68242de71716c1ba6c0f33cb37d0e01632923a1978c2a3217bfaf0"
+    }
+  ]
+}

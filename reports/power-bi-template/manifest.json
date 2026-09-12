@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "templateKind": "PUBLIC_SYNTHETIC_ONLY",
+  "presentationVersion": 6,
+  "title": "Modelo público de compras",
+  "dataOrigin": "CREATED_FROM_SCRATCH_NOT_ANONYMIZED",
+  "syntheticDate": "2025-07-01T12:00:00.000Z",
+  "recordCount": 12,
+  "sourceConnections": [],
+  "organizationBrandingIncluded": false,
+  "operationalDataIncluded": false,
+  "filters": {
+    "flow": "ALL",
+    "includeCancelled": false,
+    "includeUndated": true
+  },
+  "totals": {
+    "recordCount": 12,
+    "initialTotal": 12750,
+    "negotiatedTotal": 11375,
+    "initialCount": 11,
+    "negotiatedCount": 11,
+    "comparableCount": 10,
+    "comparableInitial": 12150,
+    "comparableNegotiated": 11075,
+    "saving": 1075,
+    "savingPercentage": 8.85,
+    "incompleteCount": 2,
+    "itemCount": 12
+  },
+  "pages": [
+    "Todas as compras - Executivo",
+    "Negociacao",
+    "Detalhes"
+  ],
+  "administrativeLocations": {
+    "purchase": 8,
+    "payment": 4
+  },
+  "supplierTop5Scope": "Dynamic ALLSELECTED ranking after current slicers; only the five largest positive values, no Other group.",
+  "categoryComparisonScope": "Top 6 categories by comparable initial value; identical categories and cohort for both series.",
+  "validation": {
+    "structural": "PASSED",
+    "desktopVisual": "PENDING_ON_INSTALLED_VERSION"
+  }
+}

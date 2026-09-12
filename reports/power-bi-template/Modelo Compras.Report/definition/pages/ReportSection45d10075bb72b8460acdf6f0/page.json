@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "ReportSection45d10075bb72b8460acdf6f0",
+  "displayName": "Negociacao",
+  "displayOption": "FitToPage",
+  "height": 792,
+  "width": 1280,
+  "filterConfig": {
+    "filters": []
+  }
+}

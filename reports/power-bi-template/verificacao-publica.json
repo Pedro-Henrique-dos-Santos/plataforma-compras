@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "outcome": "PASSED",
+  "syntheticOnly": true,
+  "checks": {
+    "createdFromScratch": true,
+    "literalRowsEqualExpected": true,
+    "rowCount": 12,
+    "uniqueSyntheticKeys": 12,
+    "documentValuesAllNull": true,
+    "internalIdentifiersAllNull": true,
+    "dataDatesRestrictedTo2025OrNull": true,
+    "noCompanyBranding": true,
+    "noBusinessSourceHashes": true,
+    "noOrganizationIdentifiers": true,
+    "noCredentialsOrPersonalPaths": true,
+    "noExternalDataSource": true,
+    "schemaUrlsOnly": true,
+    "allFilesTextUtf8": true,
+    "allJsonParsable": true,
+    "portableRelativeReferences": true,
+    "pages": 3,
+    "slicers": 21,
+    "dynamicPeriodStrips": 3,
+    "reconciledTotals": {
+      "recordCount": 12,
+      "initialTotal": 12750,
+      "negotiatedTotal": 11375,
+      "initialCount": 11,
+      "negotiatedCount": 11,
+      "comparableCount": 10,
+      "comparableInitial": 12150,
+      "comparableNegotiated": 11075,
+      "saving": 1075,
+      "savingPercentage": 8.85,
+      "incompleteCount": 2,
+      "itemCount": 12
+    }
+  },
+  "limits": [
+    "Verificação estática dos arquivos gerados e reconciliação integral da tabela literal.",
+    "A abertura e a apresentação visual no Power BI Desktop ainda exigem conferência."
+  ]
+}

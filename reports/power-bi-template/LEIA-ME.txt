@@ -1,0 +1,3 @@
+MODELO PUBLICO COM DADOS INTEIRAMENTE FICTICIOS
+
+Leia README.md nesta pasta. Abra Modelo Compras.pbip no Power BI Desktop e clique em Atualizar. Preserve as pastas Report e SemanticModel. Este projeto nao possui conexao externa.

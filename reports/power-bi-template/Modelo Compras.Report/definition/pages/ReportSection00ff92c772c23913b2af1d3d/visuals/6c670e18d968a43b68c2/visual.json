@@ -1,0 +1,126 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "name": "6c670e18d968a43b68c2",
+  "position": {
+    "x": 24,
+    "y": 584,
+    "z": 9,
+    "height": 184,
+    "width": 1232,
+    "tabOrder": 9
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Registros"
+                    }
+                  },
+                  "Property": "CardBitrix"
+                }
+              },
+              "queryRef": "Registros.CardBitrix",
+              "nativeQueryRef": "Card de origem"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Registros"
+                    }
+                  },
+                  "Property": "DataReferencia"
+                }
+              },
+              "queryRef": "Registros.DataReferencia",
+              "nativeQueryRef": "Data de referencia"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Registros"
+                    }
+                  },
+                  "Property": "BaseData"
+                }
+              },
+              "queryRef": "Registros.BaseData",
+              "nativeQueryRef": "Origem da data"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Registros"
+                    }
+                  },
+                  "Property": "Unidade"
+                }
+              },
+              "queryRef": "Registros.Unidade",
+              "nativeQueryRef": "Unidade"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Registros"
+                    }
+                  },
+                  "Property": "Pendencias"
+                }
+              },
+              "queryRef": "Registros.Pendencias",
+              "nativeQueryRef": "Pendencias"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Registros"
+                    }
+                  },
+                  "Property": "LinhaFonte"
+                }
+              },
+              "queryRef": "Registros.LinhaFonte",
+              "nativeQueryRef": "Linha de origem"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Rastreabilidade e pendencias do mesmo conjunto'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": []
+  }
+}

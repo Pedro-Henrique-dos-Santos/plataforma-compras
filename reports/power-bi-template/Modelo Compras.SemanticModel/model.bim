@@ -1,0 +1,340 @@
+{
+  "name": "Modelo Compras",
+  "compatibilityLevel": 1600,
+  "model": {
+    "culture": "pt-BR",
+    "dataAccessOptions": {
+      "legacyRedirects": true,
+      "returnErrorValuesAsNull": true
+    },
+    "defaultPowerBIDataSourceVersion": "powerBI_V3",
+    "sourceQueryCulture": "pt-BR",
+    "tables": [
+      {
+        "name": "Registros",
+        "columns": [
+          {
+            "name": "ChaveExterna",
+            "dataType": "string",
+            "sourceColumn": "ChaveExterna",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "CardBitrix",
+            "dataType": "string",
+            "sourceColumn": "CardBitrix",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Fluxo",
+            "dataType": "string",
+            "sourceColumn": "Fluxo",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Etapa",
+            "dataType": "string",
+            "sourceColumn": "Etapa",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Fornecedor",
+            "dataType": "string",
+            "sourceColumn": "Fornecedor",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "CNPJ",
+            "dataType": "string",
+            "sourceColumn": "CNPJ",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Categoria",
+            "dataType": "string",
+            "sourceColumn": "Categoria",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Departamento",
+            "dataType": "string",
+            "sourceColumn": "Departamento",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Mes",
+            "dataType": "string",
+            "sourceColumn": "Mes",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Situacao",
+            "dataType": "string",
+            "sourceColumn": "Situacao",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Pendencias",
+            "dataType": "string",
+            "sourceColumn": "Pendencias",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Unidade",
+            "dataType": "string",
+            "sourceColumn": "Unidade",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "BaseData",
+            "dataType": "string",
+            "sourceColumn": "BaseData",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "IdInterno",
+            "dataType": "string",
+            "sourceColumn": "IdInterno",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "DataReferencia",
+            "dataType": "dateTime",
+            "sourceColumn": "DataReferencia",
+            "summarizeBy": "none",
+            "formatString": "dd/MM/yyyy"
+          },
+          {
+            "name": "ValorInicial",
+            "dataType": "double",
+            "sourceColumn": "ValorInicial",
+            "summarizeBy": "none",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "ValorNegociado",
+            "dataType": "double",
+            "sourceColumn": "ValorNegociado",
+            "summarizeBy": "none",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "InicialComparavel",
+            "dataType": "double",
+            "sourceColumn": "InicialComparavel",
+            "summarizeBy": "none",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "NegociadoComparavel",
+            "dataType": "double",
+            "sourceColumn": "NegociadoComparavel",
+            "summarizeBy": "none",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Economia",
+            "dataType": "double",
+            "sourceColumn": "Economia",
+            "summarizeBy": "none",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Comparavel",
+            "dataType": "int64",
+            "sourceColumn": "Comparavel",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "InicialInformado",
+            "dataType": "int64",
+            "sourceColumn": "InicialInformado",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "NegociadoInformado",
+            "dataType": "int64",
+            "sourceColumn": "NegociadoInformado",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "QuantidadeItens",
+            "dataType": "int64",
+            "sourceColumn": "QuantidadeItens",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "LinhaFonte",
+            "dataType": "int64",
+            "sourceColumn": "LinhaFonte",
+            "summarizeBy": "none"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "Registros",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "  Source = #table(",
+                "    {\"ChaveExterna\", \"CardBitrix\", \"Fluxo\", \"Etapa\", \"Fornecedor\", \"CNPJ\", \"Categoria\", \"Departamento\", \"Mes\", \"Situacao\", \"Pendencias\", \"Unidade\", \"BaseData\", \"IdInterno\", \"DataReferencia\", \"ValorInicial\", \"ValorNegociado\", \"InicialComparavel\", \"NegociadoComparavel\", \"Economia\", \"Comparavel\", \"InicialInformado\", \"NegociadoInformado\", \"QuantidadeItens\", \"LinhaFonte\"},",
+                "    {",
+                "      {\"BITRIX:1102:900001\", \"900001\", \"Compra\", \"Exemplo concluído\", \"Fornecedor Fictício A\", null, \"Categoria Fictícia A\", \"Departamento Fictício A\", \"2025-01\", \"Comparavel\", \"\", \"Unidade Fictícia A\", \"Inicio na origem\", null, #datetime(2025, 1, 10, 0, 0, 0), 1000, 900, 1000, 900, 100, 1, 1, 1, 1, 2},",
+                "      {\"BITRIX:1102:900002\", \"900002\", \"Compra\", \"Exemplo concluído\", \"Fornecedor Fictício B\", null, \"Categoria Fictícia B\", \"Departamento Fictício B\", \"2025-01\", \"Comparavel\", \"\", \"Unidade Fictícia B\", \"Inicio na origem\", null, #datetime(2025, 1, 20, 0, 0, 0), 2400, 2160, 2400, 2160, 240, 1, 1, 1, 1, 3},",
+                "      {\"BITRIX:1102:900003\", \"900003\", \"Pagamento\", \"Exemplo concluído\", \"Fornecedor Fictício C\", null, \"Categoria Fictícia C\", \"Departamento Fictício C\", \"2025-02\", \"Comparavel\", \"\", \"Unidade Fictícia C\", \"Inicio na origem\", null, #datetime(2025, 2, 5, 0, 0, 0), 800, 760, 800, 760, 40, 1, 1, 1, 1, 4},",
+                "      {\"BITRIX:1102:900004\", \"900004\", \"Compra\", \"Exemplo concluído\", \"Fornecedor Fictício D\", null, \"Categoria Fictícia D\", \"Departamento Fictício D\", \"2025-02\", \"Comparavel\", \"\", \"Unidade Fictícia A\", \"Inicio na origem\", null, #datetime(2025, 2, 18, 0, 0, 0), 1500, 1575, 1500, 1575, -75, 1, 1, 1, 1, 5},",
+                "      {\"BITRIX:1102:900005\", \"900005\", \"Compra\", \"Exemplo concluído\", \"Fornecedor Fictício E\", null, \"Categoria Fictícia E\", \"Departamento Fictício A\", \"2025-03\", \"Comparavel\", \"\", \"Unidade Fictícia B\", \"Inicio na origem\", null, #datetime(2025, 3, 3, 0, 0, 0), 0, 0, 0, 0, 0, 1, 1, 1, 1, 6},",
+                "      {\"BITRIX:1102:900006\", \"900006\", \"Pagamento\", \"Exemplo concluído\", \"Fornecedor Fictício F\", null, \"Categoria Fictícia F\", \"Departamento Fictício B\", \"2025-03\", \"Valores incompletos\", \"Exemplo: valor inicial não informado.\", \"Unidade Fictícia C\", \"Inicio na origem\", null, #datetime(2025, 3, 17, 0, 0, 0), null, 300, null, null, null, 0, 0, 1, 1, 7},",
+                "      {\"BITRIX:1102:900007\", \"900007\", \"Compra\", \"Exemplo concluído\", \"Fornecedor Fictício G\", null, \"Categoria Fictícia A\", \"Departamento Fictício C\", \"2025-04\", \"Valores incompletos\", \"Exemplo: valor negociado não informado.\", \"Unidade Fictícia A\", \"Inicio na origem\", null, #datetime(2025, 4, 2, 0, 0, 0), 600, null, null, null, null, 0, 1, 0, 1, 8},",
+                "      {\"BITRIX:1102:900008\", \"900008\", \"Compra\", \"Exemplo concluído\", \"Fornecedor Fictício A\", null, \"Categoria Fictícia B\", \"Departamento Fictício D\", \"2025-04\", \"Comparavel\", \"\", \"Unidade Fictícia B\", \"Inicio na origem\", null, #datetime(2025, 4, 24, 0, 0, 0), 1800, 1620, 1800, 1620, 180, 1, 1, 1, 1, 9},",
+                "      {\"BITRIX:1102:900009\", \"900009\", \"Pagamento\", \"Exemplo concluído\", \"Fornecedor Fictício B\", null, \"Categoria Fictícia C\", \"Departamento Fictício A\", \"2025-05\", \"Comparavel\", \"\", \"Unidade Fictícia C\", \"Inicio na origem\", null, #datetime(2025, 5, 8, 0, 0, 0), 1250, 1000, 1250, 1000, 250, 1, 1, 1, 1, 10},",
+                "      {\"BITRIX:1102:900010\", \"900010\", \"Compra\", \"Exemplo concluído\", \"Fornecedor Fictício C\", null, \"Categoria Fictícia D\", \"Departamento Fictício B\", \"2025-05\", \"Comparavel\", \"\", \"Unidade Fictícia A\", \"Inicio na origem\", null, #datetime(2025, 5, 21, 0, 0, 0), 2200, 1980, 2200, 1980, 220, 1, 1, 1, 1, 11},",
+                "      {\"BITRIX:1102:900011\", \"900011\", \"Compra\", \"Exemplo concluído\", \"Fornecedor Fictício D\", null, \"Categoria Fictícia E\", \"Departamento Fictício C\", \"2025-06\", \"Comparavel\", \"\", \"Unidade Fictícia B\", \"Inicio na origem\", null, #datetime(2025, 6, 11, 0, 0, 0), 700, 630, 700, 630, 70, 1, 1, 1, 1, 12},",
+                "      {\"BITRIX:1102:900012\", \"900012\", \"Pagamento\", \"Exemplo concluído\", \"Fornecedor Fictício E\", null, \"Categoria Fictícia F\", \"Departamento Fictício D\", \"Sem data\", \"Comparavel\", \"Exemplo: data não informada.\", \"Unidade Fictícia C\", \"Nao informada\", null, null, 500, 450, 500, 450, 50, 1, 1, 1, 1, 13}",
+                "    }",
+                "  ),",
+                "  Typed = Table.TransformColumnTypes(",
+                "    Source,",
+                "    {{\"ChaveExterna\", type nullable text}, {\"CardBitrix\", type nullable text}, {\"Fluxo\", type nullable text}, {\"Etapa\", type nullable text}, {\"Fornecedor\", type nullable text}, {\"CNPJ\", type nullable text}, {\"Categoria\", type nullable text}, {\"Departamento\", type nullable text}, {\"Mes\", type nullable text}, {\"Situacao\", type nullable text}, {\"Pendencias\", type nullable text}, {\"Unidade\", type nullable text}, {\"BaseData\", type nullable text}, {\"IdInterno\", type nullable text}, {\"DataReferencia\", type nullable datetime}, {\"ValorInicial\", type nullable number}, {\"ValorNegociado\", type nullable number}, {\"InicialComparavel\", type nullable number}, {\"NegociadoComparavel\", type nullable number}, {\"Economia\", type nullable number}, {\"Comparavel\", Int64.Type}, {\"InicialInformado\", Int64.Type}, {\"NegociadoInformado\", Int64.Type}, {\"QuantidadeItens\", Int64.Type}, {\"LinhaFonte\", Int64.Type}},",
+                "    \"en-US\"",
+                "  )",
+                "in",
+                "  Typed"
+              ]
+            }
+          }
+        ],
+        "measures": [
+          {
+            "name": "Registros",
+            "expression": "COUNTROWS(Registros)",
+            "formatString": "0"
+          },
+          {
+            "name": "Pedidos",
+            "expression": "[Registros]",
+            "formatString": "0"
+          },
+          {
+            "name": "Localizacao Compra",
+            "expression": "CALCULATE(COUNTROWS(Registros), Registros[Fluxo] = \"Compra\")",
+            "formatString": "0"
+          },
+          {
+            "name": "Localizacao Pagamento",
+            "expression": "CALCULATE(COUNTROWS(Registros), Registros[Fluxo] = \"Pagamento\")",
+            "formatString": "0"
+          },
+          {
+            "name": "Inicial informado",
+            "expression": "SUM(Registros[ValorInicial])",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Negociado informado",
+            "expression": "SUM(Registros[ValorNegociado])",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Valor inicial",
+            "expression": "[Inicial informado]",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Valor negociado",
+            "expression": "[Negociado informado]",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Periodo selecionado",
+            "expression": "VAR Inicio = MIN(Registros[DataReferencia]) VAR Fim = MAX(Registros[DataReferencia]) VAR SemData = COUNTROWS(FILTER(Registros, ISBLANK(Registros[DataReferencia]))) VAR Meses = VALUES(Registros[Mes]) VAR Selecao = IF(COUNTROWS(Meses) <= 6, CONCATENATEX(Meses, Registros[Mes], \", \", Registros[Mes], ASC), FORMAT(COUNTROWS(Meses), \"0\") & \" grupos de mês selecionados\" & IF(SemData > 0, \" (inclui sem data)\", \"\")) RETURN IF(COUNTROWS(Registros) = 0, \"Período: sem registros\", IF(ISFILTERED(Registros[Mes]), \"Período selecionado: \" & Selecao, \"Período total: \" & IF(ISBLANK(Inicio), \"sem data informada\", FORMAT(Inicio, \"dd/MM/yyyy\") & \" a \" & FORMAT(Fim, \"dd/MM/yyyy\") & IF(SemData > 0, \" + registros sem data\", \"\"))))",
+            "formatString": ""
+          },
+          {
+            "name": "Inicial comparavel",
+            "expression": "SUM(Registros[InicialComparavel])",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Negociado comparavel",
+            "expression": "SUM(Registros[NegociadoComparavel])",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Economia comparavel",
+            "expression": "IF([Comparaveis] > 0, [Inicial comparavel] - [Negociado comparavel], BLANK())",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Economia percentual",
+            "expression": "IF([Inicial comparavel] > 0, DIVIDE([Economia comparavel], [Inicial comparavel]), BLANK())",
+            "formatString": "0.00%"
+          },
+          {
+            "name": "Economia total",
+            "expression": "[Economia comparavel]",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Economia %",
+            "expression": "[Economia percentual]",
+            "formatString": "0.00%"
+          },
+          {
+            "name": "Comparaveis",
+            "expression": "SUM(Registros[Comparavel])",
+            "formatString": "0"
+          },
+          {
+            "name": "Cobertura comparavel",
+            "expression": "DIVIDE([Comparaveis], [Registros])",
+            "formatString": "0.0%"
+          },
+          {
+            "name": "Sem negociado",
+            "expression": "COUNTROWS(Registros) - SUM(Registros[NegociadoInformado])",
+            "formatString": "0"
+          },
+          {
+            "name": "Composicao negociada",
+            "expression": "IF([Negociado informado] > 0, [Negociado informado], BLANK())",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Top 10 fornecedores por valor",
+            "expression": "VAR Ranking = TOPN(10, ALLSELECTED(Registros[Fornecedor]), [Negociado informado], DESC, Registros[Fornecedor], ASC) RETURN IF(CONTAINS(Ranking, Registros[Fornecedor], SELECTEDVALUE(Registros[Fornecedor])), [Negociado informado], BLANK())",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Cinco maiores por valor",
+            "expression": "VAR Candidatos = FILTER(ALLSELECTED(Registros[Fornecedor]), [Negociado informado] > 0) VAR Ranking = TOPN(5, Candidatos, [Negociado informado], DESC, Registros[Fornecedor], ASC) RETURN IF(CONTAINS(Ranking, Registros[Fornecedor], SELECTEDVALUE(Registros[Fornecedor])), [Negociado informado], BLANK())",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Inicial por categoria",
+            "expression": "VAR Categorias = TOPN(6, ALLSELECTED(Registros[Categoria]), [Inicial comparavel], DESC, Registros[Categoria], ASC) RETURN IF(CONTAINS(Categorias, Registros[Categoria], SELECTEDVALUE(Registros[Categoria])), [Inicial comparavel], BLANK())",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          },
+          {
+            "name": "Negociado por categoria",
+            "expression": "VAR Categorias = TOPN(6, ALLSELECTED(Registros[Categoria]), [Inicial comparavel], DESC, Registros[Categoria], ASC) RETURN IF(CONTAINS(Categorias, Registros[Categoria], SELECTEDVALUE(Registros[Categoria])), [Negociado comparavel], BLANK())",
+            "formatString": "R$ #,##0.00;-R$ #,##0.00"
+          }
+        ]
+      }
+    ],
+    "relationships": [],
+    "annotations": [
+      {
+        "name": "PBI_QueryOrder",
+        "value": "[\"Registros\"]"
+      },
+      {
+        "name": "PBI_ProTooling",
+        "value": "[\"DevMode\"]"
+      }
+    ]
+  }
+}

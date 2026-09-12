@@ -1,0 +1,115 @@
+{
+  "name": "ModeloComprasTema.json",
+  "dataColors": [
+    "#0F766E",
+    "#0EA5A4",
+    "#D9A441",
+    "#F28E2B",
+    "#355C7D"
+  ],
+  "good": "#0F766E",
+  "neutral": "#D9A441",
+  "bad": "#C94C4C",
+  "maximum": "#0F766E",
+  "center": "#D9A441",
+  "minimum": "#D9F3F0",
+  "null": "#CBD5E1",
+  "foreground": "#1F2937",
+  "foregroundNeutralSecondary": "#64748B",
+  "foregroundNeutralTertiary": "#94A3B8",
+  "background": "#FFFFFF",
+  "backgroundLight": "#E2E8F0",
+  "backgroundNeutral": "#F4F7FA",
+  "tableAccent": "#0F766E",
+  "textClasses": {
+    "callout": {
+      "color": "#0F4C5C",
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 28
+    },
+    "title": {
+      "color": "#1F2937",
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12
+    },
+    "header": {
+      "color": "#1F2937",
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 11
+    },
+    "label": {
+      "color": "#334155",
+      "fontFace": "Segoe UI",
+      "fontSize": 10
+    }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "title": [
+          {
+            "show": true,
+            "fontFamily": "Segoe UI Semibold",
+            "fontSize": 12,
+            "fontColor": {
+              "solid": {
+                "color": "#1F2937"
+              }
+            }
+          }
+        ],
+        "background": [
+          {
+            "show": true,
+            "color": {
+              "solid": {
+                "color": "#FFFFFF"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "show": true,
+            "color": {
+              "solid": {
+                "color": "#DCE3EA"
+              }
+            },
+            "radius": 8,
+            "width": 1
+          }
+        ]
+      }
+    },
+    "donutChart": {
+      "*": {
+        "legend": [
+          {
+            "position": "RightCenter",
+            "show": true
+          }
+        ]
+      }
+    },
+    "clusteredBarChart": {
+      "*": {
+        "legend": [
+          {
+            "show": false
+          }
+        ]
+      }
+    },
+    "clusteredColumnChart": {
+      "*": {
+        "legend": [
+          {
+            "show": false
+          }
+        ]
+      }
+    }
+  }
+}
